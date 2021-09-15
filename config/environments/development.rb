@@ -159,4 +159,6 @@ Rails.application.configure do
   if ENV['IGN_CARTE_REFERER']
     config.hosts << ENV['IGN_CARTE_REFERER']
   end
+
+  config.lograge.enabled = ENV['LOGRAGE_ENABLED'] == 'enabled'
 end
