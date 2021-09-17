@@ -2,7 +2,7 @@ en:
   support:
     index:
       contact: Contact
-      intro_html: Contact us via this form and we will answer you as quickly as possible.<br>Make sure you provide all the required information so we can help you in the best way.
+      intro_html: Choose the question that best fits your situation to get a contextualized answer.
       your_question: Your question
       our_answer: 👉 Our answer
       notice_pj_product: A screenshot can help us identify the element to improve.
@@ -18,12 +18,6 @@ en:
               <p><a href=%{link_instruction_info}>Find more information</a></p>
               <br>
               <p>If you are facing technical issues on the website, use the form below. We will not be able to inform you about the instruction of your application.</p>"
-      product:
-        question: I have an idea to improve the website
-        answer_html: "<p>Got an idea? Please check our <strong>enhancement dashboard</strong></p>
-              <p><ul><li>Vote for your priority improvements</li>
-              <li>Share your own ideas</li></ul></p>
-              <p><strong><a href=%{link_product}>➡ Access the enhancement dashboard</a></strong></p>"
       lost_user:
         question: I am having trouble finding the procedure I am looking for
         answer_html: "<p>We invite you to contact the administration in charge of the procedure so they can provide you the link.
@@ -33,6 +27,7 @@ en:
               <p><a href=%{link_lost_user}>%{link_lost_user}</a></p>"
       other:
         question: Other topic
+        answer_html: "<p>Contact us via this <a href=%{link_other}>mail</a> and we will answer you as quickly as possible.<br>Make sure you provide all the required information so we can help you in the best way.</p>"
     admin:
       your_question: Your question
       admin_intro_html: "<p>As an administration, you can contact us through this form. We'll answer you as quickly as possibly by e-mail or phone.</p>

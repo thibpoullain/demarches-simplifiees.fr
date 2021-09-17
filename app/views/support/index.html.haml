@@ -10,21 +10,11 @@
     = form_tag contact_path, method: :post, multipart: true, class: 'form' do |f|
 
       .description
-        %p= t('.intro_html')
-        %br
-        %p.mandatory-explanation= t('asterisk_html', scope: [:utils])
-
-      - if !user_signed_in?
-        .contact-champ
-          = label_tag :email do
-            Email
-            %span.mandatory *
-          = text_field_tag :email, params[:email], required: true
+        %p= t('intro_html')
 
       .contact-champ
         = label_tag :type do
-          = t('.your_question')
-          %span.mandatory *
+          = t('your_question')
         = hidden_field_tag :type, params[:type]
       %dl
         - @options.each do |(question, question_type, link)|
@@ -39,6 +29,7 @@
                 .card-title
                   = t('.our_answer')
                 .card-content
+<<<<<<< HEAD
                   -# i18n-tasks-use t("support.index.#{question_type}.answer_html")
                   = t('answer_html', scope: [:support, :index, question_type], base_url: APPLICATION_BASE_URL, "link_#{question_type}": link)
 
@@ -71,3 +62,7 @@
 
       .send-wrapper
         = button_tag t('send_mail', scope: [:utils]), type: :submit, class: 'button send primary'
+=======
+                  -# i18n-tasks-use t("support.index.#{question_type}.answer_html")
+                  = t('answer_html', scope: [:support, :index, question_type], base_url: APPLICATION_BASE_URL, "link_#{question_type}": link)
+>>>>>>> 07f152e6f (Gestion du contact par mail / débrayage contact-admin)

@@ -2,7 +2,7 @@ fr:
   support:
     index:
       contact: Contact
-      intro_html: Contactez-nous via ce formulaire et nous vous répondrons dans les plus brefs délais.<br>Pensez bien à nous donner le plus d’informations possible pour que nous puissions vous aider au mieux.
+      intro_html: Choisissez la question qui correspond le mieux à votre situation pour avoir une réponse contextualisée.
       your_question: Votre question
       our_answer: 👉 Notre réponse
       notice_pj_product: Une capture d’écran peut nous aider à identifier plus facilement l’endroit à améliorer.
@@ -18,20 +18,12 @@ fr:
         <p><a href=%{link_instruction_info}>En savoir plus</a></p>
         <br>
         <p>Si vous souhaitez poser une question pour un problème technique sur le site, utilisez le formulaire ci-dessous. Nous ne pourrons pas vous renseigner sur l’instruction de votre dossier.</p>"
-      product:
-        question: J’ai une idée d’amélioration pour votre site
-        answer_html: "<p>Une idée ? Pensez à consulter notre <strong>tableau de bord des améliorations</strong></p>
-        <p><ul><li>Votez pour vos améliorations prioritaires;</li>
-        <li>Proposez votre propre idée.</li></ul></p>
-        <p><strong><a href=%{link_product}>➡ Accéder au tableau des améliorations</a></strong></p>"
       lost_user:
         question: Je ne trouve pas la démarche que je veux faire
-        answer_html: "<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : %{base_url}/commencer/NOM_DE_LA_DEMARCHE.</p>
-        <br>
-        <p>Vous pouvez aussi consulter ici la liste de nos démarches les plus frequentes (permis, detr etc) :</p>
-        <p><a href=%{link_lost_user}>%{link_lost_user}</a></p>"
+        answer_html: "<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : %{base_url}/commencer/NOM_DE_LA_DEMARCHE.</p>"
       other:
-        question: Autre sujet
+        question: Autre sujet ou l'explication ne me convient pas
+        answer_html: "<p>Vous pouvez nous contacter par mail à <a href=%{link_other}>l'adresse suivante</a> et nous vous répondrons dans les plus brefs délais.<br>Pensez bien à nous donner le plus d’informations possible (numéro de dossier, captures d'écran...) pour que nous puissions vous aider au mieux.</p>"
     admin:
       your_question: Votre question
       admin_intro_html: "<p>En tant qu’administration, vous pouvez nous contactez via ce formulaire. Nous vous répondrons dans les plus brefs délais, par email ou par téléphone.</p>
