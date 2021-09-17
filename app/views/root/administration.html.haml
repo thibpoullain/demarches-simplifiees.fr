@@ -35,27 +35,6 @@
         .role-panel-30.role-more-info-image
           %img.role-image{ :src => image_url("landing/roles/usagers.svg"), alt: "" }
 
-.landing-panel.usagers-panel
-  .container
-    .role-panel-wrapper.role-administrations-panel
-      .role-panel-30.role-administrations-image
-        %img.role-image{ :src => image_url("landing/roles/administrations.svg"), alt: "" }
-
-      .role-panel-70
-        %h1.role-panel-title Votre administration est prête pour dématérialiser
-        %p.role-panel-explanation Créez un premier formulaire de test en quelques minutes
-
-
-
-        = link_to "Créer votre compte administrateur",
-            DEMANDE_INSCRIPTION_ADMIN_PAGE_URL,
-            class: "role-panel-button-primary",
-            rel: "noopener noreferrer"
-        %br
-        %br
-        %br
-
-
 
 
   .landing-panel.features-panel
@@ -201,22 +180,14 @@
 
   .landing-panel.cta-panel-2
     .container
-      .half.first-half
-        %h1.cta-panel-title Vous êtes prêt pour dématérialiser ?
-        %p.cta-panel-explanation Réduisez vos temps d’instruction de 50 %
-        = link_to "Créer votre compte administrateur",
-          DEMANDE_INSCRIPTION_ADMIN_PAGE_URL,
-          class: "cta-panel-button-blue"
-
-      .half
-        %h1.cta-panel-title Vous voulez en savoir plus ?
-        %p.cta-panel-explanation Participez à notre prochain Webinaire
-        -# haml-lint:disable ApplicationNameLinter
-        = link_to "Inscription à notre webinaire",
-          "https://app.livestorm.co/demarches-simplifiees/presentation-general-de-demarches-simplifieesfr",
-          target: "_blank",
-          class: "cta-panel-button-blue"
-        -# haml-lint:enable ApplicationNameLinter
+      %h1.cta-panel-title Vous voulez en savoir plus ?
+      %p.cta-panel-explanation Participez à notre prochain Webinaire
+      -# haml-lint:disable ApplicationNameLinter
+      = link_to "Inscription à notre webinaire",
+        "https://app.livestorm.co/demarches-simplifiees/presentation-general-de-demarches-simplifieesfr",
+        target: "_blank",
+        class: "cta-panel-button-blue"
+      -# haml-lint:enable ApplicationNameLinter
 
       .clearfix
 

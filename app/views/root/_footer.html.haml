@@ -17,19 +17,9 @@
       %li.footer-column
         %ul.footer-links
           %li.footer-link
-            = link_to "Newsletter", "https://my.sendinblue.com/users/subscribe/js_id/3s2q1/id/1", :title => "Notre newsletter", :class => "footer-link", :target => "_blank", rel: "noopener"
-          %li.footer-link
-            -# haml-lint:disable ApplicationNameLinter
-            = link_to "Nouveautés", "https://github.com/betagouv/demarches-simplifiees.fr/releases", :class => "footer-link", :title => "Nos nouveautés"
-            -# haml-lint:enable ApplicationNameLinter
-          %li.footer-link
-            = link_to "Statistiques", stats_path, :class => "footer-link"
-          %li.footer-link
             = link_to "CGU", CGU_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
           %li.footer-link
             = link_to "Mentions légales", MENTIONS_LEGALES_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
-          %li.footer-link
-            = link_to "Suivi d’audience et vie privée", suivi_path, :class => "footer-link"
 
       %li.footer-column
         %ul.footer-links
@@ -38,11 +28,7 @@
           %li.footer-link
             = link_to "Documentation", DOC_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
           %li.footer-link
-            = link_to "Documentation de l'API", API_DOC_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
-          %li.footer-link
             = link_to "FAQ", FAQ_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
           %li.footer-link
             = link_to ACCESSIBILITE_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer" do
               Accessibilité&nbsp;: non conforme
-          %li.footer-link
-            = link_to "Disponibilité", STATUS_PAGE_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
