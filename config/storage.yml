@@ -21,4 +21,8 @@ s3:
   region: "<%= ENV['S3_REGION'] %>"
   # Clés possibles : https://docs.aws.amazon.com/sdk-for-ruby/v3/api/Aws/S3/Client.html#initialize-instance_method
   bucket: "<%= ENV['S3_BUCKET'] %>"
+  # Pour compatibilité cegedim
   force_path_style: true
+  http_proxy: "<%= ENV['S3_HTTP_PROXY'] %>"
+  # Clé utiles en debug : trace de chaque connexion et requête au service S3
+  #http_wire_trace: true

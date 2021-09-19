@@ -126,6 +126,8 @@ Rails.application.configure do
     config.active_storage.service = :openstack
   elsif  ENV['S3_ENABLED'] == 'enabled'
     config.active_storage.service = :s3
+    # Les PJ sont affichées au travers l'applicatif (pour application ICAP, le cas échéant)
+    config.active_storage.resolve_model_to_route = :rails_storage_proxy
   else
     raise Exception.new "Un mode de stockage objet doit être configuré : FOG_ENABLED ou S3_ENABLED"
   end

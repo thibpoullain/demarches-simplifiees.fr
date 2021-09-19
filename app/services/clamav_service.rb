@@ -1,6 +1,6 @@
 class ClamavService
   def self.safe_file?(file_path)
-    if Rails.env.development?
+    if ENV['ANTIVIRUS_ON_FILES'] != 'enabled'
       return true
     end
 

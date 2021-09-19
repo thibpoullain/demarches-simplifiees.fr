@@ -18,8 +18,21 @@ class VirusScannerJob < ApplicationJob
   def perform(blob)
     if blob.virus_scanner.done? then return end
 
-    metadata = extract_metadata_via_virus_scanner(blob)
-    VirusScannerJob.merge_and_update_metadata(blob, metadata)
+    begin
+      metadata = extract_metadata_via_virus_scanner(blob)
+      VirusScannerJob.merge_and_update_metadata(blob, metadata)
+    # Exception(s) à affiner par un test d'intégration / selon contrat d'interface service ICAP en cas de virus détecté
+    # Le principe est néanmoins stable : si l'ICAP intercepte le fichier alors il est considéré infecté
+    rescue Seahorse::Client::NetworkingError => e
+      logger.error 'Interception du fichier par le service ICAP : fichier considéré infecté'
+      logger.error e
+
+      metadata = {
+        virus_scan_result: ActiveStorage::VirusScanner::INFECTED,
+        scanned_at: Time.zone.now
+      }
+      VirusScannerJob.merge_and_update_metadata(blob, metadata)
+    end
   end
 
   def extract_metadata_via_virus_scanner(blob)
