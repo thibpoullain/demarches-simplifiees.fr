@@ -128,7 +128,7 @@ Rails.application.configure do
       port: 3000
     }
 
-    config.action_mailer.asset_host = "http://" + ENV['APP_HOST']
+    config.action_mailer.asset_host = "http://" + ENV['APP_HOST'] + ":3000"
   end
 
   Rails.application.routes.default_url_options = {
