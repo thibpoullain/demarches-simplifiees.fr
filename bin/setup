@@ -23,11 +23,6 @@ FileUtils.chdir APP_ROOT do
   puts "\n== Updating webdrivers =="
   system! 'RAILS_ENV=test bin/rails webdrivers:chromedriver:update'
 
-  puts "\n== Copying sample files =="
-  unless File.exist?('.env')
-    FileUtils.cp 'config/env.example', '.env'
-  end
-
   # Create the database, load the schema, and initialize it with the seed data
   puts "\n== Preparing database =="
   system! 'bin/rails db:prepare'

@@ -32,6 +32,8 @@ yarn-debug.log*
 /public/assets
 /docs
 
+*.lock
+
 # Local Netlify folder
 .netlify
 

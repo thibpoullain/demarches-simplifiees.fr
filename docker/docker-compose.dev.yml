@@ -1,0 +1,34 @@
+version: "3.7"
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_DB: tps_development
+      POSTGRES_USER: tps_development
+      POSTGRES_PASSWORD: tps_development
+    ports:
+      - "5432:5432"
+  webapp-main:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    env_file:
+      - dev.env.mandatory
+      - .env.optional
+    links:
+      - db
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    volumes:
+      - '..:/opt/ds'
+      #Persistence des volumes contenant les gems / modules nodes pour éviter de devoir les télécharger à chaque lancement de l'image
+      - demat_dev_node:/opt/ds/node_modules/
+      - demat_dev_gems:/usr/local/bundle/gems/
+      - /opt/ds/tmp/
+      - demat_dev_packs:/opt/ds/public/packs
+volumes:
+  demat_dev_node:
+  demat_dev_gems:
+  demat_dev_packs:

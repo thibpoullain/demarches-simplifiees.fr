@@ -1,0 +1,39 @@
+version: "3.7"
+services:
+  webapp-main:
+    image: remifr/social-gouv:latest
+    command:
+      - deploy start
+    env_file:
+      - .env.mandatory
+      - .env.optional
+    ports:
+      - "3000:3000"
+    volumes:
+      - demat_public_assets:/opt/ds/public
+  webapp-alt:
+    image: remifr/social-gouv:latest
+    command:
+      - start
+    env_file:
+      - .env.mandatory
+      - .env.optional
+    ports:
+      - "3000"
+    depends_on:
+      - webapp-main
+    volumes:
+      - demat_public_assets:/opt/ds/public:ro
+  jobs:
+    image: remifr/social-gouv:latest
+    command:
+      - schedule_jobs
+    env_file:
+      - .env.mandatory
+      - .env.optional
+    depends_on:
+      - webapp-main
+    volumes:
+      - demat_public_assets:/opt/ds/public:ro
+volumes:
+  demat_public_assets:

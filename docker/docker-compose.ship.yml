@@ -1,0 +1,66 @@
+version: "3.7"
+services:
+  db:
+    image: postgres
+    #https://hub.docker.com/_/postgres
+    environment:
+      POSTGRES_DB: tps_prod
+      POSTGRES_USER: tps_prod
+      POSTGRES_PASSWORD: tps_prod
+    ports:
+      - "5432:5432"
+  webapp-main:
+    image: social-gouv-fr/demat:latest
+    command:
+      - deploy start
+    #En l'absence de nginx, service des ressources statiques par le puma + pas de SSL
+    environment:
+      - RAILS_SERVE_STATIC_FILES=1
+      - SSL_FORCE=disabled
+    env_file:
+      - .env.mandatory
+      - .env.optional
+    ports:
+      - "3000:3000"
+    links:
+      - db
+    depends_on:
+      - db
+    volumes:
+      - demat_public_assets:/opt/ds/public
+  webapp-alt:
+    image: social-gouv-fr/demat:latest
+    command:
+      - start
+    #En l'absence de nginx, service des ressources statiques par le puma + pas de SSL
+    environment:
+      - RAILS_SERVE_STATIC_FILES=1
+      - SSL_FORCE=disabled
+    env_file:
+      - .env.mandatory
+      - .env.optional
+    ports:
+      - "3000"
+    links:
+      - db
+    depends_on:
+      - webapp-main
+    volumes:
+      - demat_public_assets:/opt/ds/public:ro
+  jobs:
+    image: social-gouv-fr/demat:latest
+    command:
+      - schedule_jobs
+    env_file:
+      - .env.mandatory
+      - .env.optional
+    links:
+      - db
+    depends_on:
+      - db
+      - webapp-main
+    #Le service job doit envoyer des mails dont le contenu est généré par la précompilation des assets
+    volumes:
+      - demat_public_assets:/opt/ds/public:ro
+volumes:
+  demat_public_assets:

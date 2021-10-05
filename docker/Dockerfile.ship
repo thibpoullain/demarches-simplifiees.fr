@@ -1,0 +1,40 @@
+FROM ruby:2.7
+
+ENV RAILS_ENV='production'
+ENV RAKE_ENV='production'
+ENV NODE_ENV='production'
+RUN apt update && apt install -y libcurl3-dev libpq-dev zlib1g-dev libssl-dev libreadline-dev zlib1g-dev
+# Add node for webpack
+RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
+RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
+RUN apt-get update; apt-get install -y yarn
+
+RUN mkdir /opt/ds
+WORKDIR /opt/ds
+
+# Token à générer depuis https://gitlab.intranet.social.gouv.fr/profile/personal_access_tokens
+ARG GITLAB_TOKEN
+# Le tag à livrer (par défaut -> la branche release)
+ARG GIT_TAG
+
+RUN git config --global http.sslVerify false && git clone --branch ${GIT_TAG:-release}  https://oauth2:${GITLAB_TOKEN}@gitlab.intranet.social.gouv.fr/sdpsn/demat-demarches.git . && git describe --tags > version.txt
+
+# Adding gems
+RUN bundle config set without 'development test' && bundle install --jobs 20 --retry 5
+RUN yarn install
+
+EXPOSE $PORT
+
+# Au lancement du container, des assets sont précompilés dans le répertoire public
+# Pour être utilisables par le nginx, un volume est créé sur ce répertoire.
+# Pour éviter tout conflit entre ces assets générés lors de cette phase et les assets de l'image (ex : 404.html, favicon...)
+# on copie les assets de l'image dans un répertoire tampon
+# Coté entrypoint, une fois les assets précompilés, on fera l'inverse
+RUN cp -rp public public_src
+
+#Attribution des droits d'exécution puis exécution du ENTRYPOINT
+RUN chmod +x bin/entrypoint.sh
+ENTRYPOINT ["bin/entrypoint.sh"]
+#Par défaut, démarrage du serveur d'appli
+CMD ["start"]
