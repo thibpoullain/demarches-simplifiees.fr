@@ -95,6 +95,17 @@ Rails.application.configure do
       port: '587',
       authentication: :cram_md5
     }
+  elsif ENV['SMTP_ENABLED'] == 'enabled'
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+      user_name: Rails.application.secrets.smtp[:username],
+      password: Rails.application.secrets.smtp[:password],
+      address: ENV['SMTP_HOST'],
+      domain: ENV['SMTP_DOMAIN'],
+      port: ENV['SMTP_PORT'],
+      #Ajustement possible : :cram_md5 ou :plain ou :login
+      #authentication: :cram_md5
+    }
   else
     config.action_mailer.delivery_method = :mailjet
   end
@@ -111,13 +122,13 @@ Rails.application.configure do
   # the I18n.default_locale when a translation cannot be found).
   config.i18n.fallbacks = true
 
-   if  ENV['FOG_ENABLED'] == 'enabled' 
-	config.active_storage.service = :openstack
+  if  ENV['FOG_ENABLED'] == 'enabled'
+    config.active_storage.service = :openstack
   elsif  ENV['S3_ENABLED'] == 'enabled'
-	config.active_storage.service = :s3
+    config.active_storage.service = :s3
   else
-	 raise Exception.new "Un mode de stockage objet doit être configuré : FOG_ENABLED ou S3_ENABLED"
-  end 
+    raise Exception.new "Un mode de stockage objet doit être configuré : FOG_ENABLED ou S3_ENABLED"
+  end
 
   # Send deprecation notices to registered listeners.
   config.active_support.deprecation = :notify

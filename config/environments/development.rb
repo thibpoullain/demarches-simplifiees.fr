@@ -16,6 +16,7 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
+  config.log_level = :debug
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
@@ -36,18 +37,18 @@ Rails.application.configure do
   config.public_file_server.enabled = true
   config.public_file_server.headers = { 'Cache-Control' => 'public, max-age=3600' }
 
-  # Don't care if the mailer can't send.
-  config.action_mailer.raise_delivery_errors = false
+  # Déclenchement d'un trace si un mail ne peut être envoyé
+  config.action_mailer.raise_delivery_errors = true
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-   if  ENV['FOG_ENABLED'] == 'enabled' 
-	config.active_storage.service = :openstack
+  if  ENV['FOG_ENABLED'] == 'enabled'
+    config.active_storage.service = :openstack
   elsif  ENV['S3_ENABLED'] == 'enabled'
-	config.active_storage.service = :s3
+    config.active_storage.service = :s3
   else
-	 config.active_storage.service = :local
-  end 
- 
+    config.active_storage.service = :local
+  end
+
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -105,6 +106,17 @@ Rails.application.configure do
         port: ENV.fetch('HELO_PORT', '2525'),
         authentication: :plain
       }
+    elsif ENV['SMTP_ENABLED'] == 'enabled'
+      config.action_mailer.delivery_method = :smtp
+      config.action_mailer.smtp_settings = {
+        user_name: Rails.application.secrets.smtp[:username],
+        password: Rails.application.secrets.smtp[:password],
+        address: ENV['SMTP_HOST'],
+        domain: ENV['SMTP_DOMAIN'],
+        port: ENV['SMTP_PORT'],
+        #Ajustement possible : :plain ou :login ou :cram_md5
+        #authentication: :cram_md5
+      }
     else
       config.action_mailer.delivery_method = :letter_opener_web
     end
@@ -141,9 +153,9 @@ Rails.application.configure do
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true
-  
-  config.hosts << "demat-dev.social.gouv.fr"
-  
+
+  config.hosts << ".social.gouv.fr"
+
   if ENV['IGN_CARTE_REFERER']
     config.hosts << ENV['IGN_CARTE_REFERER']
   end
