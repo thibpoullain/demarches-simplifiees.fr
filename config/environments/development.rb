@@ -40,7 +40,14 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = false
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = ENV['FOG_ENABLED'] == 'enabled' ? :openstack : :local
+   if  ENV['FOG_ENABLED'] == 'enabled' 
+	config.active_storage.service = :openstack
+  elsif  ENV['S3_ENABLED'] == 'enabled'
+	config.active_storage.service = :s3
+  else
+	 config.active_storage.service = :local
+  end 
+ 
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -134,7 +141,9 @@ Rails.application.configure do
 
   # Uncomment if you wish to allow Action Cable access from any origin.
   # config.action_cable.disable_request_forgery_protection = true
-
+  
+  config.hosts << "demat-dev.social.gouv.fr"
+  
   if ENV['IGN_CARTE_REFERER']
     config.hosts << ENV['IGN_CARTE_REFERER']
   end
