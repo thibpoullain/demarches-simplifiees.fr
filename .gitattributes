@@ -1,0 +1,15 @@
+# Retours à la ligne au format unix (même en env windows), sauf pour les CSV (selon OS)
+* text eol=lf
+*.csv text eol=auto
+
+# Fichiers binaires ou à exclure du changement de retour à la ligne
+# Images
+*.gif binary
+*.png binary
+*.jpg binary
+# Polices de caractères
+*.woff binary
+*.woff2 binary
+*.ttf binary
+# Documents
+*.pdf binary
