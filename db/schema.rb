@@ -11,6 +11,7 @@
 # It's strongly recommended that you check this file into your version control system.
 
 ActiveRecord::Schema.define(version: 2021_11_15_112933) do
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "unaccent"
@@ -318,10 +319,10 @@ ActiveRecord::Schema.define(version: 2021_11_15_112933) do
     t.interval "conservation_extension", default: "PT0S"
     t.string "deleted_user_email_never_send"
     t.datetime "declarative_triggered_at"
-    t.index "to_tsvector('french'::regconfig, (search_terms || private_search_terms))", name: "index_dossiers_on_search_terms_private_search_terms", using: :gin
-    t.index "to_tsvector('french'::regconfig, search_terms)", name: "index_dossiers_on_search_terms", using: :gin
     t.bigint "dossier_transfer_id"
     t.datetime "identity_updated_at"
+    t.index "to_tsvector('french'::regconfig, (search_terms || private_search_terms))", name: "index_dossiers_on_search_terms_private_search_terms", using: :gin
+    t.index "to_tsvector('french'::regconfig, search_terms)", name: "index_dossiers_on_search_terms", using: :gin
     t.index ["archived"], name: "index_dossiers_on_archived"
     t.index ["dossier_transfer_id"], name: "index_dossiers_on_dossier_transfer_id"
     t.index ["groupe_instructeur_id"], name: "index_dossiers_on_groupe_instructeur_id"
@@ -635,13 +636,13 @@ ActiveRecord::Schema.define(version: 2021_11_15_112933) do
     t.bigint "draft_revision_id"
     t.bigint "published_revision_id"
     t.boolean "allow_expert_review", default: true, null: false
-    t.boolean "experts_require_administrateur_invitation", default: false
     t.string "encrypted_api_particulier_token"
+    t.boolean "experts_require_administrateur_invitation", default: false
     t.text "api_particulier_scopes", default: [], array: true
     t.jsonb "api_particulier_sources", default: {}
+    t.boolean "routing_enabled"
     t.boolean "instructeurs_self_management_enabled"
     t.index ["api_particulier_sources"], name: "index_procedures_on_api_particulier_sources", using: :gin
-    t.boolean "routing_enabled"
     t.index ["declarative_with_state"], name: "index_procedures_on_declarative_with_state"
     t.index ["draft_revision_id"], name: "index_procedures_on_draft_revision_id"
     t.index ["hidden_at"], name: "index_procedures_on_hidden_at"

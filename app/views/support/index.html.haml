@@ -10,11 +10,11 @@
     = form_tag contact_path, method: :post, multipart: true, class: 'form' do |f|
 
       .description
-        %p= t('intro_html')
+        %p= t('.intro_html')
 
       .contact-champ
         = label_tag :type do
-          = t('your_question')
+          = t('.your_question')
         = hidden_field_tag :type, params[:type]
       %dl
         - @options.each do |(question, question_type, link)|
@@ -29,40 +29,5 @@
                 .card-title
                   = t('.our_answer')
                 .card-content
-<<<<<<< HEAD
                   -# i18n-tasks-use t("support.index.#{question_type}.answer_html")
                   = t('answer_html', scope: [:support, :index, question_type], base_url: APPLICATION_BASE_URL, "link_#{question_type}": link)
-
-      .contact-champ
-        = label_tag :dossier_id, t('file_number', scope: [:utils])
-        = text_field_tag :dossier_id, @dossier_id
-
-      .contact-champ
-        = label_tag :subject do
-          = t('subject', scope: [:utils])
-          %span.mandatory *
-        = text_field_tag :subject, params[:subject], required: true
-
-      .contact-champ
-        = label_tag :text do
-          = t('message', scope: [:utils])
-          %span.mandatory *
-        = text_area_tag :text, params[:text], rows: 6, required: true
-
-      .contact-champ
-        = label_tag :piece_jointe do
-          = t('pj', scope: [:utils])
-        %p.notice.hidden{ data: { 'contact-type-only': Helpscout::FormAdapter::TYPE_AMELIORATION } }
-          = t('.notice_pj_product')
-        %p.notice.hidden{ data: { 'contact-type-only': Helpscout::FormAdapter::TYPE_AUTRE } }
-          = t('.notice_pj_other')
-        = file_field_tag :piece_jointe
-
-      = hidden_field_tag :tags, @tags&.join(',')
-
-      .send-wrapper
-        = button_tag t('send_mail', scope: [:utils]), type: :submit, class: 'button send primary'
-=======
-                  -# i18n-tasks-use t("support.index.#{question_type}.answer_html")
-                  = t('answer_html', scope: [:support, :index, question_type], base_url: APPLICATION_BASE_URL, "link_#{question_type}": link)
->>>>>>> 07f152e6f (Gestion du contact par mail / débrayage contact-admin)

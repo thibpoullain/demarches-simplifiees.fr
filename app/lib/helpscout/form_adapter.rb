@@ -12,21 +12,12 @@ class Helpscout::FormAdapter
 
   def self.admin_options
     [
-<<<<<<< HEAD
-      [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_QUESTION], app_name: APPLICATION_NAME), ADMIN_TYPE_QUESTION],
-      [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_RDV], app_name: APPLICATION_NAME), ADMIN_TYPE_RDV],
-      [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_SOUCIS], app_name: APPLICATION_NAME), ADMIN_TYPE_SOUCIS],
-      [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_PRODUIT]), ADMIN_TYPE_PRODUIT],
-      [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_DEMANDE_COMPTE]), ADMIN_TYPE_DEMANDE_COMPTE],
-      [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_AUTRE]), ADMIN_TYPE_AUTRE]
-=======
       [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_QUESTION], app_name: APPLICATION_NAME), ADMIN_TYPE_QUESTION],
       [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_RDV], app_name: APPLICATION_NAME), ADMIN_TYPE_RDV],
       [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_SOUCIS], app_name: APPLICATION_NAME), ADMIN_TYPE_SOUCIS],
       [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_PRODUIT]), ADMIN_TYPE_PRODUIT],
       [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_DEMANDE_COMPTE]), ADMIN_TYPE_DEMANDE_COMPTE],
       [I18n.t(:question, scope: [:support, :admin, ADMIN_TYPE_AUTRE]), ADMIN_TYPE_AUTRE, 'mailto:' + CONTACT_EMAIL]
->>>>>>> 07f152e6f (Gestion du contact par mail / débrayage contact-admin)
     ]
   end
 
