@@ -8,6 +8,9 @@ services:
       POSTGRES_PASSWORD: tps_development
     ports:
       - "5432:5432"
+    volumes:
+      # Ajout du volume qui contient les scripts d'initialisation de la DB lors du lancement du container
+      - '../docker:/docker-entrypoint-initdb.d'
   webapp-main:
     build:
       context: ..
