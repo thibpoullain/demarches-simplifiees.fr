@@ -16,7 +16,8 @@ module Users
     before_action :store_user_location!, only: :new
 
     def index
-      @user_dossiers = current_user.dossiers.includes(:procedure).order_by_updated_at.page(page)
+      @user_dossiers = current_user.dossiers.includes(:procedure).not_termine.order_by_updated_at.page(page)
+      @dossiers_traites = current_user.dossiers.includes(:procedure).termine.not_hidden_by_user.order_by_updated_at.page(page)
       @dossiers_invites = current_user.dossiers_invites.includes(:procedure).order_by_updated_at.page(page)
       @dossiers_supprimes = current_user.deleted_dossiers.order_by_updated_at.page(page)
       @dossier_transfers = DossierTransfer
@@ -24,7 +25,8 @@ module Users
         .with_dossiers
         .where(email: current_user.email)
         .page(page)
-      @statut = statut(@user_dossiers, @dossiers_invites, @dossiers_supprimes, @dossier_transfers, params[:statut])
+      @dossiers_close_to_expiration = current_user.dossiers.close_to_expiration.page(page)
+      @statut = statut(@user_dossiers, @dossiers_traites, @dossiers_invites, @dossiers_supprimes, @dossier_transfers, @dossiers_close_to_expiration, params[:statut])
     end
 
     def show
@@ -286,17 +288,26 @@ module Users
       @transfer = DossierTransfer.new(dossiers: current_user.dossiers)
     end
 
+    def hide_dossier
+      dossier = current_user.dossiers.includes(:user, procedure: :administrateurs).find(params[:id])
+      dossier.update(hidden_by_user_at: Time.zone.now)
+      flash.notice = t('users.dossiers.ask_deletion.deleted_dossier')
+      redirect_to dossiers_path
+    end
+
     private
 
     # if the status tab is filled, then this tab
     # else first filled tab
-    # else mes-dossiers
-    def statut(mes_dossiers, dossiers_invites, dossiers_supprimes, dossier_transfers, params_statut)
+    # else en-cours
+    def statut(mes_dossiers, dossiers_traites, dossiers_invites, dossiers_supprimes, dossier_transfers, dossiers_close_to_expiration, params_statut)
       tabs = {
-        'mes-dossiers' => mes_dossiers.present?,
+        'en-cours' => mes_dossiers.present?,
+        'traites' => dossiers_traites.present?,
         'dossiers-invites' => dossiers_invites.present?,
         'dossiers-supprimes' => dossiers_supprimes.present?,
-        'dossiers-transferes' => dossier_transfers.present?
+        'dossiers-transferes' => dossier_transfers.present?,
+        'dossiers-expirant' => dossiers_close_to_expiration.present?
       }
       if tabs[params_statut]
         params_statut
@@ -304,7 +315,7 @@ module Users
         tabs
           .filter { |_tab, filled| filled }
           .map { |tab, _| tab }
-          .first || 'mes-dossiers'
+          .first || 'en-cours'
       end
     end
 
