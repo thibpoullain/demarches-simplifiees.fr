@@ -17,6 +17,9 @@ deploy() {
   bin/rails assets:precompile
 
   #Recopie des assets portés par le code d'origine (ex : pages 404, police, pays.json...)
+  # Au préalable, suppression des anciens
+  rm -Rf /opt/ds/public/assets
+  rm -Rf /opt/ds/public/packs
   cp -rp /opt/ds/public_src/* /opt/ds/public
 }
 
