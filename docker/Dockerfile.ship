@@ -18,7 +18,10 @@ ARG GITLAB_TOKEN
 # Le tag à livrer (par défaut -> la branche release)
 ARG GIT_TAG
 
-RUN git config --global http.sslVerify false && git clone --branch ${GIT_TAG:-release}  https://oauth2:${GITLAB_TOKEN}@gitlab.intranet.social.gouv.fr/sdpsn/demat-demarches.git . && git describe --tags > version.txt
+RUN git config --global http.sslVerify false && git clone --depth=1 --branch ${GIT_TAG:-release}  https://oauth2:${GITLAB_TOKEN}@gitlab.intranet.social.gouv.fr/sdpsn/demat-demarches.git . && git describe --tags > version.txt
+
+# Retrait des ressources qui n'ont pas vocation à être dans l'image : configuration (fournie au runtime)
+RUN rm docker/*.env.* && rm -Rf .github
 
 # Adding gems
 RUN bundle config set without 'development test' && bundle install --jobs 20 --retry 5

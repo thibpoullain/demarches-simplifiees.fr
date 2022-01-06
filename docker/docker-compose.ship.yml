@@ -17,6 +17,8 @@ services:
     environment:
       - RAILS_SERVE_STATIC_FILES=1
       - SSL_FORCE=disabled
+      - SENTRY_CURRENT_ENV=local
+      - SENTRY_CAPTURE_RATE=1
     env_file:
       - .env.mandatory
       - .env.optional
@@ -36,6 +38,8 @@ services:
     environment:
       - RAILS_SERVE_STATIC_FILES=1
       - SSL_FORCE=disabled
+      - SENTRY_CURRENT_ENV=local
+      - SENTRY_CAPTURE_RATE=1
     env_file:
       - .env.mandatory
       - .env.optional
@@ -52,7 +56,8 @@ services:
     command:
       - schedule_jobs
     environment:
-      - SENTRY_ENABLED=enabled
+      - SENTRY_CURRENT_ENV=local
+      - SENTRY_CAPTURE_RATE=1
     env_file:
       - .env.mandatory
       - .env.optional
