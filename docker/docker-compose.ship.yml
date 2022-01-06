@@ -17,9 +17,6 @@ services:
     environment:
       - RAILS_SERVE_STATIC_FILES=1
       - SSL_FORCE=disabled
-      - SENTRY_ENABLED=enabled
-      - SENTRY_DSN_RAILS=https://a711d3a3c5fe4ed18aa7ccb0387d4aa8@o1038574.ingest.sentry.io/6006960
-      - SENTRY_DSN_JS=https://ebeeb010a4ae4b45ad5a89f9542338bb@o1038574.ingest.sentry.io/6007020
     env_file:
       - .env.mandatory
       - .env.optional
@@ -39,9 +36,6 @@ services:
     environment:
       - RAILS_SERVE_STATIC_FILES=1
       - SSL_FORCE=disabled
-      - SENTRY_ENABLED=enabled
-      - SENTRY_DSN_RAILS=https://a711d3a3c5fe4ed18aa7ccb0387d4aa8@o1038574.ingest.sentry.io/6006960
-      - SENTRY_DSN_JS=https://ebeeb010a4ae4b45ad5a89f9542338bb@o1038574.ingest.sentry.io/6007020
     env_file:
       - .env.mandatory
       - .env.optional
@@ -59,7 +53,6 @@ services:
       - schedule_jobs
     environment:
       - SENTRY_ENABLED=enabled
-      - SENTRY_DSN_RAILS=https://a711d3a3c5fe4ed18aa7ccb0387d4aa8@o1038574.ingest.sentry.io/6006960
     env_file:
       - .env.mandatory
       - .env.optional
