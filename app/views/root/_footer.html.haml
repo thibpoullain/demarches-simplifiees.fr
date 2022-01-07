@@ -38,6 +38,9 @@
           %li.footer-link
             = link_to "Mentions légales", MENTIONS_LEGALES_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
           %li.footer-link
+            = link_to CONFIDENTIALITE_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer" do
+              Déclaration de confidentialité
+          %li.footer-link
             = contact_link "Contact", class: "footer-link"
           %li.footer-link
             = link_to "Documentation", DOC_URL, :class => "footer-link", :target => "_blank", rel: "noopener noreferrer"
