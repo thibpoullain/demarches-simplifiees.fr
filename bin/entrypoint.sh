@@ -13,13 +13,14 @@ deploy() {
   #Application des changements de BDD de la version : nouvelles tables, colonnes & co
   bin/rails db:migrate
 
-  #Précompilation des assets : html, css, js, mails par défaut
+  # Au préalable, suppression des assets de la précédente version
+  rm -Rf /opt/ds/public/assets
+  rm -Rf /opt/ds/public/packs
+
+  #Précompilation des nouveaux assets : html, css, js, mails par défaut
   bin/rails assets:precompile
 
   #Recopie des assets portés par le code d'origine (ex : pages 404, police, pays.json...)
-  # Au préalable, suppression des anciens
-  rm -Rf /opt/ds/public/assets
-  rm -Rf /opt/ds/public/packs
   cp -rp /opt/ds/public_src/* /opt/ds/public
 }
 
