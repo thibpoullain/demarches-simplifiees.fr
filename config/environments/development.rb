@@ -41,16 +41,15 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  if  ENV['FOG_ENABLED'] == 'enabled'
+  if ENV['FOG_ENABLED'] == 'enabled'
     config.active_storage.service = :openstack
-  elsif  ENV['S3_ENABLED'] == 'enabled'
+  elsif ENV['S3_ENABLED'] == 'enabled'
     config.active_storage.service = :s3
     # Les PJ sont affichées au travers l'applicatif (pour application ICAP, le cas échéant)
     config.active_storage.resolve_model_to_route = :rails_storage_proxy
   else
     config.active_storage.service = :local
   end
-
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
@@ -115,9 +114,9 @@ Rails.application.configure do
         password: Rails.application.secrets.smtp[:password],
         address: ENV['SMTP_HOST'],
         domain: ENV['SMTP_DOMAIN'],
-        port: ENV['SMTP_PORT'],
-        #Ajustement possible : :plain ou :login ou :cram_md5
-        #authentication: :cram_md5
+        port: ENV['SMTP_PORT']
+        # Ajustement possible : :plain ou :login ou :cram_md5
+        # authentication: :cram_md5
       }
     else
       config.action_mailer.delivery_method = :letter_opener_web

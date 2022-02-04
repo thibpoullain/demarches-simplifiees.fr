@@ -102,9 +102,9 @@ Rails.application.configure do
       password: Rails.application.secrets.smtp[:password],
       address: ENV['SMTP_HOST'],
       domain: ENV['SMTP_DOMAIN'],
-      port: ENV['SMTP_PORT'],
-      #Ajustement possible : :cram_md5 ou :plain ou :login
-      #authentication: :cram_md5
+      port: ENV['SMTP_PORT']
+      # Ajustement possible : :cram_md5 ou :plain ou :login
+      # authentication: :cram_md5
     }
   else
     config.action_mailer.delivery_method = :mailjet
@@ -122,9 +122,9 @@ Rails.application.configure do
   # the I18n.default_locale when a translation cannot be found).
   config.i18n.fallbacks = true
 
-  if  ENV['FOG_ENABLED'] == 'enabled'
+  if ENV['FOG_ENABLED'] == 'enabled'
     config.active_storage.service = :openstack
-  elsif  ENV['S3_ENABLED'] == 'enabled'
+  elsif ENV['S3_ENABLED'] == 'enabled'
     config.active_storage.service = :s3
     # Les PJ sont affichées au travers l'applicatif (pour application ICAP, le cas échéant)
     config.active_storage.resolve_model_to_route = :rails_storage_proxy

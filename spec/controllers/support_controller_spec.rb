@@ -1,6 +1,8 @@
 describe SupportController, type: :controller do
   render_views
 
+  @use_contact_form = ENV['DEMAT_CONTACT_FORM'] == 'enabled'
+
   context 'signed in' do
     before do
       sign_in user
@@ -19,33 +21,39 @@ describe SupportController, type: :controller do
       let(:user) { dossier.user }
       let(:dossier) { create(:dossier) }
 
-      it 'should fill dossier_id' do
-        get :index, params: { dossier_id: dossier.id }
+      if @use_contact_form
+        it 'should fill dossier_id' do
+          get :index, params: { dossier_id: dossier.id }
 
-        expect(response.status).to eq(200)
-        expect(response.body).to include((dossier.id).to_s)
+          expect(response.status).to eq(200)
+          expect(response.body).to include((dossier.id).to_s)
+        end
       end
     end
 
     describe "with tag" do
       let(:tag) { 'yolo' }
 
-      it 'should fill tags' do
-        get :index, params: { tags: [tag] }
+      if @use_contact_form
+        it 'should fill tags' do
+          get :index, params: { tags: [tag] }
 
-        expect(response.status).to eq(200)
-        expect(response.body).to include(tag)
+          expect(response.status).to eq(200)
+          expect(response.body).to include(tag)
+        end
       end
     end
 
     describe "with multiple tags" do
       let(:tags) { ['yolo', 'toto'] }
 
-      it 'should fill tags' do
-        get :index, params: { tags: tags }
+      if @use_contact_form
+        it 'should fill tags' do
+          get :index, params: { tags: tags }
 
-        expect(response.status).to eq(200)
-        expect(response.body).to include(tags.join(','))
+          expect(response.status).to eq(200)
+          expect(response.body).to include(tags.join(','))
+        end
       end
     end
 
@@ -118,22 +126,26 @@ describe SupportController, type: :controller do
 
   context 'signed out' do
     describe "with dossier" do
-      it 'should have email field' do
-        get :index
+      if @use_contact_form
+        it 'should have email field' do
+          get :index
 
-        expect(response.status).to eq(200)
-        expect(response.body).to have_text("Email")
+          expect(response.status).to eq(200)
+          expect(response.body).to have_text("Email")
+        end
       end
     end
 
     describe "with dossier" do
       let(:tag) { 'yolo' }
 
-      it 'should fill tags' do
-        get :index, params: { tags: [tag] }
+      if @use_contact_form
+        it 'should fill tags' do
+          get :index, params: { tags: [tag] }
 
-        expect(response.status).to eq(200)
-        expect(response.body).to include(tag)
+          expect(response.status).to eq(200)
+          expect(response.body).to include(tag)
+        end
       end
     end
   end
