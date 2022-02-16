@@ -17,5 +17,15 @@ RUN apt-get update && apt-get install -y google-chrome-stable
 RUN mkdir /opt/ds
 WORKDIR /opt/ds
 
+RUN useradd -ms /bin/bash demat-social
+RUN chmod o+rwx /opt/ds
+
+USER demat-social
+
+RUN mkdir /usr/local/bundle/gems && \
+    mkdir node_modules && \
+    mkdir tmp && \
+    mkdir log && touch log/development.log
+
 EXPOSE $PORT
 CMD bash -c "echo 'Container demarré, vous pouvez vous connecter par le CLI' ; while true; do sleep 1 ; done"

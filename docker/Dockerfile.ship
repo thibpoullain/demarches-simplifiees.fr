@@ -13,12 +13,20 @@ RUN apt-get update; apt-get install -y yarn
 RUN mkdir /opt/ds
 WORKDIR /opt/ds
 
-# Token à générer depuis https://gitlab.intranet.social.gouv.fr/profile/personal_access_tokens
-ARG GITLAB_TOKEN
-# Le tag à livrer (par défaut -> la branche release)
-ARG GIT_TAG
+RUN useradd -ms /bin/bash demat-social
+RUN chmod o+rwx /opt/ds
 
-RUN git config --global http.sslVerify false && git clone --depth=1 --branch ${GIT_TAG:-release}  https://oauth2:${GITLAB_TOKEN}@gitlab.intranet.social.gouv.fr/sdpsn/demat-demarches.git . && git describe --tags > version.txt
+USER demat-social
+
+# Depuis le changement de Gitlab a Github nous avons du changer la méthode pour cloner le code sur Github
+# Nous utilisons les variables d'environnement GITHUB_TOKEN et GITHUB_TAG qui correspond respectivement au token personnel de l'utilisateur Github et a la version du tag a utiliser 
+
+# Token à générer depuis https://github.com/settings/tokens
+ARG GITHUB_TOKEN
+# Le tag à livrer (par défaut -> la branche release)
+ARG GITHUB_TAG
+
+RUN git clone --depth=1 --branch ${GITHUB_TAG:-main} https://${GITHUB_TOKEN}:x-oauth-basic@github.com/DNUM-SocialGouv/demat-social.git . && git describe --tags > version.txt
 
 # Retrait des ressources qui n'ont pas vocation à être dans l'image : configuration (fournie au runtime)
 RUN rm docker/*.env.* && rm -Rf .github
