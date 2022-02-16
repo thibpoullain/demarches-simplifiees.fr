@@ -30,6 +30,12 @@ services:
       - db
     volumes:
       - demat_public_assets:/opt/ds/public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
   webapp-alt:
     image: social-gouv-fr/demat:latest
     command:
@@ -48,7 +54,11 @@ services:
     links:
       - db
     depends_on:
-      - webapp-main
+      # Nous avons supprimé db car celui-ci est forcement démarrer avant d'appeler webapp-alt
+      # webapp-alt dépend de webapp-main qui dépend de db 
+      # => ce qui veut dire que tant que db n'est pas lancé webapp-main ne sera pas lancé et donc webapp-alt aussi vu que webwebapp-alt dépend de webapp-main
+      webapp-main:
+        condition: service_healthy
     volumes:
       - demat_public_assets:/opt/ds/public:ro
   jobs:
@@ -64,8 +74,8 @@ services:
     links:
       - db
     depends_on:
-      - db
-      - webapp-main
+      webapp-main:
+        condition: service_healthy
     #Le service job doit envoyer des mails dont le contenu est généré par la précompilation des assets
     volumes:
       - demat_public_assets:/opt/ds/public:ro
