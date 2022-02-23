@@ -17,7 +17,6 @@ Rails.application.configure do
   # Show full error reports.
   config.consider_all_requests_local = true
 
-
   if ENV['DEMAT_LOG_LEVEL'] != nil
     if ENV['DEMAT_LOG_LEVEL'] == 'DEBUG'
       config.log_level = :debug
@@ -33,7 +32,6 @@ Rails.application.configure do
   else
     config.log_level = :debug
   end
-
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.

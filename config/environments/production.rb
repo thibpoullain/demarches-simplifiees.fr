@@ -54,11 +54,11 @@ Rails.application.configure do
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
-  #if ENV['DEMAT_LOG_LEVEL']
+  # if ENV['DEMAT_LOG_LEVEL']
   #  config.log_level = ENV['DEMAT_LOG_LEVEL']
-  #else
+  # else
   #  config.log_level = :info
-  #end
+  # end
 
   if ENV['DEMAT_LOG_LEVEL'] != nil
     if ENV['DEMAT_LOG_LEVEL'] == 'DEBUG'
