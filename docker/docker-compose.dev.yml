@@ -30,7 +30,7 @@ services:
       - demat_dev_node:/opt/ds/node_modules/
       - demat_dev_gems:/usr/local/bundle/gems/
       - /opt/ds/tmp/
-      - demat_dev_packs:/opt/ds/public/packs
+      # - demat_dev_packs:/opt/ds/public/packs
 volumes:
   demat_dev_node:
   demat_dev_gems:
