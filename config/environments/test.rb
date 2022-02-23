@@ -66,6 +66,22 @@ Rails.application.configure do
     protocol: :http
   }
 
+  if ENV['DEMAT_LOG_LEVEL'] != nil
+    if ENV['DEMAT_LOG_LEVEL'] == 'DEBUG'
+      config.log_level = :debug
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'INFO'
+      config.log_level = :info
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'WARN'
+      config.log_level = :warn
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'ERROR'
+      config.log_level = :error
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'FATAL'
+      config.log_level = :fatal
+    end
+  else
+    config.log_level = :debug
+  end
+
   # Use Content-Security-Policy-Report-Only headers
   config.content_security_policy_report_only = true
 

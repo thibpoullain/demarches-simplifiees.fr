@@ -54,7 +54,27 @@ Rails.application.configure do
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
-  config.log_level = :debug
+  #if ENV['DEMAT_LOG_LEVEL']
+  #  config.log_level = ENV['DEMAT_LOG_LEVEL']
+  #else
+  #  config.log_level = :info
+  #end
+
+  if ENV['DEMAT_LOG_LEVEL'] != nil
+    if ENV['DEMAT_LOG_LEVEL'] == 'DEBUG'
+      config.log_level = :debug
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'INFO'
+      config.log_level = :info
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'WARN'
+      config.log_level = :warn
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'ERROR'
+      config.log_level = :error
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'FATAL'
+      config.log_level = :fatal
+    end
+  else
+    config.log_level = :info
+  end
 
   # Prepend all log lines with the following tags.
   # config.log_tags = [ :subdomain, :uuid ]
