@@ -16,7 +16,22 @@ Rails.application.configure do
 
   # Show full error reports.
   config.consider_all_requests_local = true
-  config.log_level = :debug
+
+  if ENV['DEMAT_LOG_LEVEL'] != nil
+    if ENV['DEMAT_LOG_LEVEL'] == 'DEBUG'
+      config.log_level = :debug
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'INFO'
+      config.log_level = :info
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'WARN'
+      config.log_level = :warn
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'ERROR'
+      config.log_level = :error
+    elsif ENV['DEMAT_LOG_LEVEL'] == 'FATAL'
+      config.log_level = :fatal
+    end
+  else
+    config.log_level = :debug
+  end
 
   # Enable/disable caching. By default caching is disabled.
   # Run rails dev:cache to toggle caching.
