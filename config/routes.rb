@@ -78,6 +78,7 @@ Rails.application.routes.draw do
   #
 
   get "/ping" => "ping#index"
+  get "/status" => "status#index"
 
   #
   # Authentication
