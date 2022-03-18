@@ -27,6 +27,11 @@ class StatusController < ApplicationController
         status_code = :internal_server_error
       end
 
+      # test sur la disponibilité de l'API entreprise
+      if status_service::test_api_entreprise(tests) !=:ok
+        status_code = :internal_server_error
+      end
+
       render json: tests, status: status_code
     end
   end
