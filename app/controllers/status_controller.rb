@@ -28,7 +28,12 @@ class StatusController < ApplicationController
       end
 
       # test sur la disponibilité de l'API entreprise
-      if status_service::test_api_entreprise(tests) !=:ok
+      if status_service::test_api_entreprise(tests) != :ok
+        status_code = :internal_server_error
+      end
+
+      # test sur l'envoi de 2 mails
+      if status_service::test_email(tests) != :ok
         status_code = :internal_server_error
       end
 
