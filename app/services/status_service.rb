@@ -150,10 +150,8 @@ class StatusService
   # Le fichier de maintenance est un processus custom DINUM
   # peut etre utilisé pour un workaround HAProxy
   def test_maintenance_file(json)
-
     maintenance_file = {}
     maintenance_file[TYPE_JSON_ATTR] = CUSTOM_COMPONENT_VALUE
-
     begin
       if File.file?(Rails.root.join("maintenance"))
         maintenance_file[STATUS_JSON_ATTR] = STATUS_DOWN_VALUE
