@@ -15,10 +15,10 @@ FileUtils.chdir APP_ROOT do
 
   puts '== Installing dependencies =='
   system! 'gem install bundler --conservative'
-  system('bundle check') || system!('bundle install')
+  system('bundle check') || system!('bundle install --local')
 
   # Install JavaScript dependencies
-  system! 'bin/yarn install'
+  system! 'bin/yarn install --check-cache'
 
   puts "\n== Updating webdrivers =="
   system! 'RAILS_ENV=test bin/rails webdrivers:chromedriver:update'

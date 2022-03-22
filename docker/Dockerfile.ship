@@ -29,7 +29,7 @@ ARG GITHUB_TAG
 RUN git clone --depth=1 --branch ${GITHUB_TAG:-main} https://${GITHUB_TOKEN}:x-oauth-basic@github.com/DNUM-SocialGouv/demat-social.git . && git describe --tags > version.txt
 
 # Retrait des ressources qui n'ont pas vocation à être dans l'image : configuration (fournie au runtime)
-RUN rm -Rf .github
+RUN rm docker/*.env.* && rm -Rf .github
 
 # Adding gems
 RUN bundle config set without 'development test' && bundle install --jobs 20 --retry 5

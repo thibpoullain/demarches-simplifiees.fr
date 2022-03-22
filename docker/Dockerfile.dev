@@ -17,6 +17,11 @@ RUN apt-get update && apt-get install -y google-chrome-stable
 RUN mkdir /opt/ds
 WORKDIR /opt/ds
 
+COPY package.json /opt/ds
+COPY yarn.lock /opt/ds
+COPY Gemfile /opt/ds
+COPY Gemfile.lock /opt/ds
+
 RUN useradd -ms /bin/bash demat-social
 RUN chmod o+rwx /opt/ds
 
@@ -26,6 +31,12 @@ RUN mkdir /usr/local/bundle/gems && \
     mkdir node_modules && \
     mkdir tmp && \
     mkdir log && touch log/development.log
+
+RUN bundle config path /usr/local/bundle/cache && \
+    bundle config cache_path /usr/local/bundle/cache
+ 
+RUN bundle install --jobs 20 --retry 5
+RUN yarn install
 
 EXPOSE $PORT
 CMD bash -c "echo 'Container demarré, vous pouvez vous connecter par le CLI' ; while true; do sleep 1 ; done"
