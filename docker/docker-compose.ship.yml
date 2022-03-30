@@ -1,5 +1,6 @@
 version: "3.7"
 services:
+
   db:
     image: postgres
     #https://hub.docker.com/_/postgres
@@ -9,6 +10,7 @@ services:
       POSTGRES_PASSWORD: tps_prod
     ports:
       - "5432:5432"
+
   webapp-main:
     image: social-gouv-fr/demat:latest
     command:
@@ -32,10 +34,11 @@ services:
       - demat_public_assets:/opt/ds/public
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
-      interval: 1m30s
-      timeout: 30s
+      interval: 30s
+      timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 0s
+
   webapp-alt:
     image: social-gouv-fr/demat:latest
     command:
@@ -61,6 +64,7 @@ services:
         condition: service_healthy
     volumes:
       - demat_public_assets:/opt/ds/public:ro
+
   jobs:
     image: social-gouv-fr/demat:latest
     command:
@@ -79,5 +83,17 @@ services:
     #Le service job doit envoyer des mails dont le contenu est généré par la précompilation des assets
     volumes:
       - demat_public_assets:/opt/ds/public:ro
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.nginx
+      network: host
+    depends_on:
+      webapp-main:
+        condition: service_healthy
+    ports:
+      - "80:80"
+
 volumes:
   demat_public_assets:
