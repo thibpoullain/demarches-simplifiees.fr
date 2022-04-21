@@ -6,20 +6,21 @@ module Experts
     before_action :authenticate_expert!, except: [:sign_up, :update_expert]
     before_action :check_if_avis_revoked, only: [:show]
     before_action :redirect_if_no_sign_up_needed, only: [:sign_up, :update_expert]
-    before_action :set_avis_and_dossier, only: [:show, :instruction, :messagerie, :create_commentaire, :update, :telecharger_pjs]
+    before_action :set_avis_and_dossier, only: [:show, :instruction, :messagerie, :create_commentaire, :delete_commentaire, :update, :telecharger_pjs]
 
     A_DONNER_STATUS = 'a-donner'
     DONNES_STATUS   = 'donnes'
 
     def index
-      avis = current_expert.avis.includes(dossier: [groupe_instructeur: :procedure])
+      avis = current_expert.avis.includes(dossier: [groupe_instructeur: :procedure]).not_hidden_by_administration
       @avis_by_procedure = avis.to_a.group_by(&:procedure)
     end
 
     def procedure
       @procedure = current_expert.procedures.find_by(id: params[:procedure_id])
       redirect_to(expert_all_avis_path, flash: { alert: "Vous n’avez pas accès à cette démarche." }) and return unless @procedure
-      expert_avis = current_expert.avis.includes(:dossier).where(dossiers: { groupe_instructeur: GroupeInstructeur.where(procedure: @procedure.id) })
+      expert_avis = current_expert.avis.includes(:dossier).not_hidden_by_administration.where(dossiers: { groupe_instructeur: GroupeInstructeur.where(procedure: @procedure.id) })
+
       @avis_a_donner = expert_avis.without_answer
       @avis_donnes = expert_avis.with_answer
 
@@ -113,6 +114,22 @@ module Experts
       end
     end
 
+    def delete_commentaire
+      commentaire = avis.dossier.commentaires.find(params[:commentaire])
+      if commentaire.sent_by?(current_expert)
+        commentaire.piece_jointe.purge_later if commentaire.piece_jointe.attached?
+        commentaire.discard!
+        commentaire.update!(body: '')
+        flash[:notice] = t('views.shared.commentaires.destroy.notice')
+      else
+        flash[:alert] = I18n.t('views.shared.commentaires.destroy.alert_reasons.acl')
+      end
+      redirect_to(messagerie_expert_avis_path(avis.procedure, avis))
+    rescue Discard::RecordNotDiscarded
+      flash[:alert] = I18n.t('views.shared.commentaires.destroy.alert_reasons.already_discarded')
+      redirect_to(messagerie_expert_avis_path(avis.procedure, avis))
+    end
+
     def bilans_bdf
       if avis.dossier.etablissement&.entreprise_bilans_bdf.present?
         extension = params[:format]
@@ -123,9 +140,7 @@ module Experts
     end
 
     def telecharger_pjs
-      return head(:forbidden) if !avis.dossier.export_and_attachments_downloadable?
-
-      files = ActiveStorage::DownloadableFile.create_list_from_dossier(@dossier, true)
+      files = ActiveStorage::DownloadableFile.create_list_from_dossiers(Dossier.where(id: @dossier.id), true)
 
       zipline(files, "dossier-#{@dossier.id}.zip")
     end

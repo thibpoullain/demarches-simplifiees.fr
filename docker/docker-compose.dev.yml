@@ -26,5 +26,8 @@ services:
       - db
     volumes:
       - '..:/opt/ds'
-      - /opt/ds/tmp/
-      - /opt/ds/node_modules
+      - demat-dev_gems:/opt/ds/tmp/
+      - demat-dev_node-modules:/opt/ds/node_modules
+volumes:
+  demat-dev_node-modules:
+  demat-dev_gems:

@@ -9,6 +9,7 @@ end
 
 Capybara.register_driver :headless_chrome do |app|
   options = Selenium::WebDriver::Chrome::Options.new
+  options.add_argument('--no-sandbox') unless ENV['SANDBOX']
   options.add_argument('--headless') unless ENV['NO_HEADLESS']
   options.add_argument('--window-size=1440,900')
 
@@ -34,6 +35,8 @@ end
 Capybara.default_max_wait_time = 2
 
 Capybara.ignore_hidden_elements = false
+
+Capybara.enable_aria_label = true
 
 # Save a snapshot of the HTML page when an integration test fails
 Capybara::Screenshot.autosave_on_failure = true

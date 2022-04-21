@@ -56,7 +56,7 @@ describe Instructeurs::DossiersController, type: :controller do
 
     it { expect(instructeur.followed_dossiers).to match([dossier]) }
     it { expect(flash.notice).to eq('Dossier suivi') }
-    it { expect(response).to redirect_to(instructeur_procedures_url) }
+    it { expect(response).to redirect_to(instructeur_procedure_path(dossier.procedure)) }
   end
 
   describe '#unfollow' do
@@ -68,7 +68,7 @@ describe Instructeurs::DossiersController, type: :controller do
 
     it { expect(instructeur.followed_dossiers).to match([]) }
     it { expect(flash.notice).to eq("Vous ne suivez plus le dossier nº #{dossier.id}") }
-    it { expect(response).to redirect_to(instructeur_procedures_url) }
+    it { expect(response).to redirect_to(instructeur_procedure_path(dossier.procedure)) }
   end
 
   describe '#archive' do
@@ -80,7 +80,7 @@ describe Instructeurs::DossiersController, type: :controller do
     end
 
     it { expect(dossier.archived).to be true }
-    it { expect(response).to redirect_to(instructeur_procedures_url) }
+    it { expect(response).to redirect_to(instructeur_procedure_path(dossier.procedure)) }
   end
 
   describe '#unarchive' do
@@ -91,7 +91,7 @@ describe Instructeurs::DossiersController, type: :controller do
     end
 
     it { expect(dossier.archived).to be false }
-    it { expect(response).to redirect_to(instructeur_procedures_url) }
+    it { expect(response).to redirect_to(instructeur_procedure_path(dossier.procedure)) }
   end
 
   describe '#passer_en_instruction' do
@@ -160,19 +160,28 @@ describe Instructeurs::DossiersController, type: :controller do
     let(:dossier) { create(:dossier, :refuse, procedure: procedure) }
     let(:current_user) { instructeur.user }
 
-    before do
-      sign_in current_user
+    subject do
       post :repasser_en_instruction,
-        params: { procedure_id: procedure.id, dossier_id: dossier.id },
-        format: 'js'
+      params: { procedure_id: procedure.id, dossier_id: dossier.id },
+      format: 'js'
     end
 
-    it { expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction)) }
-    it { expect(response).to have_http_status(:ok) }
-    it { expect(response.body).to include('.header-actions') }
+    before do
+      sign_in current_user
+    end
+
+    context 'when the dossier is refuse' do
+      before { subject }
+
+      it { expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction)) }
+      it { expect(response).to have_http_status(:ok) }
+      it { expect(response.body).to include('.header-actions') }
+    end
 
     context 'when the dossier has already been put en_instruction' do
       let(:dossier) { create(:dossier, :en_instruction, procedure: procedure) }
+
+      before { subject }
 
       it 'warns about the error' do
         expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction))
@@ -184,9 +193,25 @@ describe Instructeurs::DossiersController, type: :controller do
     context 'when the dossier is accepte' do
       let(:dossier) { create(:dossier, :accepte, procedure: procedure) }
 
+      before { subject }
+
       it 'it is possible to go back to en_instruction as instructeur' do
         expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction))
         expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context 'when the dossier is done and the user delete it' do
+      let!(:dossier) { create(:dossier, :accepte, procedure: procedure, user: current_user) }
+
+      before do
+        dossier.update!(hidden_by_user_at: Time.zone.now)
+        subject
+      end
+
+      it 'reveals the dossier' do
+        expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction))
+        expect(dossier.reload.hidden_by_user_at).to be_nil
       end
     end
   end
@@ -194,7 +219,7 @@ describe Instructeurs::DossiersController, type: :controller do
   describe '#terminer' do
     context "with refuser" do
       before do
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
         sign_in(instructeur.user)
       end
 
@@ -235,7 +260,7 @@ describe Instructeurs::DossiersController, type: :controller do
 
     context "with classer_sans_suite" do
       before do
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
         sign_in(instructeur.user)
       end
       context 'without attachment' do
@@ -277,7 +302,7 @@ describe Instructeurs::DossiersController, type: :controller do
 
     context "with accepter" do
       before do
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
         sign_in(instructeur.user)
 
         expect(NotificationMailer).to receive(:send_accepte_notification)
@@ -383,8 +408,9 @@ describe Instructeurs::DossiersController, type: :controller do
   end
 
   describe '#messagerie' do
+    before { expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :messagerie) }
     subject { get :messagerie, params: { procedure_id: procedure.id, dossier_id: dossier.id } }
-    it { expect(response).to have_http_status(:ok) }
+    it { expect(subject).to have_http_status(:ok) }
   end
 
   describe "#create_commentaire" do
@@ -406,6 +432,7 @@ describe Instructeurs::DossiersController, type: :controller do
     }
 
     before do
+      expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :messagerie)
       allow(ClamavService).to receive(:safe_file?).and_return(scan_result)
       Timecop.freeze(now)
     end
@@ -432,6 +459,20 @@ describe Instructeurs::DossiersController, type: :controller do
         expect(flash.notice).to be_present
       end
     end
+
+    context "when the dossier is deleted by user" do
+      let(:dossier) { create(:dossier, :accepte, procedure: procedure) }
+
+      before do
+        dossier.update!(hidden_by_user_at: 1.hour.ago)
+        subject
+      end
+
+      it "does not create a commentaire" do
+        expect { subject }.to change(Commentaire, :count).by(0)
+        expect(flash.alert).to be_present
+      end
+    end
   end
 
   describe "#create_avis" do
@@ -440,6 +481,10 @@ describe Instructeurs::DossiersController, type: :controller do
     let(:invite_linked_dossiers) { false }
     let(:saved_avis) { dossier.avis.first }
     let!(:old_avis_count) { Avis.count }
+
+    before do
+      expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :avis)
+    end
 
     subject do
       post :create_avis, params: {
@@ -461,6 +506,13 @@ describe Instructeurs::DossiersController, type: :controller do
           subject
           expect(follower.followed_dossiers.with_notifications).to eq([dossier.reload])
         end
+      end
+    end
+
+    context 'as an instructeur, i auto follow the dossier so I get the notifications' do
+      it 'works' do
+        subject
+        expect(instructeur.followed_dossiers).to match_array([dossier])
       end
     end
 
@@ -578,7 +630,10 @@ describe Instructeurs::DossiersController, type: :controller do
         }
       end
 
-      before { subject }
+      before do
+        expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :demande)
+        subject
+      end
 
       it { expect(assigns(:include_infos_administration)).to eq(true) }
       it { expect(response).to render_template 'dossiers/show' }
@@ -615,6 +670,7 @@ describe Instructeurs::DossiersController, type: :controller do
     end
 
     before do
+      expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :annotations_privees)
       another_instructeur.follow(dossier)
       Timecop.freeze(now)
       patch :update_annotations, params: params
@@ -715,21 +771,21 @@ describe Instructeurs::DossiersController, type: :controller do
     end
   end
 
-  describe "#delete_dossier" do
+  describe "#destroy" do
     subject do
-      patch :delete_dossier, params: {
+      delete :destroy, params: {
         procedure_id: procedure.id,
         dossier_id: dossier.id
       }
     end
 
     before do
-      dossier.passer_en_instruction(instructeur)
+      dossier.passer_en_instruction(instructeur: instructeur)
     end
 
     context 'just before delete the dossier, the operation must be equal to 2' do
       before do
-        dossier.accepter!(instructeur, 'le dossier est correct')
+        dossier.accepter!(instructeur: instructeur, motivation: 'le dossier est correct')
       end
 
       it 'has 2 operations logs before deletion' do
@@ -737,10 +793,10 @@ describe Instructeurs::DossiersController, type: :controller do
       end
     end
 
-    context 'when the instructeur want to delete a dossier with a decision' do
+    context 'when the instructeur want to delete a dossier with a decision and already hidden by user' do
       before do
-        dossier.accepter!(instructeur, "le dossier est correct")
-        allow(DossierMailer).to receive(:notify_instructeur_deletion_to_user).and_return(double(deliver_later: nil))
+        dossier.accepter!(instructeur: instructeur, motivation: "le dossier est correct")
+        dossier.update!(hidden_by_user_at: Time.zone.now.beginning_of_day.utc)
         subject
       end
 
@@ -749,19 +805,37 @@ describe Instructeurs::DossiersController, type: :controller do
         expect(DossierOperationLog.where(dossier_id: dossier.id).last.operation).to eq('supprimer')
       end
 
-      it 'send an email to the user' do
-        expect(DossierMailer).to have_received(:notify_instructeur_deletion_to_user).with(DeletedDossier.where(dossier_id: dossier.id).first, dossier.user.email)
+      it 'does not add a record into deleted_dossiers table' do
+        expect(DeletedDossier.where(dossier_id: dossier.id).count).to eq(0)
+      end
+
+      it 'is not visible by administration' do
+        expect(dossier.reload.visible_by_administration?).to be_falsy
+      end
+    end
+
+    context 'when the instructeur want to delete a dossier with a decision and not hidden by user' do
+      before do
+        dossier.accepter!(instructeur: instructeur, motivation: "le dossier est correct")
+        subject
+      end
+
+      it 'does not deletes previous logs and adds a suppression log' do
+        expect(DossierOperationLog.where(dossier_id: dossier.id).count).to eq(3)
+        expect(DossierOperationLog.where(dossier_id: dossier.id).last.operation).to eq('supprimer')
       end
 
       it 'add a record into deleted_dossiers table' do
-        expect(DeletedDossier.where(dossier_id: dossier.id).count).to eq(1)
-        expect(DeletedDossier.where(dossier_id: dossier.id).first.revision_id).to eq(dossier.revision_id)
-        expect(DeletedDossier.where(dossier_id: dossier.id).first.user_id).to eq(dossier.user_id)
-        expect(DeletedDossier.where(dossier_id: dossier.id).first.groupe_instructeur_id).to eq(dossier.groupe_instructeur_id)
+        expect(DeletedDossier.where(dossier_id: dossier.id).count).to eq(0)
       end
 
-      it 'discard the dossier' do
-        expect(dossier.reload.hidden_at).not_to eq(nil)
+      it 'does not discard the dossier' do
+        expect(dossier.reload.hidden_at).to eq(nil)
+      end
+
+      it 'fill hidden by reason' do
+        expect(dossier.reload.hidden_by_reason).not_to eq(nil)
+        expect(dossier.reload.hidden_by_reason).to eq("instructeur_request")
       end
     end
 
@@ -777,6 +851,46 @@ describe Instructeurs::DossiersController, type: :controller do
       it 'does not add a record into deleted_dossiers table' do
         expect(DeletedDossier.where(dossier_id: dossier.id).count).to eq(0)
       end
+    end
+  end
+
+  describe '#extend_conservation' do
+    subject { post :extend_conservation, params: { procedure_id: procedure.id, dossier_id: dossier.id } }
+    context 'when user logged in' do
+      it 'works' do
+        expect(subject).to redirect_to(instructeur_dossier_path(procedure, dossier))
+      end
+
+      it 'extends conservation_extension by 1 month' do
+        subject
+        expect(dossier.reload.conservation_extension).to eq(1.month)
+      end
+
+      it 'flashed notice success' do
+        subject
+        expect(flash[:notice]).to eq(I18n.t('views.instructeurs.dossiers.archived_dossier'))
+      end
+    end
+  end
+
+  describe '#restore' do
+    let(:instructeur) { create(:instructeur) }
+    let!(:gi_p1_1) { GroupeInstructeur.create(label: '1', procedure: procedure) }
+    let!(:procedure) { create(:procedure, :published, :for_individual, instructeurs: [instructeur]) }
+    let!(:dossier) { create(:dossier, :accepte, :with_individual, procedure: procedure, groupe_instructeur: procedure.groupe_instructeurs.first, hidden_by_administration_at: 1.hour.ago) }
+
+    before do
+      sign_in(instructeur.user)
+      instructeur.groupe_instructeurs << gi_p1_1
+      patch :restore,
+      params: {
+        procedure_id: procedure.id,
+        dossier_id: dossier.id
+      }
+    end
+
+    it "puts hidden_by_administration_at to nil" do
+      expect(dossier.reload.hidden_by_administration_at).to eq(nil)
     end
   end
 end

@@ -37,8 +37,9 @@ class DossierOperationLog < ApplicationRecord
   belongs_to :bill_signature, optional: true
 
   scope :not_deletion, -> { where.not(operation: operations.fetch(:supprimer)) }
-  scope :discarded_en_construction_expired, -> { where(dossier: Dossier.discarded_en_construction_expired).not_deletion }
-  scope :discarded_termine_expired, -> { where(dossier: Dossier.discarded_termine_expired).not_deletion }
+  scope :brouillon_expired, -> { where(dossier: Dossier.brouillon_expired).not_deletion }
+  scope :en_construction_expired, -> { where(dossier: Dossier.en_construction_expired).not_deletion }
+  scope :termine_expired, -> { where(dossier: Dossier.termine_expired).not_deletion }
 
   def self.create_and_serialize(params)
     dossier = params.fetch(:dossier)
@@ -111,9 +112,9 @@ class DossierOperationLog < ApplicationRecord
       nil
     elsif operation == operations.fetch(:supprimer)
       {
-        date_de_depot: subject.en_construction_at,
+        date_de_depot: subject.depose_at,
         date_de_mise_en_instruction: subject.en_instruction_at,
-        date_de_decision: subject.termine? ? subject.traitements.last.processed_at : nil
+        date_de_decision: subject.processed_at
       }.as_json
     else
       case subject

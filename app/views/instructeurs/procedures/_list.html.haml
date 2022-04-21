@@ -15,7 +15,7 @@
                 .stats-number
                   = number_with_html_delimiter(a_suivre_count)
                 .stats-legend
-                  à suivre
+                  = t('instructeurs.dossiers.labels.to_follow')
           %li
             %object
               = link_to(instructeur_procedure_path(p, statut: 'suivis')) do
@@ -44,6 +44,26 @@
                   = number_with_html_delimiter(dossier_count)
                 .stats-legend
                   = t('pluralize.case', count: dossier_count)
+
+          %li
+            %object
+              = link_to(instructeur_procedure_path(p, statut: 'supprimes_recemment')) do
+                - dossier_count = dossiers_supprimes_recemment_count_per_procedure[p.id] || 0
+                .stats-number
+                  = number_with_html_delimiter(dossier_count)
+                .stats-legend
+                  = t('pluralize.dossiers_supprimes_recemment', count: dossier_count)
+
+          - if p.procedure_expires_when_termine_enabled
+            %li
+              %object
+                = link_to(instructeur_procedure_path(p, statut: 'expirant')) do
+                  - expirant_count = dossiers_expirant_count_per_procedure[p.id] || 0
+                  .stats-number
+                    = number_with_html_delimiter(expirant_count)
+                  .stats-legend
+                    = t('pluralize.dossiers_close_to_expiration', count: expirant_count)
+
           %li
             %object
               = link_to(instructeur_procedure_path(p, statut: 'archives')) do

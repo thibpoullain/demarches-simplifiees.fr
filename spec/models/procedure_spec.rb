@@ -40,7 +40,8 @@ describe Procedure do
   end
 
   describe 'closed mail template body' do
-    let(:procedure) { create(:procedure) }
+    let(:procedure) { create(:procedure, attestation_template: attestation_template) }
+    let(:attestation_template) { nil }
 
     subject { procedure.closed_mail_template.rich_body.body.to_html }
 
@@ -49,7 +50,7 @@ describe Procedure do
     end
 
     context 'for procedures with an attestation' do
-      before { create(:attestation_template, procedure: procedure, activated: activated) }
+      let(:attestation_template) { build(:attestation_template, activated: activated) }
 
       context 'when the attestation is inactive' do
         let(:activated) { false }
@@ -66,16 +67,12 @@ describe Procedure do
   end
 
   describe '#closed_mail_template_attestation_inconsistency_state' do
-    let(:procedure_without_attestation) { create(:procedure, closed_mail: closed_mail) }
+    let(:procedure_without_attestation) { create(:procedure, closed_mail: closed_mail, attestation_template: nil) }
     let(:procedure_with_active_attestation) do
-      procedure = create(:procedure, closed_mail: closed_mail)
-      create(:attestation_template, procedure: procedure, activated: true)
-      procedure
+      create(:procedure, closed_mail: closed_mail, attestation_template: build(:attestation_template, activated: true))
     end
     let(:procedure_with_inactive_attestation) do
-      procedure = create(:procedure, closed_mail: closed_mail)
-      create(:attestation_template, procedure: procedure, activated: false)
-      procedure
+      create(:procedure, closed_mail: closed_mail, attestation_template: build(:attestation_template, activated: false))
     end
 
     subject { procedure.closed_mail_template_attestation_inconsistency_state }
@@ -262,6 +259,26 @@ describe Procedure do
         let(:procedure) { build(:procedure, monavis_embed: monavis_bleu) }
         it { expect(procedure.valid?).to eq(true) }
       end
+
+      context 'Monavis embed code with voxusages is allowed' do
+        monavis_issue_phillipe = <<-MSG
+        <a href="https://voxusagers.numerique.gouv.fr/Demarches/3193?&view-mode=formulaire-avis&nd_mode=en-ligne-enti%C3%A8rement&nd_source=button&key=58e099a09c02abe629c14905ed2b055d">
+          <img src="https://monavis.numerique.gouv.fr/monavis-static/bouton-bleu.png" alt="Je donne mon avis" title="Je donne mon avis sur cette démarche" />
+        </a>
+        MSG
+        let(:procedure) { build(:procedure, monavis_embed: monavis_issue_phillipe) }
+        it { expect(procedure.valid?).to eq(true) }
+      end
+
+      context 'Monavis embed code without title allowed' do
+        monavis_issue_bouchra = <<-MSG
+          <a href="https://voxusagers.numerique.gouv.fr/Demarches/3193?&view-mode=formulaire-avis&nd_mode=en-ligne-enti%C3%A8rement&nd_source=button&key=58e099a09c02abe629c14905ed2b055d">
+            <img src="https://voxusagers.numerique.gouv.fr/static/bouton-bleu.svg" alt="Je donne mon avis" />
+          </a>
+        MSG
+        let(:procedure) { build(:procedure, monavis_embed: monavis_issue_bouchra) }
+        it { expect(procedure.valid?).to eq(true) }
+      end
     end
 
     shared_examples 'duree de conservation' do
@@ -277,6 +294,78 @@ describe Procedure do
       let(:field_name) { :duree_conservation_dossiers_dans_ds }
 
       it_behaves_like 'duree de conservation'
+    end
+
+    describe 'draft_types_de_champ validations' do
+      let(:repetition) { build(:type_de_champ_repetition, libelle: 'Enfants') }
+      let(:text_field) { build(:type_de_champ_text) }
+      let(:invalid_repetition_error_message) { 'Le champ « Enfants » doit comporter au moins un champ répétable' }
+
+      let(:drop_down) { build(:type_de_champ_drop_down_list, :without_selectable_values, libelle: 'Civilité') }
+      let(:invalid_drop_down_error_message) { 'Le champ « Civilité » doit comporter au moins un choix sélectionnable' }
+
+      let(:procedure) { create(:procedure, types_de_champ: [repetition, drop_down]) }
+
+      context 'on a draft procedure' do
+        it 'doesn’t validate the types de champs' do
+          procedure.validate
+          expect(procedure.errors[:draft_types_de_champ]).not_to be_present
+        end
+      end
+
+      context 'on a published procedure' do
+        before { procedure.publish }
+
+        it 'validates that no repetition type de champ is empty' do
+          procedure.validate
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ)).to include(invalid_repetition_error_message)
+
+          text_field.revision = repetition.revision
+          text_field.order_place = repetition.types_de_champ.size
+          procedure.draft_types_de_champ.find(&:repetition?).types_de_champ << text_field
+
+          procedure.validate
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ)).not_to include(invalid_repetition_error_message)
+        end
+
+        it 'validates that no drop-down type de champ is empty' do
+          procedure.validate
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ)).to include(invalid_drop_down_error_message)
+
+          drop_down.update!(drop_down_list_value: "--title--\r\nsome value")
+          procedure.reload.validate
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ)).not_to include(invalid_drop_down_error_message)
+        end
+      end
+
+      context 'when validating for publication' do
+        it 'validates that no repetition type de champ is empty' do
+          procedure.validate(:publication)
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ)).to include(invalid_repetition_error_message)
+        end
+
+        it 'validates that no drop-down type de champ is empty' do
+          procedure.validate(:publication)
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ)).to include(invalid_drop_down_error_message)
+        end
+      end
+
+      context 'when the champ is private' do
+        let(:procedure) { create(:procedure, types_de_champ_private: [repetition, drop_down]) }
+
+        let(:invalid_repetition_error_message) { 'L’annotation privée « Enfants » doit comporter au moins un champ répétable' }
+        let(:invalid_drop_down_error_message) { 'L’annotation privée « Civilité » doit comporter au moins un choix sélectionnable' }
+
+        it 'validates that no repetition type de champ is empty' do
+          procedure.validate(:publication)
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ_private)).to include(invalid_repetition_error_message)
+        end
+
+        it 'validates that no drop-down type de champ is empty' do
+          procedure.validate(:publication)
+          expect(procedure.errors.full_messages_for(:draft_types_de_champ_private)).to include(invalid_drop_down_error_message)
+        end
+      end
     end
   end
 
@@ -326,7 +415,16 @@ describe Procedure do
 
   describe 'clone' do
     let(:service) { create(:service) }
-    let(:procedure) { create(:procedure, received_mail: received_mail, service: service, types_de_champ: [type_de_champ_0, type_de_champ_1, type_de_champ_2, type_de_champ_pj, type_de_champ_repetition], types_de_champ_private: [type_de_champ_private_0, type_de_champ_private_1, type_de_champ_private_2, type_de_champ_private_repetition], api_particulier_token: '123456789012345', api_particulier_scopes: ['cnaf_famille']) }
+    let(:procedure) do
+      create(:procedure,
+        received_mail: received_mail,
+        service: service,
+        attestation_template: build(:attestation_template, logo: logo, signature: signature),
+        types_de_champ: [type_de_champ_0, type_de_champ_1, type_de_champ_2, type_de_champ_pj, type_de_champ_repetition],
+        types_de_champ_private: [type_de_champ_private_0, type_de_champ_private_1, type_de_champ_private_2, type_de_champ_private_repetition],
+        api_particulier_token: '123456789012345',
+        api_particulier_scopes: ['cnaf_famille'])
+    end
     let(:type_de_champ_0) { build(:type_de_champ, position: 0) }
     let(:type_de_champ_1) { build(:type_de_champ, position: 1) }
     let(:type_de_champ_2) { build(:type_de_champ_drop_down_list, position: 2) }
@@ -339,6 +437,8 @@ describe Procedure do
     let(:received_mail) { build(:received_mail) }
     let(:from_library) { false }
     let(:administrateur) { procedure.administrateurs.first }
+    let(:logo) { Rack::Test::UploadedFile.new('spec/fixtures/files/white.png', 'image/png') }
+    let(:signature) { Rack::Test::UploadedFile.new('spec/fixtures/files/black.png', 'image/png') }
 
     let(:groupe_instructeur_1) { create(:groupe_instructeur, procedure: procedure, label: "groupe_1") }
     let(:instructeur_1) { create(:instructeur) }
@@ -347,9 +447,6 @@ describe Procedure do
     let!(:assign_to_2) { create(:assign_to, procedure: procedure, groupe_instructeur: groupe_instructeur_1, instructeur: instructeur_2) }
 
     before do
-      @logo = Rack::Test::UploadedFile.new('spec/fixtures/files/white.png', 'image/png')
-      @signature = Rack::Test::UploadedFile.new('spec/fixtures/files/black.png', 'image/png')
-      @attestation_template = create(:attestation_template, procedure: procedure, logo: @logo, signature: @signature)
       @procedure = procedure.clone(administrateur, from_library)
       @procedure.save
     end
@@ -382,7 +479,7 @@ describe Procedure do
       end
 
       TypeDeChamp.where(parent: procedure.draft_types_de_champ.repetition).zip(TypeDeChamp.where(parent: subject.draft_types_de_champ.repetition)).each do |ptc, stc|
-        expect(stc).to have_same_attributes_as(ptc, except: ["revision_id", "parent_id"])
+        expect(stc).to have_same_attributes_as(ptc, except: ["revision_id", "parent_id", "migrated_parent"])
         expect(stc.revision).to eq(subject.draft_revision)
       end
 
@@ -392,7 +489,7 @@ describe Procedure do
       end
 
       TypeDeChamp.where(parent: procedure.draft_types_de_champ_private.repetition).zip(TypeDeChamp.where(parent: subject.draft_types_de_champ_private.repetition)).each do |ptc, stc|
-        expect(stc).to have_same_attributes_as(ptc, except: ["revision_id", "parent_id"])
+        expect(stc).to have_same_attributes_as(ptc, except: ["revision_id", "parent_id", "migrated_parent"])
         expect(stc.revision).to eq(subject.draft_revision)
       end
 
@@ -728,13 +825,15 @@ describe Procedure do
     context 'when the procedure has dossiers' do
       let(:dossier_draft) { create(:dossier, :brouillon, procedure: procedure) }
       let(:dossier_submitted) { create(:dossier, :en_construction, procedure: procedure) }
+      let(:dossier_termine) { create(:dossier, :accepte, procedure: procedure) }
 
-      before { [dossier_draft, dossier_submitted] }
+      before { [dossier_draft, dossier_submitted, dossier_termine] }
 
       it 'enqueues rebase jobs for draft dossiers' do
         subject
         expect(DossierRebaseJob).to have_been_enqueued.with(dossier_draft)
-        expect(DossierRebaseJob).not_to have_been_enqueued.with(dossier_submitted)
+        expect(DossierRebaseJob).to have_been_enqueued.with(dossier_submitted)
+        expect(DossierRebaseJob).not_to have_been_enqueued.with(dossier_termine)
       end
     end
   end
@@ -960,17 +1059,6 @@ describe Procedure do
     it { expect(Procedure.default_sort).to eq({ "table" => "self", "column" => "id", "order" => "desc" }) }
   end
 
-  describe "#export_filename" do
-    before { Timecop.freeze(Time.zone.local(2018, 1, 2, 23, 11, 14)) }
-    after { Timecop.return }
-
-    subject { procedure.export_filename(:csv) }
-
-    let(:procedure) { create(:procedure, :published) }
-
-    it { is_expected.to eq("dossiers_#{procedure.path}_2018-01-02_23-11.csv") }
-  end
-
   describe '#new_dossier' do
     let(:procedure) do
       create(:procedure,
@@ -1060,7 +1148,7 @@ describe Procedure do
   end
 
   describe "#destroy" do
-    let(:procedure) { create(:procedure, :closed, :with_type_de_champ) }
+    let(:procedure) { create(:procedure, :closed, :with_type_de_champ, :with_bulk_message) }
 
     before do
       procedure.discard!

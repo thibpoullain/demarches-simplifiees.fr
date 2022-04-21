@@ -9,6 +9,7 @@
     %tbody
       - deleted_dossiers.each do |dossier|
         - libelle_demarche = Procedure.find(dossier.procedure_id).libelle
+
         %tr{ data: { 'dossier-id': dossier.dossier_id } }
           %td.number-col
             %span.icon.folder

@@ -95,7 +95,6 @@ class ExpiredDossiersDeletionService
         deleted_dossier_ids << dossier.id
       end
     end
-
     user_notifications.each do |(email, dossier_ids)|
       dossier_ids = dossier_ids.intersection(deleted_dossier_ids)
       if dossier_ids.present?
@@ -118,6 +117,7 @@ class ExpiredDossiersDeletionService
 
   def self.group_by_user_email(dossiers, notify_on_closed_procedures_to_user: false)
     dossiers
+      .visible_by_user
       .with_notifiable_procedure(notify_on_closed: notify_on_closed_procedures_to_user)
       .includes(:user, :procedure)
       .group_by(&:user)
@@ -126,6 +126,7 @@ class ExpiredDossiersDeletionService
 
   def self.group_by_fonctionnaire_email(dossiers)
     dossiers
+      .visible_by_administration
       .with_notifiable_procedure(notify_on_closed: true)
       .includes(:followers_instructeurs, procedure: [:administrateurs])
       .each_with_object(Hash.new { |h, k| h[k] = Set.new }) do |dossier, h|

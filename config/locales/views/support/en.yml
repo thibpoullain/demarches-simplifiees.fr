@@ -16,6 +16,12 @@ en:
               <p><a href=%{link_instruction_info}>Find more information</a></p>
               <br>
               <p>If you are facing technical issues on the website, use the form below. We will not be able to inform you about the instruction of your application.</p>"
+      product:
+        question: I have an idea to improve the website
+        answer_html: "<p>Got an idea? Please check our <strong>enhancement dashboard</strong></p>
+              <ul><li>Vote for your priority improvements</li>
+              <li>Share your own ideas</li></ul>
+              <p><strong><a href=%{link_product}>➡ Access the enhancement dashboard</a></strong></p>"
       lost_user:
         question: I am having trouble finding the procedure I am looking for
         answer_html: "<p>We invite you to contact the administration in charge of the procedure so they can provide you the link.

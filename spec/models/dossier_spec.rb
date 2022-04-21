@@ -6,7 +6,6 @@ describe Dossier do
   describe 'scopes' do
     describe '.default_scope' do
       let!(:dossier) { create(:dossier) }
-      let!(:discarded_dossier) { create(:dossier, :discarded) }
 
       subject { Dossier.all }
 
@@ -41,6 +40,7 @@ describe Dossier do
     let(:procedure) { create(:procedure, :published, duree_conservation_dossiers_dans_ds: 6) }
     let!(:young_dossier) { create(:dossier, :en_construction, procedure: procedure) }
     let!(:expiring_dossier) { create(:dossier, created_at: 175.days.ago, procedure: procedure) }
+    let!(:expiring_dossier_with_notification) { create(:dossier, created_at: 175.days.ago, brouillon_close_to_expiration_notice_sent_at: Time.zone.now, procedure: procedure) }
     let!(:just_expired_dossier) { create(:dossier, created_at: (6.months + 1.hour + 10.seconds).ago, procedure: procedure) }
     let!(:long_expired_dossier) { create(:dossier, created_at: 1.year.ago, procedure: procedure) }
 
@@ -53,13 +53,27 @@ describe Dossier do
       is_expected.to include(long_expired_dossier)
     end
 
+    it do
+      expect(expiring_dossier.close_to_expiration?).to be_truthy
+      expect(expiring_dossier_with_notification.close_to_expiration?).to be_truthy
+    end
+
     context 'does not include an expiring dossier that has been postponed' do
       before do
-        expiring_dossier.update(conservation_extension: 1.month)
+        expiring_dossier.extend_conservation(1.month)
+        expiring_dossier_with_notification.extend_conservation(1.month)
         expiring_dossier.reload
+        expiring_dossier_with_notification.reload
       end
 
       it { is_expected.not_to include(expiring_dossier) }
+      it do
+        expect(expiring_dossier.close_to_expiration?).to be_falsey
+        expect(expiring_dossier_with_notification.close_to_expiration?).to be_falsey
+
+        expect(expiring_dossier.expiration_date).to eq(expiring_dossier.expiration_date_with_extention)
+        expect(expiring_dossier_with_notification.expiration_date).to eq(expiring_dossier_with_notification.expiration_date_with_extention)
+      end
     end
 
     context 'when .close_to_expiration' do
@@ -77,6 +91,7 @@ describe Dossier do
     let(:procedure) { create(:procedure, :published, duree_conservation_dossiers_dans_ds: 6) }
     let!(:young_dossier) { create(:dossier, procedure: procedure) }
     let!(:expiring_dossier) { create(:dossier, :en_construction, en_construction_at: 175.days.ago, procedure: procedure) }
+    let!(:expiring_dossier_with_notification) { create(:dossier, :en_construction, en_construction_at: 175.days.ago, en_construction_close_to_expiration_notice_sent_at: Time.zone.now, procedure: procedure) }
     let!(:just_expired_dossier) { create(:dossier, :en_construction, en_construction_at: (6.months + 1.hour + 10.seconds).ago, procedure: procedure) }
     let!(:long_expired_dossier) { create(:dossier, :en_construction, en_construction_at: 1.year.ago, procedure: procedure) }
 
@@ -89,13 +104,27 @@ describe Dossier do
       is_expected.to include(long_expired_dossier)
     end
 
+    it do
+      expect(expiring_dossier.close_to_expiration?).to be_truthy
+      expect(expiring_dossier_with_notification.close_to_expiration?).to be_truthy
+    end
+
     context 'does not include an expiring dossier that has been postponed' do
       before do
-        expiring_dossier.update(conservation_extension: 1.month)
+        expiring_dossier.extend_conservation(1.month)
+        expiring_dossier_with_notification.extend_conservation(1.month)
         expiring_dossier.reload
+        expiring_dossier_with_notification.reload
       end
 
       it { is_expected.not_to include(expiring_dossier) }
+      it do
+        expect(expiring_dossier.close_to_expiration?).to be_falsey
+        expect(expiring_dossier_with_notification.close_to_expiration?).to be_falsey
+
+        expect(expiring_dossier.expiration_date).to eq(expiring_dossier.expiration_date_with_extention)
+        expect(expiring_dossier_with_notification.expiration_date).to eq(expiring_dossier_with_notification.expiration_date_with_extention)
+      end
     end
 
     context 'when .close_to_expiration' do
@@ -107,26 +136,8 @@ describe Dossier do
         is_expected.to include(long_expired_dossier)
       end
     end
-  end
-
-  describe 'en_instruction_close_to_expiration' do
-    let(:procedure) { create(:procedure, :published, duree_conservation_dossiers_dans_ds: 6) }
-    let!(:young_dossier) { create(:dossier, procedure: procedure) }
-    let!(:expiring_dossier) { create(:dossier, :en_instruction, en_instruction_at: 175.days.ago, procedure: procedure) }
-    let!(:just_expired_dossier) { create(:dossier, :en_instruction, en_instruction_at: (6.months + 1.hour + 10.seconds).ago, procedure: procedure) }
-    let!(:long_expired_dossier) { create(:dossier, :en_instruction, en_instruction_at: 1.year.ago, procedure: procedure) }
-
-    subject { Dossier.en_instruction_close_to_expiration }
-
-    it do
-      is_expected.not_to include(young_dossier)
-      is_expected.to include(expiring_dossier)
-      is_expected.to include(just_expired_dossier)
-      is_expected.to include(long_expired_dossier)
-    end
-
-    context 'when .close_to_expiration' do
-      subject { Dossier.close_to_expiration }
+    context 'when .termine_or_en_construction_close_to_expiration' do
+      subject { Dossier.termine_or_en_construction_close_to_expiration }
       it do
         is_expected.not_to include(young_dossier)
         is_expected.to include(expiring_dossier)
@@ -137,11 +148,12 @@ describe Dossier do
   end
 
   describe 'termine_close_to_expiration' do
-    let(:procedure) { create(:procedure, :published, duree_conservation_dossiers_dans_ds: 6) }
-    let!(:young_dossier) { create(:dossier, :accepte, procedure: procedure, traitements: [build(:traitement, :accepte)]) }
-    let!(:expiring_dossier) { create(:dossier, :accepte, procedure: procedure, traitements: [build(:traitement, :accepte, processed_at: 175.days.ago)]) }
-    let!(:just_expired_dossier) { create(:dossier, :accepte, procedure: procedure, traitements: [build(:traitement, :accepte, processed_at: (6.months + 1.hour + 10.seconds).ago)]) }
-    let!(:long_expired_dossier) { create(:dossier, :accepte, procedure: procedure, traitements: [build(:traitement, :accepte, processed_at: 1.year.ago)]) }
+    let(:procedure) { create(:procedure, :published, duree_conservation_dossiers_dans_ds: 6, procedure_expires_when_termine_enabled: true) }
+    let!(:young_dossier) { create(:dossier, state: :accepte, procedure: procedure, processed_at: 2.days.ago) }
+    let!(:expiring_dossier) { create(:dossier, state: :accepte, procedure: procedure, processed_at: 175.days.ago) }
+    let!(:expiring_dossier_with_notification) { create(:dossier, state: :accepte, procedure: procedure, processed_at: 175.days.ago, termine_close_to_expiration_notice_sent_at: Time.zone.now) }
+    let!(:just_expired_dossier) { create(:dossier, state: :accepte, procedure: procedure, processed_at: (6.months + 1.hour + 10.seconds).ago) }
+    let!(:long_expired_dossier) { create(:dossier, state: :accepte, procedure: procedure, processed_at: 1.year.ago) }
 
     subject { Dossier.termine_close_to_expiration }
 
@@ -152,8 +164,41 @@ describe Dossier do
       is_expected.to include(long_expired_dossier)
     end
 
+    it do
+      expect(expiring_dossier.close_to_expiration?).to be_truthy
+      expect(expiring_dossier_with_notification.close_to_expiration?).to be_truthy
+    end
+
+    context 'does not include an expiring dossier that has been postponed' do
+      before do
+        expiring_dossier.extend_conservation(1.month)
+        expiring_dossier_with_notification.extend_conservation(1.month)
+        expiring_dossier.reload
+        expiring_dossier_with_notification.reload
+      end
+
+      it { is_expected.not_to include(expiring_dossier) }
+      it do
+        expect(expiring_dossier.close_to_expiration?).to be_falsey
+        expect(expiring_dossier_with_notification.close_to_expiration?).to be_falsey
+
+        expect(expiring_dossier.expiration_date).to eq(expiring_dossier.expiration_date_with_extention)
+        expect(expiring_dossier_with_notification.expiration_date).to eq(expiring_dossier_with_notification.expiration_date_with_extention)
+      end
+    end
+
     context 'when .close_to_expiration' do
       subject { Dossier.close_to_expiration }
+      it do
+        is_expected.not_to include(young_dossier)
+        is_expected.to include(expiring_dossier)
+        is_expected.to include(just_expired_dossier)
+        is_expected.to include(long_expired_dossier)
+      end
+    end
+
+    context 'when .close_to_expiration' do
+      subject { Dossier.termine_or_en_construction_close_to_expiration }
       it do
         is_expected.not_to include(young_dossier)
         is_expected.to include(expiring_dossier)
@@ -306,9 +351,9 @@ describe Dossier do
       Timecop.freeze(date1)
       d.passer_en_construction!
       Timecop.freeze(date2)
-      d.passer_en_instruction!(instructeur)
+      d.passer_en_instruction!(instructeur: instructeur)
       Timecop.freeze(date3)
-      d.accepter!(instructeur, "Motivation")
+      d.accepter!(instructeur: instructeur, motivation: "Motivation")
       Timecop.return
       d
     end
@@ -364,15 +409,15 @@ describe Dossier do
     let(:service) { create(:service, nom: 'nom du service') }
     let(:procedure) { create(:procedure, libelle: "Démarche", organisation: "Organisme", service: service) }
 
-    context 'when the dossier has been en_construction' do
-      let(:dossier) { create :dossier, procedure: procedure, state: Dossier.states.fetch(:en_construction), en_construction_at: "31/12/2010".to_date }
+    context 'when the dossier has been submitted' do
+      let(:dossier) { create :dossier, procedure: procedure, state: Dossier.states.fetch(:en_construction), depose_at: "31/12/2010".to_date }
 
       subject { dossier.text_summary }
 
       it { is_expected.to eq("Dossier déposé le 31/12/2010 sur la démarche Démarche gérée par l'organisme nom du service") }
     end
 
-    context 'when the dossier has not been en_construction' do
+    context 'when the dossier has not been submitted' do
       let(:dossier) { create :dossier, procedure: procedure, state: Dossier.states.fetch(:brouillon) }
 
       subject { dossier.text_summary }
@@ -462,7 +507,7 @@ describe Dossier do
 
       it 'should keep first en_construction_at date' do
         Timecop.return
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
         dossier.repasser_en_construction!(instructeur)
 
         expect(dossier.traitements.size).to eq(3)
@@ -478,7 +523,7 @@ describe Dossier do
       let(:instructeur) { create(:instructeur) }
 
       before do
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
         dossier.reload
       end
 
@@ -490,7 +535,7 @@ describe Dossier do
       it 'should keep first en_instruction_at date if dossier is set to en_construction again' do
         Timecop.return
         dossier.repasser_en_construction!(instructeur)
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
 
         expect(dossier.traitements.size).to eq(4)
         expect(dossier.traitements.en_construction.first.processed_at).to eq(dossier.depose_at)
@@ -504,7 +549,7 @@ describe Dossier do
       let(:dossier) { create(:dossier, :en_instruction, :with_individual) }
 
       before do
-        dossier.accepter!(instructeur, nil)
+        dossier.accepter!(instructeur: instructeur)
         dossier.reload
       end
 
@@ -518,7 +563,7 @@ describe Dossier do
       let(:dossier) { create(:dossier, :en_instruction, :with_individual) }
 
       before do
-        dossier.refuser!(instructeur, nil)
+        dossier.refuser!(instructeur: instructeur)
         dossier.reload
       end
 
@@ -532,7 +577,7 @@ describe Dossier do
       let(:dossier) { create(:dossier, :en_instruction, :with_individual) }
 
       before do
-        dossier.classer_sans_suite!(instructeur, nil)
+        dossier.classer_sans_suite!(instructeur: instructeur)
         dossier.reload
       end
 
@@ -546,9 +591,9 @@ describe Dossier do
   describe '.downloadable_sorted' do
     let(:procedure) { create(:procedure) }
     let!(:dossier) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:brouillon)) }
-    let!(:dossier2) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:en_construction), en_construction_at: Time.zone.parse('03/01/2010')) }
-    let!(:dossier3) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:en_instruction), en_construction_at: Time.zone.parse('01/01/2010')) }
-    let!(:dossier4) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:en_instruction), archived: true, en_construction_at: Time.zone.parse('02/01/2010')) }
+    let!(:dossier2) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:en_construction), depose_at: Time.zone.parse('03/01/2010')) }
+    let!(:dossier3) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:en_instruction), depose_at: Time.zone.parse('01/01/2010')) }
+    let!(:dossier4) { create(:dossier, :with_entreprise, procedure: procedure, state: Dossier.states.fetch(:en_instruction), archived: true, depose_at: Time.zone.parse('02/01/2010')) }
 
     subject { procedure.dossiers.downloadable_sorted }
 
@@ -611,7 +656,7 @@ describe Dossier do
     end
 
     it "sends an email when the dossier becomes en_instruction" do
-      dossier.passer_en_instruction!(instructeur)
+      dossier.passer_en_instruction!(instructeur: instructeur)
       expect(NotificationMailer).to have_received(:send_en_instruction_notification).with(dossier)
     end
 
@@ -799,50 +844,34 @@ describe Dossier do
     end
   end
 
-  describe "#discard_and_keep_track!" do
+  describe "#hide_and_keep_track!" do
     let(:dossier) { create(:dossier, :en_construction) }
-    let(:deleted_dossier) { DeletedDossier.find_by(dossier_id: dossier.id) }
+    let(:user) { dossier.user }
     let(:last_operation) { dossier.dossier_operation_logs.last }
     let(:reason) { :user_request }
 
     before do
-      allow(DossierMailer).to receive(:notify_deletion_to_user).and_return(double(deliver_later: nil))
       allow(DossierMailer).to receive(:notify_deletion_to_administration).and_return(double(deliver_later: nil))
     end
 
-    subject! { dossier.discard_and_keep_track!(dossier.user, reason) }
+    subject! { dossier.hide_and_keep_track!(user, reason) }
 
     context 'brouillon' do
       let(:dossier) { create(:dossier) }
 
-      it 'hides the dossier' do
-        expect(dossier.discarded?).to be_truthy
+      it 'hide the dossier' do
+        expect(dossier.reload.hidden_by_user_at).to be_present
       end
 
-      it 'do not creates a DeletedDossier record' do
-        expect(deleted_dossier).to be_nil
-      end
-
-      it 'do not records the operation in the log' do
-        expect(last_operation).to be_nil
+      it 'does not records operation in the log' do
+        expect(dossier.reload.dossier_operation_logs.last).to eq(nil)
       end
     end
 
     context 'en_construction' do
-      it 'hides the dossier' do
-        expect(dossier.hidden_at).to be_present
-      end
-
-      it 'creates a DeletedDossier record' do
-        expect(deleted_dossier.reason).to eq DeletedDossier.reasons.fetch(reason)
-        expect(deleted_dossier.dossier_id).to eq dossier.id
-        expect(deleted_dossier.procedure).to eq dossier.procedure
-        expect(deleted_dossier.state).to eq dossier.state
-        expect(deleted_dossier.deleted_at).to be_present
-      end
-
-      it 'notifies the user' do
-        expect(DossierMailer).to have_received(:notify_deletion_to_user).with(deleted_dossier, dossier.user.email)
+      it 'hide the dossier but does not discard' do
+        expect(dossier.hidden_at).to be_nil
+        expect(dossier.hidden_by_user_at).to be_present
       end
 
       it 'records the operation in the log' do
@@ -857,19 +886,6 @@ describe Dossier do
           non_following_instructeur.groupe_instructeurs << dossier.procedure.defaut_groupe_instructeur
           non_following_instructeur
         end
-
-        it 'notifies the following instructeurs' do
-          expect(DossierMailer).to have_received(:notify_deletion_to_administration).once
-          expect(DossierMailer).to have_received(:notify_deletion_to_administration).with(deleted_dossier, dossier.followers_instructeurs.first.email)
-        end
-      end
-
-      context 'when there are no following instructeurs' do
-        let(:dossier) { create(:dossier, :en_construction) }
-        it 'notifies the procedure administrateur' do
-          expect(DossierMailer).to have_received(:notify_deletion_to_administration).once
-          expect(DossierMailer).to have_received(:notify_deletion_to_administration).with(deleted_dossier, dossier.procedure.administrateurs.first.email)
-        end
       end
 
       context 'when dossier is brouillon' do
@@ -879,30 +895,25 @@ describe Dossier do
         end
       end
 
-      context 'with reason: manager_request' do
-        let(:reason) { :manager_request }
-
-        it 'hides the dossier' do
-          expect(dossier.discarded?).to be_truthy
-        end
-
-        it 'records the operation in the log' do
-          expect(last_operation.operation).to eq("supprimer")
-          expect(last_operation.automatic_operation?).to be_falsey
-        end
-      end
-
       context 'with reason: user_removed' do
         let(:reason) { :user_removed }
 
-        it 'hides the dossier' do
-          expect(dossier.discarded?).to be_truthy
+        it 'hide the dossier' do
+          expect(dossier.hidden_by_user_at).to be_present
         end
 
-        it 'records the operation in the log' do
-          expect(last_operation.operation).to eq("supprimer")
-          expect(last_operation.automatic_operation?).to be_falsey
+        it 'write the good reason to hidden_by_reason' do
+          expect(dossier.hidden_by_reason).to eq("user_removed")
         end
+      end
+    end
+
+    context 'termine' do
+      let(:dossier) { create(:dossier, state: "accepte", hidden_by_administration_at: 1.hour.ago) }
+      before { subject }
+
+      it 'affect the right deletion reason to the dossier' do
+        expect(dossier.hidden_by_reason).to eq("user_request")
       end
     end
   end
@@ -949,7 +960,7 @@ describe Dossier do
       }.to_not have_enqueued_job(WebHookJob)
 
       expect {
-        dossier.passer_en_instruction!(instructeur)
+        dossier.passer_en_instruction!(instructeur: instructeur)
       }.to have_enqueued_job(WebHookJob)
     end
   end
@@ -1034,7 +1045,7 @@ describe Dossier do
       allow(dossier).to receive(:build_attestation).and_return(attestation)
 
       Timecop.freeze(now)
-      dossier.accepter!(instructeur, 'motivation')
+      dossier.accepter!(instructeur: instructeur, motivation: 'motivation')
       dossier.reload
     end
 
@@ -1089,7 +1100,7 @@ describe Dossier do
     let(:operation_serialized) { JSON.parse(last_operation.serialized.download) }
     let(:instructeur) { create(:instructeur) }
 
-    before { dossier.passer_en_instruction!(instructeur) }
+    before { dossier.passer_en_instruction!(instructeur: instructeur) }
 
     it { expect(dossier.state).to eq('en_instruction') }
     it { expect(dossier.followers_instructeurs).to include(instructeur) }
@@ -1216,7 +1227,7 @@ describe Dossier do
       Timecop.freeze
       allow(DossierMailer).to receive(:notify_revert_to_instruction)
         .and_return(double(deliver_later: true))
-      dossier.repasser_en_instruction!(instructeur)
+      dossier.repasser_en_instruction!(instructeur: instructeur)
       dossier.reload
     end
 
@@ -1231,30 +1242,6 @@ describe Dossier do
     it { expect(DossierMailer).to have_received(:notify_revert_to_instruction).with(dossier) }
 
     after { Timecop.return }
-  end
-
-  describe '#export_and_attachments_downloadable?' do
-    let(:dossier) { create(:dossier, user: user) }
-
-    context "no attachments" do
-      it {
-        expect(dossier.export_and_attachments_downloadable?).to be true
-      }
-    end
-
-    context "with a small attachment" do
-      it {
-        expect(PiecesJustificativesService).to receive(:pieces_justificatives_total_size).and_return(4.megabytes)
-        expect(dossier.export_and_attachments_downloadable?).to be true
-      }
-    end
-
-    context "with a too large attachment" do
-      it {
-        expect(PiecesJustificativesService).to receive(:pieces_justificatives_total_size).and_return(100.megabytes)
-        expect(dossier.export_and_attachments_downloadable?).to be false
-      }
-    end
   end
 
   describe '#notify_draft_not_submitted' do
@@ -1332,30 +1319,33 @@ describe Dossier do
     end
   end
 
-  describe 'discarded_brouillon_expired and discarded_en_construction_expired' do
-    let(:super_admin) { create(:super_admin) }
+  describe 'brouillon_expired and en_construction_expired' do
+    let(:administrateur) { create(:administrateur) }
+    let(:user) { administrateur.user }
+    let(:reason) { DeletedDossier.reasons.fetch(:user_request) }
 
     before do
-      create(:dossier)
-      create(:dossier, :en_construction)
-      create(:dossier).discard!
-      create(:dossier, :en_construction).discard!
+      create(:dossier, user: user)
+      create(:dossier, :en_construction, user: user)
+      create(:dossier, user: user).hide_and_keep_track!(user, reason)
+      create(:dossier, :en_construction, user: user).hide_and_keep_track!(user, reason)
 
       Timecop.travel(2.months.ago) do
-        create(:dossier).discard!
-        create(:dossier, :en_construction).discard!
+        create(:dossier, user: user).hide_and_keep_track!(user, reason)
+        create(:dossier, :en_construction, user: user).hide_and_keep_track!(user, reason)
 
-        create(:dossier).procedure.discard_and_keep_track!(super_admin)
-        create(:dossier, :en_construction).procedure.discard_and_keep_track!(super_admin)
+        create(:dossier, user: user).procedure.discard_and_keep_track!(administrateur)
+        create(:dossier, :en_construction, user: user).procedure.discard_and_keep_track!(administrateur)
       end
+
       Timecop.travel(1.week.ago) do
-        create(:dossier).discard!
-        create(:dossier, :en_construction).discard!
+        create(:dossier, user: user).hide_and_keep_track!(user, reason)
+        create(:dossier, :en_construction, user: user).hide_and_keep_track!(user, reason)
       end
     end
 
-    it { expect(Dossier.discarded_brouillon_expired.count).to eq(3) }
-    it { expect(Dossier.discarded_en_construction_expired.count).to eq(3) }
+    it { expect(Dossier.en_brouillon_expired_to_delete.count).to eq(2) }
+    it { expect(Dossier.en_construction_expired_to_delete.count).to eq(2) }
   end
 
   describe "discarded procedure dossier should be able to access it's procedure" do
@@ -1495,21 +1485,21 @@ describe Dossier do
     it "clean up titres identite on accepter" do
       expect(champ_titre_identite.piece_justificative_file.attached?).to be_truthy
       expect(champ_titre_identite_vide.piece_justificative_file.attached?).to be_falsey
-      dossier.accepter!(dossier.followers_instructeurs.first, "yolo!")
+      dossier.accepter!(instructeur: dossier.followers_instructeurs.first, motivation: "yolo!")
       expect(champ_titre_identite.piece_justificative_file.attached?).to be_falsey
     end
 
     it "clean up titres identite on refuser" do
       expect(champ_titre_identite.piece_justificative_file.attached?).to be_truthy
       expect(champ_titre_identite_vide.piece_justificative_file.attached?).to be_falsey
-      dossier.refuser!(dossier.followers_instructeurs.first, "yolo!")
+      dossier.refuser!(instructeur: dossier.followers_instructeurs.first, motivation: "yolo!")
       expect(champ_titre_identite.piece_justificative_file.attached?).to be_falsey
     end
 
     it "clean up titres identite on classer_sans_suite" do
       expect(champ_titre_identite.piece_justificative_file.attached?).to be_truthy
       expect(champ_titre_identite_vide.piece_justificative_file.attached?).to be_falsey
-      dossier.classer_sans_suite!(dossier.followers_instructeurs.first, "yolo!")
+      dossier.classer_sans_suite!(instructeur: dossier.followers_instructeurs.first, motivation: "yolo!")
       expect(champ_titre_identite.piece_justificative_file.attached?).to be_falsey
     end
 
@@ -1544,48 +1534,10 @@ describe Dossier do
     before do
       create(:dossier, transfer: transfer)
       create(:attestation, dossier: dossier)
-      create(:attestation, dossier: dossier)
     end
 
-    it "can destroy dossier with two attestations" do
+    it "can destroy dossier" do
       expect(dossier.destroy).to be_truthy
-      expect(transfer.reload).not_to be_nil
-    end
-
-    context 'discarded' do
-      context 'en_construction' do
-        let(:dossier) { create(:dossier, :en_construction) }
-
-        before do
-          create(:avis, dossier: dossier)
-          Timecop.travel(2.weeks.ago) do
-            dossier.discard!
-          end
-          dossier.reload
-        end
-
-        it "can destroy dossier with avis" do
-          Avis.discarded_en_construction_expired.destroy_all
-          expect(dossier.destroy).to be_truthy
-        end
-      end
-
-      context 'termine' do
-        let(:dossier) { create(:dossier, :accepte) }
-
-        before do
-          create(:avis, dossier: dossier)
-          Timecop.travel(2.weeks.ago) do
-            dossier.discard!
-          end
-          dossier.reload
-        end
-
-        it "can destroy dossier with avis" do
-          Avis.discarded_termine_expired.destroy_all
-          expect(dossier.destroy).to be_truthy
-        end
-      end
     end
   end
 
@@ -1593,6 +1545,158 @@ describe Dossier do
     let(:dossier) { create(:dossier) }
 
     it { expect(dossier.spreadsheet_columns(types_de_champ: [])).to include(["État du dossier", "Brouillon"]) }
+  end
+
+  describe '#can_rebase?' do
+    let(:procedure) { create(:procedure, :with_type_de_champ_mandatory, :with_yes_no, attestation_template: build(:attestation_template)) }
+    let(:attestation_template) { procedure.draft_revision.attestation_template.find_or_revise! }
+    let(:type_de_champ) { procedure.types_de_champ.find { |tdc| !tdc.mandatory? } }
+    let(:mandatory_type_de_champ) { procedure.types_de_champ.find(&:mandatory?) }
+
+    before { Flipper.enable(:procedure_revisions, procedure) }
+
+    context 'en_construction' do
+      let(:dossier) { create(:dossier, :en_construction, procedure: procedure) }
+
+      before do
+        procedure.publish!
+        procedure.reload
+        dossier
+      end
+
+      context 'with added type de champ' do
+        before do
+          procedure.draft_revision.add_type_de_champ({
+            type_champ: TypeDeChamp.type_champs.fetch(:text),
+            libelle: "Un champ text"
+          })
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be false' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_falsey
+        end
+      end
+
+      context 'with type de champ made optional' do
+        before do
+          procedure.draft_revision.find_or_clone_type_de_champ(mandatory_type_de_champ.stable_id).update(mandatory: false)
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be true' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_truthy
+        end
+      end
+
+      context 'with type de champ made mandatory' do
+        before do
+          procedure.draft_revision.find_or_clone_type_de_champ(type_de_champ.stable_id).update(mandatory: true)
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be false' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_falsey
+        end
+      end
+
+      context 'with removed type de champ' do
+        before do
+          procedure.draft_revision.remove_type_de_champ(type_de_champ.stable_id)
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be true' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_truthy
+        end
+      end
+
+      context 'with attestation template changes' do
+        before do
+          attestation_template.update(title: "Test")
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be true' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_truthy
+        end
+      end
+    end
+
+    context 'en_instruction' do
+      let(:dossier) { create(:dossier, :en_instruction, procedure: procedure) }
+
+      before do
+        procedure.publish!
+        procedure.reload
+        dossier
+      end
+
+      context 'with added type de champ' do
+        before do
+          procedure.draft_revision.add_type_de_champ({
+            type_champ: TypeDeChamp.type_champs.fetch(:text),
+            libelle: "Un champ text"
+          })
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be false' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_falsey
+        end
+      end
+
+      context 'with removed type de champ' do
+        before do
+          procedure.draft_revision.remove_type_de_champ(type_de_champ.stable_id)
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be false' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_falsey
+        end
+      end
+
+      context 'with attestation template changes' do
+        before do
+          attestation_template.update(title: "Test")
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be true' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_truthy
+        end
+      end
+
+      context 'with type de champ made optional' do
+        before do
+          procedure.draft_revision.find_or_clone_type_de_champ(mandatory_type_de_champ.stable_id).update(mandatory: false)
+          procedure.publish_revision!
+          dossier.reload
+        end
+
+        it 'should be false' do
+          expect(dossier.pending_changes).not_to be_empty
+          expect(dossier.can_rebase?).to be_falsey
+        end
+      end
+    end
   end
 
   describe "#rebase" do
@@ -1666,6 +1770,31 @@ describe Dossier do
       expect(rebased_repetition_champ.rows[1].size).to eq(2)
       expect(rebased_text_champ.rebased_at).not_to be_nil
       expect(rebased_datetime_champ.rebased_at).not_to be_nil
+    end
+  end
+
+  describe '#processed_in_month' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    let(:dossier_accepte_at) { DateTime.new(2022, 3, 31, 12, 0) }
+    before do
+      travel_to(dossier_accepte_at) do
+        dossier = create(:dossier, :accepte)
+      end
+    end
+
+    context 'given a date' do
+      let(:archive_date) { Date.new(2022, 3, 1) }
+      it 'includes a dossier processed_at at last day of month' do
+        expect(Dossier.processed_in_month(archive_date).count).to eq(1)
+      end
+    end
+
+    context 'given a datetime' do
+      let(:archive_date) { DateTime.new(2022, 3, 1, 12, 0) }
+      it 'includes a dossier processed_at at last day of month' do
+        expect(Dossier.processed_in_month(archive_date).count).to eq(1)
+      end
     end
   end
 end

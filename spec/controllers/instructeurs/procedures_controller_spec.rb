@@ -76,7 +76,7 @@ describe Instructeurs::ProceduresController, type: :controller do
       end
 
       context "with dossiers" do
-        let(:procedure) { create(:procedure, :published) }
+        let(:procedure) { create(:procedure, :published, :expirable) }
         let(:dossier) { create(:dossier, state: state, procedure: procedure) }
 
         before do
@@ -93,36 +93,54 @@ describe Instructeurs::ProceduresController, type: :controller do
           it { expect(assigns(:dossiers_archived_count_per_procedure)[procedure.id]).to eq(nil) }
           it { expect(assigns(:followed_dossiers_count_per_procedure)[procedure.id]).to eq(nil) }
           it { expect(assigns(:dossiers_termines_count_per_procedure)[procedure.id]).to eq(nil) }
+          it { expect(assigns(:dossiers_expirant_count_per_procedure)[procedure.id]).to eq(nil) }
 
           it { expect(assigns(:all_dossiers_counts)['à suivre']).to eq(0) }
           it { expect(assigns(:all_dossiers_counts)['suivis']).to eq(0) }
           it { expect(assigns(:all_dossiers_counts)['traités']).to eq(0) }
           it { expect(assigns(:all_dossiers_counts)['dossiers']).to eq(0) }
           it { expect(assigns(:all_dossiers_counts)['archivés']).to eq(0) }
+          it { expect(assigns(:all_dossiers_counts)['expirant']).to eq(0) }
         end
 
         context "with not draft state on multiple procedures" do
-          let(:procedure2) { create(:procedure, :published) }
+          let(:procedure2) { create(:procedure, :published, :expirable) }
           let(:state) { Dossier.states.fetch(:en_construction) }
 
           before do
             create(:dossier, procedure: procedure, state: Dossier.states.fetch(:en_construction))
+            create(:dossier, procedure: procedure, state: Dossier.states.fetch(:en_construction), hidden_by_user_at: 1.hour.ago)
             create(:dossier, procedure: procedure, state: Dossier.states.fetch(:en_instruction))
+
             create(:dossier, procedure: procedure, state: Dossier.states.fetch(:sans_suite), archived: true)
+            create(:dossier, procedure: procedure, state: Dossier.states.fetch(:sans_suite), archived: true,
+                             hidden_by_administration_at: 1.day.ago)
 
             instructeur.groupe_instructeurs << procedure2.defaut_groupe_instructeur
             create(:dossier, :followed, procedure: procedure2, state: Dossier.states.fetch(:en_construction))
             create(:dossier, procedure: procedure2, state: Dossier.states.fetch(:accepte))
             instructeur.followed_dossiers << create(:dossier, procedure: procedure2, state: Dossier.states.fetch(:en_instruction))
 
+            create(:dossier, procedure: procedure,
+                             state: Dossier.states.fetch(:sans_suite),
+                             processed_at: 8.months.ago) # counted as expirable
+            create(:dossier, procedure: procedure,
+                             state: Dossier.states.fetch(:sans_suite),
+                             processed_at: 8.months.ago,
+                             hidden_by_administration_at: 1.day.ago) # not counted as expirable since its removed by instructeur
+            create(:dossier, procedure: procedure,
+                             state: Dossier.states.fetch(:sans_suite),
+                             processed_at: 8.months.ago,
+                             hidden_by_user_at: 1.day.ago) # counted as expirable because even if user remove it, instructeur see it
             subject
           end
 
-          it { expect(assigns(:dossiers_count_per_procedure)[procedure.id]).to eq(3) }
+          it { expect(assigns(:dossiers_count_per_procedure)[procedure.id]).to eq(5) }
           it { expect(assigns(:dossiers_a_suivre_count_per_procedure)[procedure.id]).to eq(3) }
           it { expect(assigns(:followed_dossiers_count_per_procedure)[procedure.id]).to eq(nil) }
           it { expect(assigns(:dossiers_archived_count_per_procedure)[procedure.id]).to eq(1) }
-          it { expect(assigns(:dossiers_termines_count_per_procedure)[procedure.id]).to eq(nil) }
+          it { expect(assigns(:dossiers_termines_count_per_procedure)[procedure.id]).to eq(2) }
+          it { expect(assigns(:dossiers_expirant_count_per_procedure)[procedure.id]).to eq(2) }
 
           it { expect(assigns(:dossiers_count_per_procedure)[procedure2.id]).to eq(3) }
           it { expect(assigns(:dossiers_a_suivre_count_per_procedure)[procedure2.id]).to eq(nil) }
@@ -132,9 +150,27 @@ describe Instructeurs::ProceduresController, type: :controller do
 
           it { expect(assigns(:all_dossiers_counts)['à suivre']).to eq(3 + 0) }
           it { expect(assigns(:all_dossiers_counts)['suivis']).to eq(0 + 1) }
-          it { expect(assigns(:all_dossiers_counts)['traités']).to eq(0 + 1) }
-          it { expect(assigns(:all_dossiers_counts)['dossiers']).to eq(3 + 3) }
+          it { expect(assigns(:all_dossiers_counts)['traités']).to eq(2 + 1) }
+          it { expect(assigns(:all_dossiers_counts)['dossiers']).to eq(5 + 3) }
           it { expect(assigns(:all_dossiers_counts)['archivés']).to eq(1 + 0) }
+          it { expect(assigns(:all_dossiers_counts)['expirant']).to eq(2 + 0) }
+        end
+
+        context 'with not draft state on discarded procedure' do
+          let(:discarded_procedure) { create(:procedure, :discarded, :expirable) }
+          let(:state) { Dossier.states.fetch(:en_construction) }
+          before do
+            create(:dossier, procedure: discarded_procedure, state: Dossier.states.fetch(:en_construction))
+            instructeur.groupe_instructeurs << discarded_procedure.defaut_groupe_instructeur
+            subject
+          end
+
+          it { expect(assigns(:dossiers_count_per_procedure)[procedure.id]).to eq(1) }
+          it { expect(assigns(:dossiers_a_suivre_count_per_procedure)[procedure.id]).to eq(1) }
+
+          it { expect(assigns(:dossiers_count_per_procedure)[discarded_procedure.id]).to be_nil }
+
+          it { expect(assigns(:all_dossiers_counts)['à suivre']).to eq(1) }
         end
       end
 
@@ -204,7 +240,7 @@ describe Instructeurs::ProceduresController, type: :controller do
 
   describe "#show" do
     let(:instructeur) { create(:instructeur) }
-    let!(:procedure) { create(:procedure, instructeurs: [instructeur]) }
+    let!(:procedure) { create(:procedure, :expirable, instructeurs: [instructeur]) }
     let!(:gi_2) { procedure.groupe_instructeurs.create(label: '2') }
     let!(:gi_3) { procedure.groupe_instructeurs.create(label: '3') }
     let(:statut) { nil }
@@ -237,86 +273,86 @@ describe Instructeurs::ProceduresController, type: :controller do
       context 'with a new dossier without follower' do
         let!(:new_unfollow_dossier) { create(:dossier, :en_instruction, procedure: procedure) }
 
-        before { subject }
+        context do
+          before { subject }
 
-        it { expect(assigns(:a_suivre_dossiers)).to match_array([new_unfollow_dossier]) }
-        it { expect(assigns(:followed_dossiers)).to be_empty }
-        it { expect(assigns(:termines_dossiers)).to be_empty }
-        it { expect(assigns(:all_state_dossiers)).to match_array([new_unfollow_dossier]) }
-        it { expect(assigns(:archived_dossiers)).to be_empty }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_unfollow_dossier].map(&:id)) }
+        end
+
+        context 'with a dossier en contruction hidden by user' do
+          let!(:hidden_dossier) { create(:dossier, :en_construction, groupe_instructeur: gi_2, hidden_by_user_at: 1.hour.ago) }
+          before { subject }
+
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_unfollow_dossier].map(&:id)) }
+        end
+
+        context 'with a dossier en contruction not hidden by user' do
+          let!(:en_construction_dossier) { create(:dossier, :en_construction, groupe_instructeur: gi_2) }
+          before { subject }
+
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_unfollow_dossier, en_construction_dossier].map(&:id)) }
+        end
 
         context 'and dossiers without follower on each of the others groups' do
-          let!(:new_unfollow_dossier_on_gi_2) { create(:dossier, groupe_instructeur: gi_2, state: Dossier.states.fetch(:en_instruction)) }
-          let!(:new_unfollow_dossier_on_gi_3) { create(:dossier, groupe_instructeur: gi_3, state: Dossier.states.fetch(:en_instruction)) }
+          let!(:new_unfollow_dossier_on_gi_2) { create(:dossier, :en_instruction, groupe_instructeur: gi_2) }
+          let!(:new_unfollow_dossier_on_gi_3) { create(:dossier, :en_instruction, groupe_instructeur: gi_3) }
 
           before { subject }
 
-          it { expect(assigns(:a_suivre_dossiers)).to match_array([new_unfollow_dossier, new_unfollow_dossier_on_gi_2]) }
-          it { expect(assigns(:all_state_dossiers)).to match_array([new_unfollow_dossier, new_unfollow_dossier_on_gi_2]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_unfollow_dossier, new_unfollow_dossier_on_gi_2].map(&:id)) }
         end
       end
 
       context 'with a new dossier with a follower' do
-        let!(:new_followed_dossier) { create(:dossier, :en_instruction, procedure: procedure) }
+        let(:statut) { 'suivis' }
+        let!(:new_followed_dossier) { create(:dossier, :en_instruction, procedure: procedure, followers_instructeurs: [instructeur]) }
 
-        before do
-          instructeur.followed_dossiers << new_followed_dossier
-          subject
+        context do
+          before { subject }
+
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_followed_dossier].map(&:id)) }
         end
 
-        it { expect(assigns(:a_suivre_dossiers)).to be_empty }
-        it { expect(assigns(:followed_dossiers)).to match_array([new_followed_dossier]) }
-        it { expect(assigns(:termines_dossiers)).to be_empty }
-        it { expect(assigns(:all_state_dossiers)).to match_array([new_followed_dossier]) }
-        it { expect(assigns(:archived_dossiers)).to be_empty }
-
         context 'and dossier with a follower on each of the others groups' do
-          let!(:new_follow_dossier_on_gi_2) { create(:dossier, groupe_instructeur: gi_2, state: Dossier.states.fetch(:en_instruction)) }
-          let!(:new_follow_dossier_on_gi_3) { create(:dossier, groupe_instructeur: gi_3, state: Dossier.states.fetch(:en_instruction)) }
+          let!(:new_follow_dossier_on_gi_2) { create(:dossier, :en_instruction, groupe_instructeur: gi_2, followers_instructeurs: [instructeur]) }
+          let!(:new_follow_dossier_on_gi_3) { create(:dossier, :en_instruction, groupe_instructeur: gi_3, followers_instructeurs: [instructeur]) }
 
-          before do
-            instructeur.followed_dossiers << new_follow_dossier_on_gi_2 << new_follow_dossier_on_gi_3
-            subject
-          end
+          before { subject }
 
-          # followed dossiers on another groupe should not be displayed
-          it { expect(assigns(:followed_dossiers)).to contain_exactly(new_followed_dossier, new_follow_dossier_on_gi_2) }
-          it { expect(assigns(:all_state_dossiers)).to contain_exactly(new_followed_dossier, new_follow_dossier_on_gi_2) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_followed_dossier, new_follow_dossier_on_gi_2].map(&:id)) }
         end
       end
 
       context 'with a termine dossier with a follower' do
+        let(:statut) { 'traites' }
         let!(:termine_dossier) { create(:dossier, :accepte, procedure: procedure) }
 
-        before { subject }
+        context do
+          before { subject }
 
-        it { expect(assigns(:a_suivre_dossiers)).to be_empty }
-        it { expect(assigns(:followed_dossiers)).to be_empty }
-        it { expect(assigns(:termines_dossiers)).to match_array([termine_dossier]) }
-        it { expect(assigns(:all_state_dossiers)).to match_array([termine_dossier]) }
-        it { expect(assigns(:archived_dossiers)).to be_empty }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([termine_dossier].map(&:id)) }
+        end
 
         context 'and terminer dossiers on each of the others groups' do
-          let!(:termine_dossier_on_gi_2) { create(:dossier, groupe_instructeur: gi_2, state: Dossier.states.fetch(:accepte)) }
-          let!(:termine_dossier_on_gi_3) { create(:dossier, groupe_instructeur: gi_3, state: Dossier.states.fetch(:accepte)) }
+          let!(:termine_dossier_on_gi_2) { create(:dossier, :accepte, groupe_instructeur: gi_2) }
+          let!(:termine_dossier_on_gi_3) { create(:dossier, :accepte, groupe_instructeur: gi_3) }
 
           before { subject }
 
-          it { expect(assigns(:termines_dossiers)).to match_array([termine_dossier, termine_dossier_on_gi_2]) }
-          it { expect(assigns(:all_state_dossiers)).to match_array([termine_dossier, termine_dossier_on_gi_2]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([termine_dossier, termine_dossier_on_gi_2].map(&:id)) }
         end
       end
 
       context 'with an archived dossier' do
+        let(:statut) { 'archives' }
         let!(:archived_dossier) { create(:dossier, :en_instruction, procedure: procedure, archived: true) }
+        let!(:archived_dossier_deleted) { create(:dossier, :en_instruction, procedure: procedure, archived: true, hidden_by_administration_at: 2.days.ago) }
 
-        before { subject }
+        context do
+          before { subject }
 
-        it { expect(assigns(:a_suivre_dossiers)).to be_empty }
-        it { expect(assigns(:followed_dossiers)).to be_empty }
-        it { expect(assigns(:termines_dossiers)).to be_empty }
-        it { expect(assigns(:all_state_dossiers)).to be_empty }
-        it { expect(assigns(:archived_dossiers)).to match_array([archived_dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([archived_dossier].map(&:id)) }
+        end
 
         context 'and terminer dossiers on each of the others groups' do
           let!(:archived_dossier_on_gi_2) { create(:dossier, :en_instruction, groupe_instructeur: gi_2, archived: true) }
@@ -324,12 +360,23 @@ describe Instructeurs::ProceduresController, type: :controller do
 
           before { subject }
 
-          it { expect(assigns(:archived_dossiers)).to match_array([archived_dossier, archived_dossier_on_gi_2]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([archived_dossier, archived_dossier_on_gi_2].map(&:id)) }
         end
       end
 
+      context 'with an expirants dossier' do
+        let(:statut) { 'expirant' }
+        let!(:expiring_dossier_termine_deleted) { create(:dossier, :accepte, procedure: procedure, processed_at: 175.days.ago, hidden_by_administration_at: 2.days.ago) }
+        let!(:expiring_dossier_termine) { create(:dossier, :accepte, procedure: procedure, processed_at: 175.days.ago) }
+        let!(:expiring_dossier_en_construction) { create(:dossier, :en_construction, procedure: procedure, en_construction_at: 175.days.ago) }
+
+        before { subject }
+
+        it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([expiring_dossier_termine, expiring_dossier_en_construction].map(&:id)) }
+      end
+
       describe 'statut' do
-        let!(:a_suivre__dossier) { Timecop.freeze(1.day.ago) { create(:dossier, :en_instruction, procedure: procedure) } }
+        let!(:a_suivre_dossier) { Timecop.freeze(1.day.ago) { create(:dossier, :en_instruction, procedure: procedure) } }
         let!(:new_followed_dossier) { Timecop.freeze(2.days.ago) { create(:dossier, :en_instruction, procedure: procedure) } }
         let!(:termine_dossier) { Timecop.freeze(3.days.ago) { create(:dossier, :accepte, procedure: procedure) } }
         let!(:archived_dossier) { Timecop.freeze(4.days.ago) { create(:dossier, :en_instruction, procedure: procedure, archived: true) } }
@@ -342,7 +389,7 @@ describe Instructeurs::ProceduresController, type: :controller do
         context 'when statut is empty' do
           let(:statut) { nil }
 
-          it { expect(assigns(:dossiers)).to match_array([a_suivre__dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([a_suivre_dossier].map(&:id)) }
           it { expect(assigns(:statut)).to eq('a-suivre') }
         end
 
@@ -350,35 +397,35 @@ describe Instructeurs::ProceduresController, type: :controller do
           let(:statut) { 'a-suivre' }
 
           it { expect(assigns(:statut)).to eq('a-suivre') }
-          it { expect(assigns(:dossiers)).to match_array([a_suivre__dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([a_suivre_dossier].map(&:id)) }
         end
 
         context 'when statut is suivis' do
           let(:statut) { 'suivis' }
 
           it { expect(assigns(:statut)).to eq('suivis') }
-          it { expect(assigns(:dossiers)).to match_array([new_followed_dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([new_followed_dossier].map(&:id)) }
         end
 
         context 'when statut is traites' do
           let(:statut) { 'traites' }
 
           it { expect(assigns(:statut)).to eq('traites') }
-          it { expect(assigns(:dossiers)).to match_array([termine_dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([termine_dossier].map(&:id)) }
         end
 
         context 'when statut is tous' do
           let(:statut) { 'tous' }
 
           it { expect(assigns(:statut)).to eq('tous') }
-          it { expect(assigns(:dossiers)).to match_array([a_suivre__dossier, new_followed_dossier, termine_dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([a_suivre_dossier, new_followed_dossier, termine_dossier].map(&:id)) }
         end
 
         context 'when statut is archives' do
           let(:statut) { 'archives' }
 
           it { expect(assigns(:statut)).to eq('archives') }
-          it { expect(assigns(:dossiers)).to match_array([archived_dossier]) }
+          it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([archived_dossier].map(&:id)) }
         end
       end
     end
@@ -422,7 +469,7 @@ describe Instructeurs::ProceduresController, type: :controller do
     let(:instructeur) { create(:instructeur) }
     let!(:procedure) { create(:procedure) }
     let!(:gi_0) { procedure.defaut_groupe_instructeur }
-    let!(:gi_1) { GroupeInstructeur.create(label: 'gi_1', procedure: procedure, instructeurs: [instructeur]) }
+    let!(:gi_1) { create(:groupe_instructeur, label: 'gi_1', procedure: procedure, instructeurs: [instructeur]) }
 
     before { sign_in(instructeur.user) }
 
@@ -451,7 +498,7 @@ describe Instructeurs::ProceduresController, type: :controller do
     end
 
     context 'when the export is ready' do
-      let!(:export) { create(:export, groupe_instructeurs: [gi_1]) }
+      let(:export) { create(:export, groupe_instructeurs: [gi_1]) }
 
       before do
         export.file.attach(io: StringIO.new('export'), filename: 'file.csv')
@@ -464,7 +511,7 @@ describe Instructeurs::ProceduresController, type: :controller do
     end
 
     context 'when another export is ready' do
-      let!(:export) { create(:export, groupe_instructeurs: [gi_0, gi_1]) }
+      let(:export) { create(:export, groupe_instructeurs: [gi_0, gi_1]) }
 
       before do
         export.file.attach(io: StringIO.new('export'), filename: 'file.csv')

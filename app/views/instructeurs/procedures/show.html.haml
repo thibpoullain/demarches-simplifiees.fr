@@ -7,31 +7,43 @@
       .procedure-logo{ style: "background-image: url(#{@procedure.logo_url})",
         role: 'img', 'aria-label': "logo de la démarche #{@procedure.libelle}" }
 
-      = render partial: 'header', locals: { procedure: @procedure,
+      = render partial: 'header', locals: { procedure: @procedure, statut: @statut }
+
+      .procedure-actions
+        - if @can_download_dossiers
+          = render partial: "download_dossiers", locals: { procedure: @procedure, exports: @exports }
+
+    .container.flex= render partial: "tabs", locals: { procedure: @procedure,
         statut: @statut,
-        a_suivre_count: @a_suivre_count,
-        suivis_count: @suivis_count,
-        traites_count: @traites_count,
-        tous_count: @tous_count,
-        archives_count: @archives_count,
+        a_suivre_count: @counts[:a_suivre],
+        suivis_count: @counts[:suivis],
+        traites_count: @counts[:traites],
+        tous_count: @counts[:tous],
+        supprimes_recemment_count: @counts[:supprimes_recemment],
+        archives_count: @counts[:archives],
+        expirant_count: @counts[:expirant],
         has_en_cours_notifications: @has_en_cours_notifications,
         has_termine_notifications: @has_termine_notifications }
 
-      .procedure-actions
-        = render partial: "download_dossiers", locals: { procedure: @procedure, exports: @exports, dossier_count: @tous_count + @archives_count }
-
   .container
     - if @statut == 'a-suivre'
-      %p.explication-onglet Aucun instructeur n’est affecté au suivi de ces dossiers. Soyez le premier !
+      %p.explication-onglet
+        = t('views.instructeurs.dossiers.tab_explainations.a_suivre')
     - if @statut == 'suivis'
-      %p.explication-onglet Les dossiers qui sont dans cet onglet sont uniquement ceux que vous suivez. Vous pouvez échanger avec le demandeur jusqu'à pouvoir les accepter, les refuser ou les classer sans suite.
+      %p.explication-onglet
+        = t('views.instructeurs.dossiers.tab_explainations.suivis')
     - if @statut == 'traites'
-      %p.explication-onglet Les dossiers dans cet onglet sont terminés : ils ont été acceptés, refusés ou classés sans suite.
+      %p.explication-onglet
+        = t('views.instructeurs.dossiers.tab_explainations.traites')
     - if @statut == 'tous'
-      %p.explication-onglet Tous les dossiers qui ont été déposés sur cette démarche, quel que soit le statut.
+      %p.explication-onglet
+        = t('views.instructeurs.dossiers.tab_explainations.tous')
+    - if @statut == 'supprimes_recemment'
+      %p.explication-onglet
+        = t('views.instructeurs.dossiers.tab_explainations.supprimes_recemment')
     - if @statut == 'archives'
       %p.explication-onglet
-        Les dossiers de cet onglet sont archivés : vous ne pouvez plus y répondre, et les demandeurs ne peuvent plus les modifier.
+        = t('views.instructeurs.dossiers.tab_explainations.archives')
         %br
         Ces dossiers seront supprimés lorsque leur délai de conservation dans Démarches-simplifiées
         - if @procedure.duree_conservation_dossiers_dans_ds
@@ -42,34 +54,19 @@
         = link_to deleted_dossiers_instructeur_procedure_path(@procedure) do
           %span.icon.delete
           Afficher les dossiers supprimés
-
+    - if @statut == 'expirant'
+      %p.explication-onglet
+        = t('views.instructeurs.dossiers.tab_explainations.expirant')
     - if @filtered_sorted_paginated_ids.present? || @current_filters.count > 0
       - pagination =  paginate @filtered_sorted_paginated_ids
       = pagination
-      %span.dropdown
-        %button.button.dropdown-button{ 'aria-expanded' => 'false', 'aria-controls' => 'filter-menu' }
-          Filtrer
-        #filter-menu.dropdown-content.left-aligned.fade-in-down
-          = form_tag add_filter_instructeur_procedure_path(@procedure), method: :post, class: 'dropdown-form large' do
-            = label_tag :field,  "Colonne"
-            = select_tag :field, options_for_select(@displayed_fields_options)
-            %br
-            = label_tag :value, "Valeur"
-            = text_field_tag :value, nil, maxlength: ProcedurePresentation::FILTERS_VALUE_MAX_LENGTH
-            = hidden_field_tag :statut, @statut
-            %br
-            = submit_tag "Ajouter le filtre", class: 'button'
+      .flex
+        .flex-grow
+          = render partial: "dossiers_filter", locals: { procedure: @procedure, procedure_presentation: @procedure_presentation, current_filters: @current_filters, statut: @statut, displayed_fields_options: @displayed_fields_options }
+        - if @dossiers_count > 0
+          .dossiers-export
+            = render partial: "dossiers_export", locals: { procedure: @procedure, exports: @exports, statut: @statut, count: @dossiers_count }
 
-      - @current_filters.group_by { |filter| filter['table'] }.each_with_index do |(table, filters), i|
-        - if i > 0
-          et
-        - filters.each_with_index do |filter, i|
-          - if i > 0
-            ou
-          %span.filter
-            = link_to remove_filter_instructeur_procedure_path(@procedure, { statut: @statut, field: "#{filter['table']}/#{filter['column']}", value: filter['value'] }) do
-              %img.close-icon{ src: image_url("close.svg") }
-            = "#{filter['label'].truncate(50)} : #{@procedure_presentation.human_value_for_filter(filter)}"
       %table.table.dossiers-table.hoverable
         %thead
           %tr
@@ -78,54 +75,73 @@
             - else
               %th.notification-col
 
-            = render partial: "header_field", locals: { field: { "label" => "Nº dossier", "table" => "self", "column" => "id" }, classname: "number-col" }
-
-            - @procedure_presentation.displayed_fields.each do |field|
-              = render partial: "header_field", locals: { field: field, classname: "" }
-
-            = render partial: "header_field", locals: { field: { "label" => "Statut", "table" => "self", "column" => "state" },  classname: "status-col" }
+            - @procedure_presentation.displayed_fields_for_headers.each do |field|
+              = render partial: "header_field", locals: { field: field, classname: field['classname'] }
 
             %th.action-col.follow-col
               %span.dropdown
                 %button.button.dropdown-button{ 'aria-expanded' => 'false', 'aria-controls' => 'custom-menu' }
-                  Personnaliser
+                  = t('views.instructeurs.dossiers.personalize')
                 #custom-menu.dropdown-content.fade-in-down
                   = form_tag update_displayed_fields_instructeur_procedure_path(@procedure), method: :patch, class: 'dropdown-form large columns-form' do
-                    - hidden_field_id = SecureRandom.uuid
-                    = hidden_field_tag :values, nil, data: { uuid: hidden_field_id }
-                    = react_component("ComboMultipleDropdownList", options: @displayed_fields_options, selected: @displayed_fields_selected, disabled: [], hiddenFieldId: hidden_field_id, label: 'colonne')
+                    = hidden_field_tag :values, nil
+                    = react_component("ComboMultiple",
+                      options: @displayed_fields_options,
+                      selected: @displayed_fields_selected,
+                      disabled: [],
+                      label: 'Colonne à afficher',
+                      group: '.columns-form',
+                      name: 'values')
 
-                    = submit_tag "Enregistrer", class: 'button'
+                    = submit_tag t('views.instructeurs.dossiers.save'), class: 'button'
 
         %tbody
           - @projected_dossiers.each do |p|
             - path = instructeur_dossier_path(@procedure, p.dossier_id)
             %tr{ class: [p.hidden_by_user_at.present? && "file-hidden-by-user"] }
               %td.folder-col
-                %a.cell-link{ href: path }
-                  %span.icon.folder
-                    - if @not_archived_notifications_dossier_ids.include?(p.dossier_id)
-                      %span.notifications{ 'aria-label': 'notifications' }
+                - if p.hidden_by_administration_at.present?
+                  %span.cell-link
+                    %span.icon.folder
+                - else
+                  %a.cell-link{ href: path }
+                    %span.icon.folder
+                      - if @not_archived_notifications_dossier_ids.include?(p.dossier_id)
+                        %span.notifications{ 'aria-label': 'notifications' }
 
               %td.number-col
-                %a.cell-link{ href: path }= p.dossier_id
+                - if p.hidden_by_administration_at.present?
+                  %span.cell-link= p.dossier_id
+                - else
+                  %a.cell-link{ href: path }= p.dossier_id
 
               - p.columns.each do |column|
                 %td
-                  %a.cell-link{ href: path }
-                    = column
-                    = "- #{t('views.instructeurs.dossiers.deleted_by_user')}" if p.hidden_by_user_at.present?
+                  - if p.hidden_by_administration_at.present?
+                    %span.cell-link
+                      = column
+                      = "- #{t('views.instructeurs.dossiers.deleted_by_user')}" if p.hidden_by_user_at.present?
+                  - else
+                    %a.cell-link{ href: path }
+                      = column
+                      = "- #{t('views.instructeurs.dossiers.deleted_by_user')}" if p.hidden_by_user_at.present?
 
               %td.status-col
-                %a.cell-link{ href: path }= status_badge(p.state)
+                - if p.hidden_by_administration_at.present?
+                  %span.cell-link= status_badge(p.state)
+                - else
+                  %a.cell-link{ href: path }= status_badge(p.state)
 
               %td.action-col.follow-col= render partial: 'dossier_actions',
                 locals: { procedure_id: @procedure.id,
                           dossier_id: p.dossier_id,
                           state: p.state,
                           archived: p.archived,
-                          dossier_is_followed: @followed_dossiers_id.include?(p.dossier_id) }
+                          dossier_is_followed: @followed_dossiers_id.include?(p.dossier_id),
+                          close_to_expiration: @statut == 'expirant',
+                          hidden_by_administration: @statut == 'supprimes_recemment' }
 
       = pagination
     - else
-      %h2.empty-text Aucun dossier
+      %h2.empty-text
+        = t('views.instructeurs.dossiers.no_file')

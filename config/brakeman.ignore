@@ -3,6 +3,47 @@
     {
       "warning_type": "Cross-Site Scripting",
       "warning_code": 2,
+      "fingerprint": "1b805585567775589825c0eda58cb84c074fc760d0a7afb101c023a51427f2b5",
+      "check_name": "CrossSiteScripting",
+      "message": "Unescaped model attribute",
+      "file": "app/views/users/dossiers/_merci.html.haml",
+      "line": 26,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
+      "code": "current_user.dossiers.includes(:procedure).find(params[:id]).procedure.monavis_embed",
+      "render_path": [
+        {
+          "type": "controller",
+          "class": "Users::DossiersController",
+          "method": "merci",
+          "line": 201,
+          "file": "app/controllers/users/dossiers_controller.rb",
+          "rendered": {
+            "name": "users/dossiers/merci",
+            "file": "app/views/users/dossiers/merci.html.haml"
+          }
+        },
+        {
+          "type": "template",
+          "name": "users/dossiers/merci",
+          "line": 6,
+          "file": "app/views/users/dossiers/merci.html.haml",
+          "rendered": {
+            "name": "users/dossiers/_merci",
+            "file": "app/views/users/dossiers/_merci.html.haml"
+          }
+        }
+      ],
+      "location": {
+        "type": "template",
+        "template": "users/dossiers/_merci"
+      },
+      "user_input": "current_user.dossiers.includes(:procedure)",
+      "confidence": "Weak",
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Scripting",
+      "warning_code": 2,
       "fingerprint": "42099f4550a8377f455e830e8ab645cecd5806248481c5c646b4e17548c3cb07",
       "check_name": "CrossSiteScripting",
       "message": "Unescaped model attribute",
@@ -32,34 +73,23 @@
       "note": "explicitely sanitized even if we are using html_safe"
     },
     {
-      "warning_type": "Cross-Site Scripting",
-      "warning_code": 2,
-      "fingerprint": "483ae8c038244eb3ed709e89846335e2c8ff6579260348ec31d3d03d1c94ad64",
-      "check_name": "CrossSiteScripting",
-      "message": "Unescaped model attribute",
-      "file": "app/views/users/dossiers/merci.html.haml",
-      "line": 28,
-      "link": "https://brakemanscanner.org/docs/warning_types/cross_site_scripting",
-      "code": "current_user.dossiers.includes(:procedure).find(params[:id]).procedure.monavis_embed",
-      "render_path": [
-        {
-          "type": "controller",
-          "class": "Users::DossiersController",
-          "method": "merci",
-          "line": 193,
-          "file": "app/controllers/users/dossiers_controller.rb",
-          "rendered": {
-            "name": "users/dossiers/merci",
-            "file": "app/views/users/dossiers/merci.html.haml"
-          }
-        }
-      ],
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "4254ed68100af9b496883716b1fd658e1943b2385a0d08de5a6ef5c600c1a8f9",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/traitement.rb",
+      "line": 52,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.execute(\"select date_trunc('month', r1.processed_at::TIMESTAMPTZ AT TIME ZONE '#{Time.zone.formatted_offset}'::INTERVAL) as month, count(r1.processed_at)\\nfrom (#{Traitement.select(\"max(traitements.processed_at) as processed_at\").termine.where(:dossier => Dossier.state_termine.where(:groupe_instructeur => groupe_instructeurs)).group(:dossier_id).to_sql}) as r1\\ngroup by date_trunc('month', r1.processed_at::TIMESTAMPTZ AT TIME ZONE '#{Time.zone.formatted_offset}'::INTERVAL)\\norder by month desc\\n\")",
+      "render_path": null,
       "location": {
-        "type": "template",
-        "template": "users/dossiers/merci"
+        "type": "method",
+        "class": "Traitement",
+        "method": "Traitement.count_dossiers_termines_by_month"
       },
-      "user_input": "current_user.dossiers.includes(:procedure)",
-      "confidence": "Weak",
+      "user_input": "Time.zone.formatted_offset",
+      "confidence": "Medium",
       "note": ""
     },
     {
@@ -85,24 +115,24 @@
     {
       "warning_type": "Redirect",
       "warning_code": 18,
-      "fingerprint": "c46b5c9cd6474ffae789f39a2280ba6b5a5a74d3ffa8a38cf8a409f9a027ed0e",
+      "fingerprint": "eae88be293b3849e07be81a18de99c04b08c7b2c045cc4a43ca3624ea178d965",
       "check_name": "Redirect",
       "message": "Possible unprotected redirect",
       "file": "app/controllers/instructeurs/procedures_controller.rb",
-      "line": 190,
+      "line": 191,
       "link": "https://brakemanscanner.org/docs/warning_types/redirect/",
-      "code": "redirect_to(Export.find_or_create_export(params[:export_format], (params[:time_span_type] or \"everything\"), current_instructeur.groupe_instructeurs.where(:procedure => procedure)).file.service_url)",
+      "code": "redirect_to(Export.find_or_create_export(export_format, current_instructeur.groupe_instructeurs.where(:procedure => procedure), **export_options).file.service_url)",
       "render_path": null,
       "location": {
         "type": "method",
         "class": "Instructeurs::ProceduresController",
         "method": "download_export"
       },
-      "user_input": "Export.find_or_create_export(params[:export_format], (params[:time_span_type] or \"everything\"), current_instructeur.groupe_instructeurs.where(:procedure => procedure)).file.service_url",
+      "user_input": "Export.find_or_create_export(export_format, current_instructeur.groupe_instructeurs.where(:procedure => procedure), **export_options).file.service_url",
       "confidence": "High",
       "note": ""
     }
   ],
-  "updated": "2021-11-23 14:09:21 +0100",
+  "updated": "2022-04-05 14:21:07 +0200",
   "brakeman_version": "5.1.1"
 }

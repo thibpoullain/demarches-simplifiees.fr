@@ -25,9 +25,6 @@
 #  unlock_token                 :string
 #  created_at                   :datetime
 #  updated_at                   :datetime
-#  administrateur_id            :bigint
-#  expert_id                    :bigint
-#  instructeur_id               :bigint
 #  requested_merge_into_id      :bigint
 #
 class User < ApplicationRecord
@@ -44,6 +41,8 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable, :async,
     :recoverable, :rememberable, :trackable, :validatable, :confirmable, :lockable
 
+  self.ignored_columns = [:administrateur_id, :instructeur_id, :expert_id]
+
   has_many :dossiers, dependent: :destroy
   has_many :invites, dependent: :destroy
   has_many :dossiers_invites, through: :invites, source: :dossier
@@ -52,9 +51,9 @@ class User < ApplicationRecord
   has_many :requested_merge_from, class_name: 'User', dependent: :nullify, inverse_of: :requested_merge_into, foreign_key: :requested_merge_into_id
 
   has_one :france_connect_information, dependent: :destroy
-  belongs_to :instructeur, optional: true, dependent: :destroy
-  belongs_to :administrateur, optional: true, dependent: :destroy
-  belongs_to :expert, optional: true, dependent: :destroy
+  has_one :instructeur, dependent: :destroy
+  has_one :administrateur, dependent: :destroy
+  has_one :expert, dependent: :destroy
   belongs_to :requested_merge_into, class_name: 'User', optional: true
 
   accepts_nested_attributes_for :france_connect_information
@@ -62,6 +61,8 @@ class User < ApplicationRecord
   default_scope { eager_load(:instructeur, :administrateur, :expert) }
 
   before_validation -> { sanitize_email(:email) }
+
+  validate :does_not_merge_on_self, if: :requested_merge_into_id_changed?
 
   def validate_password_complexity?
     administrateur?
@@ -118,7 +119,7 @@ class User < ApplicationRecord
       .find_or_create_by(email: email)
 
     if user.valid?
-      if user.instructeur_id.nil?
+      if user.instructeur.nil?
         user.create_instructeur!
         user.update(france_connect_information: nil)
       end
@@ -132,7 +133,7 @@ class User < ApplicationRecord
   def self.create_or_promote_to_administrateur(email, password)
     user = User.create_or_promote_to_instructeur(email, password)
 
-    if user.valid? && user.administrateur_id.nil?
+    if user.valid? && user.administrateur.nil?
       user.create_administrateur!
       user.update(france_connect_information: nil)
     end
@@ -146,7 +147,7 @@ class User < ApplicationRecord
       .find_or_create_by(email: email)
 
     if user.valid?
-      if user.expert_id.nil?
+      if user.expert.nil?
         user.create_expert!
       end
     end
@@ -163,15 +164,15 @@ class User < ApplicationRecord
   end
 
   def administrateur?
-    administrateur_id.present?
+    administrateur.present?
   end
 
   def instructeur?
-    instructeur_id.present?
+    instructeur.present?
   end
 
   def expert?
-    expert_id.present?
+    expert.present?
   end
 
   def can_france_connect?
@@ -188,23 +189,38 @@ class User < ApplicationRecord
     end
 
     transaction do
-      Invite.where(dossier: dossiers.with_discarded).destroy_all
-      dossiers.state_en_construction.each do |dossier|
-        dossier.discard_and_keep_track!(administration, :user_removed)
+      # delete invites
+      Invite.where(dossier: dossiers).destroy_all
+
+      # delete dossiers brouillon
+      dossiers.state_brouillon.each do |dossier|
+        dossier.hide_and_keep_track!(dossier.user, :user_removed)
       end
-      DossierOperationLog.where(dossier: dossiers.with_discarded.discarded).not_deletion.destroy_all
-      dossiers.with_discarded.discarded.destroy_all
+      dossiers.state_brouillon.find_each(&:purge_discarded)
+
+      # delete dossiers en_construction
+      dossiers.state_en_construction.each do |dossier|
+        dossier.hide_and_keep_track!(dossier.user, :user_removed)
+      end
+      dossiers.state_en_construction.find_each(&:purge_discarded)
+
+      # delete dossiers terminé
+      dossiers.state_termine.each do |dossier|
+        dossier.hide_and_keep_track!(dossier.user, :user_removed)
+      end
       dossiers.update_all(deleted_user_email_never_send: email, user_id: nil, dossier_transfer_id: nil)
+
       destroy!
     end
   end
 
   def merge(old_user)
     transaction do
-      old_user.dossiers.with_discarded.update_all(user_id: id)
+      old_user.dossiers.update_all(user_id: id)
       old_user.invites.update_all(user_id: id)
       old_user.merge_logs.update_all(user_id: id)
 
+      # Move or merge old user's roles to the user
       [
         [old_user.instructeur, instructeur],
         [old_user.expert, expert],
@@ -216,6 +232,8 @@ class User < ApplicationRecord
           targeted_role.merge(old_role)
         end
       end
+      # (Ensure the old user doesn't reference its former roles anymore)
+      old_user.reload
 
       merge_logs.create(from_user_id: old_user.id, from_user_email: old_user.email)
       old_user.destroy
@@ -223,11 +241,20 @@ class User < ApplicationRecord
   end
 
   def ask_for_merge(requested_user)
-    update(requested_merge_into: requested_user)
-    UserMailer.ask_for_merge(self, requested_user.email).deliver_later
+    if update(requested_merge_into: requested_user)
+      UserMailer.ask_for_merge(self, requested_user.email).deliver_later
+      return true
+    else
+      return false
+    end
   end
 
   private
+
+  def does_not_merge_on_self
+    return if requested_merge_into_id != self.id
+    errors.add(:requested_merge_into, :same)
+  end
 
   def link_invites!
     Invite.where(email: email).update_all(user_id: id)

@@ -16,18 +16,16 @@
   %button.button.dropdown-button.icon-only{ 'aria-expanded' => 'false', 'aria-controls' => 'print-pj-menu' }
     %span.icon.attached
   %ul#print-pj-menu.print-menu.dropdown-content
-    %li
-      - if dossier.export_and_attachments_downloadable?
-        = link_to "Télécharger le dossier et toutes ses pièces jointes", telecharger_pjs_instructeur_dossier_path(dossier.procedure, dossier), target: "_blank", rel: "noopener", class: "menu-item menu-link"
-      - else
-        %p.menu-item Le téléchargement des pièces jointes est désactivé pour les dossiers de plus de #{number_to_human_size Dossier::TAILLE_MAX_ZIP}.
+    %li= link_to "Télécharger le dossier et toutes ses pièces jointes", telecharger_pjs_instructeur_dossier_path(dossier.procedure, dossier), target: "_blank", rel: "noopener", class: "menu-item menu-link"
 
 = render partial: "instructeurs/procedures/dossier_actions",
   locals: { procedure_id: dossier.procedure.id,
             dossier_id: dossier.id,
             state: dossier.state,
             archived: dossier.archived,
-            dossier_is_followed: current_instructeur&.follow?(dossier) }
+            dossier_is_followed: current_instructeur&.follow?(dossier),
+            close_to_expiration: dossier.close_to_expiration?,
+            hidden_by_administration: dossier.hidden_by_administration? }
 
 
 .state-button

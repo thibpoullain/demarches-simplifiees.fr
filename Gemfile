@@ -48,6 +48,7 @@ gem 'i18n_data'
 gem 'i18n-tasks', require: false
 gem 'iban-tools'
 gem 'image_processing'
+gem 'invisible_captcha'
 gem 'json_schemer'
 gem 'jwt'
 gem 'kaminari', '1.2.1' # Pagination
@@ -55,6 +56,10 @@ gem 'listen' # Required by ActiveSupport::EventedFileUpdateChecker
 gem 'lograge'
 gem 'logstash-event'
 gem 'mailjet', require: false
+gem 'matrix' # needed by prawn and not default in ruby 3.1
+gem 'net-imap', require: false # See https://github.com/mikel/mail/pull/1439
+gem 'net-pop', require: false # same
+gem 'net-smtp', require: false # same
 gem 'openid_connect'
 gem 'pg'
 gem 'phonelib'
@@ -68,6 +73,7 @@ gem 'rails'
 gem 'rails-i18n' # Locales par défaut
 gem 'rake-progressbar', require: false
 gem 'react-rails'
+gem 'rexml' # add missing gem due to ruby3 (https://github.com/Shopify/bootsnap/issues/325)
 gem 'rgeo-geojson'
 gem 'rqrcode'
 gem 'ruby-saml-idp'
@@ -79,10 +85,11 @@ gem 'sentry-ruby'
 gem 'sib-api-v3-sdk'
 gem 'skylight'
 gem 'spreadsheet_architect'
+gem 'strong_migrations' # lint database migrations
 gem 'typhoeus'
 gem 'warden'
 gem 'webpacker'
-gem 'zipline', github: 'fringd/zipline', ref: 'd637bbff2' # Unreleased 1.3.0, with a fix for Ruby 3.0 kwargs
+gem 'zipline'
 gem 'zxcvbn-ruby', require: 'zxcvbn'
 
 group :test do
@@ -110,15 +117,16 @@ group :development do
   gem 'rack-mini-profiler'
   gem 'rails-erd', require: false # generates `doc/database_models.pdf`
   gem 'rubocop', require: false
-  gem 'rubocop-rails_config'
-  gem 'rubocop-rspec-focused', require: false
+  gem 'rubocop-performance', require: false
+  gem 'rubocop-rails', require: false
+  gem 'rubocop-rspec', require: false
   gem 'scss_lint', require: false
   gem 'web-console'
 end
 
 group :development, :test do
   gem 'graphql-schema_comparator'
-  gem 'mina', git: 'https://github.com/mina-deploy/mina.git', require: false # Deploy
+  gem 'mina', require: false # Deploy
   gem 'pry-byebug' # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'rspec-rails'
   gem 'simple_xlsx_reader'

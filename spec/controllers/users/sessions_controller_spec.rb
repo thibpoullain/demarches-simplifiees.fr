@@ -221,4 +221,27 @@ describe Users::SessionsController, type: :controller do
       it { is_expected.to be true }
     end
   end
+
+  describe '#link_sent' do
+    render_views
+
+    before { get :link_sent, params: { email: link_email } }
+
+    context 'when the email is legit' do
+      let(:link_email) { 'a@a.com' }
+
+      it { expect(response.body).to include(link_email) }
+    end
+
+    context 'when the email is evil' do
+      [
+        'Hello, I am an evil email',
+        'a@a%C2%A0evil%C2%A0text%C2%A0with%C2%A0spaces'
+      ].each do |evil_attempt|
+        let(:link_email) { evil_attempt }
+
+        it { expect(response).to redirect_to(root_path) }
+      end
+    end
+  end
 end

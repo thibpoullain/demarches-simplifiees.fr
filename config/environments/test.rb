@@ -82,8 +82,7 @@ Rails.application.configure do
     config.log_level = :debug
   end
 
-  # Use Content-Security-Policy-Report-Only headers
-  config.content_security_policy_report_only = true
+  config.content_security_policy_report_only = false
 
   config.active_job.queue_adapter = :test
   config.active_storage.service = :test

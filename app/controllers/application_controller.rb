@@ -17,6 +17,7 @@ class ApplicationController < ActionController::Base
   before_action :set_active_storage_host
   before_action :setup_javascript_settings
   before_action :setup_tracking
+  before_action :set_customizable_view_path
 
   around_action :switch_locale
 
@@ -224,7 +225,7 @@ class ApplicationController < ActionController::Base
   def redirect_if_untrusted
     if instructeur_signed_in? &&
         sensitive_path &&
-        !feature_enabled?(:instructeur_bypass_email_login_token) &&
+        !current_instructeur.bypass_email_login_token &&
         !IPService.ip_trusted?(request.headers['X-Forwarded-For']) &&
         !trusted_device?
 
@@ -276,8 +277,11 @@ class ApplicationController < ActionController::Base
     matomo = Rails.application.secrets.matomo
 
     {
-      key: matomo[:client_key],
-      enabled: matomo[:enabled]
+      cookieDomain: matomo[:cookie_domain],
+      domain: matomo[:domain],
+      enabled: matomo[:enabled],
+      host: matomo[:host],
+      key: matomo[:client_key]
     }
   end
 
@@ -355,5 +359,9 @@ class ApplicationController < ActionController::Base
     if localization_enabled?
       http_accept_language.compatible_language_from(I18n.available_locales)
     end
+  end
+
+  def set_customizable_view_path
+    prepend_view_path "app/custom_views"
   end
 end

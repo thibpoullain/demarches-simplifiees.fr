@@ -12,20 +12,23 @@ FactoryBot.define do
     ask_birthday { false }
     lien_site_web { "https://mon-site.gouv" }
     path { SecureRandom.uuid }
+    association :zone
 
     groupe_instructeurs { [association(:groupe_instructeur, :default, procedure: instance, strategy: :build)] }
     administrateurs { administrateur.present? ? [administrateur] : [association(:administrateur)] }
 
     transient do
-      administrateur { }
+      administrateur {}
       instructeurs { [] }
       types_de_champ { [] }
       types_de_champ_private { [] }
       updated_at { nil }
+      attestation_template { nil }
+      dossier_submitted_message { nil }
     end
 
     after(:build) do |procedure, evaluator|
-      initial_revision = build(:procedure_revision, procedure: procedure)
+      initial_revision = build(:procedure_revision, procedure: procedure, attestation_template: evaluator.attestation_template, dossier_submitted_message: evaluator.dossier_submitted_message)
       add_types_de_champs(evaluator.types_de_champ, to: initial_revision, scope: :public)
       add_types_de_champs(evaluator.types_de_champ_private, to: initial_revision, scope: :private)
 
@@ -71,10 +74,16 @@ FactoryBot.define do
       end
     end
 
+    trait :with_bulk_message do
+      groupe_instructeurs { [association(:groupe_instructeur, :default, :with_bulk_message, procedure: instance, strategy: :build)] }
+    end
+
     trait :with_logo do
       logo { Rack::Test::UploadedFile.new('spec/fixtures/files/logo_test_procedure.png', 'image/png') }
     end
-
+    trait :expirable do
+      procedure_expires_when_termine_enabled { true }
+    end
     trait :with_path do
       path { generate(:published_path) }
     end
@@ -199,6 +208,24 @@ FactoryBot.define do
       end
     end
 
+    trait :with_dgfip do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_dgfip, procedure: procedure)
+      end
+    end
+
+    trait :with_pole_emploi do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_pole_emploi, procedure: procedure)
+      end
+    end
+
+    trait :with_mesri do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_mesri, procedure: procedure)
+      end
+    end
+
     trait :with_explication do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_explication, procedure: procedure)
@@ -293,6 +320,12 @@ FactoryBot.define do
           end
           build(:"type_de_champ_#{type_champ}", procedure: procedure, private: true, libelle: libelle, position: index)
         end
+      end
+    end
+
+    trait :with_dossier_submitted_message do
+      after(:build) do |procedure, _evaluator|
+        build(:dossier_submitted_message, revisions: [procedure.active_revision])
       end
     end
   end

@@ -15,6 +15,7 @@ class GroupeInstructeur < ApplicationRecord
   has_many :instructeurs, through: :assign_tos
   has_many :dossiers
   has_and_belongs_to_many :exports, dependent: :destroy
+  has_and_belongs_to_many :bulk_messages, dependent: :destroy
 
   validates :label, presence: { message: 'doit être renseigné' }, allow_nil: false
   validates :label, uniqueness: { scope: :procedure, message: 'existe déjà' }
@@ -23,4 +24,21 @@ class GroupeInstructeur < ApplicationRecord
 
   scope :without_group, -> (group) { where.not(id: group) }
   scope :for_api_v2, -> { includes(procedure: [:administrateurs]) }
+
+  def add(instructeur)
+    return if in?(instructeur.groupe_instructeurs)
+
+    default_notification_settings = instructeur.notification_settings(procedure_id)
+    instructeur.assign_to.create(groupe_instructeur: self, **default_notification_settings)
+  end
+
+  def remove(instructeur)
+    return if !in?(instructeur.groupe_instructeurs)
+
+    instructeur.groupe_instructeurs.destroy(self)
+    instructeur.follows
+      .joins(:dossier)
+      .where(dossiers: { groupe_instructeur: self })
+      .update_all(unfollowed_at: Time.zone.now)
+  end
 end

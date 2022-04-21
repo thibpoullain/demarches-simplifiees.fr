@@ -27,15 +27,23 @@ RSpec.describe DossierMailer, type: :mailer do
   end
 
   describe '.notify_new_answer with dossier brouillon' do
-    let(:dossier) { create(:dossier, procedure: create(:simple_procedure)) }
+    let(:service) { build(:service) }
+    let(:procedure) { create(:simple_procedure, service: service) }
+    let(:dossier) { create(:dossier, procedure: procedure) }
     let(:commentaire) { create(:commentaire, dossier: dossier) }
     subject { described_class.with(commentaire: commentaire).notify_new_answer }
 
     it { expect(subject.subject).to include("Nouveau message") }
     it { expect(subject.subject).to include(dossier.id.to_s) }
+    it { expect(subject.body).to include(dossier.procedure.service.email) }
     it { expect(subject.body).not_to include(messagerie_dossier_url(dossier)) }
 
     it_behaves_like 'a dossier notification'
+
+    context 'when there is no associated service' do
+      let(:service) { nil }
+      it { expect { subject }.not_to raise_error }
+    end
   end
 
   describe '.notify_new_answer with dossier en construction' do
@@ -60,16 +68,11 @@ RSpec.describe DossierMailer, type: :mailer do
     it { expect(subject.perform_deliveries).to be_falsy }
   end
 
-  describe '.notify_deletion_to_user' do
-    let(:deleted_dossier) { build(:deleted_dossier) }
+  def notify_deletion_to_administration(deleted_dossier, to_email)
+    @subject = default_i18n_subject(dossier_id: deleted_dossier.dossier_id)
+    @deleted_dossier = deleted_dossier
 
-    subject { described_class.notify_deletion_to_user(deleted_dossier, to_email) }
-
-    it { expect(subject.subject).to eq("Votre dossier nº #{deleted_dossier.dossier_id} a bien été supprimé") }
-    it { expect(subject.body).to include("Votre dossier") }
-    it { expect(subject.body).to include(deleted_dossier.dossier_id) }
-    it { expect(subject.body).to include("a bien été supprimé") }
-    it { expect(subject.body).to include(deleted_dossier.procedure.libelle) }
+    mail(to: to_email, subject: @subject)
   end
 
   describe '.notify_deletion_to_administration' do
@@ -114,9 +117,10 @@ RSpec.describe DossierMailer, type: :mailer do
   end
 
   describe '.notify_automatic_deletion_to_user' do
+    let(:deleted_dossier) { create(:deleted_dossier, dossier: dossier, reason: :expired) }
+
     describe 'en_construction' do
       let(:dossier) { create(:dossier, :en_construction) }
-      let(:deleted_dossier) { DeletedDossier.create_from_dossier(dossier, :expired) }
 
       subject { described_class.notify_automatic_deletion_to_user([deleted_dossier], dossier.user.email) }
 
@@ -129,7 +133,6 @@ RSpec.describe DossierMailer, type: :mailer do
 
     describe 'termine' do
       let(:dossier) { create(:dossier, :accepte) }
-      let(:deleted_dossier) { DeletedDossier.create_from_dossier(dossier, :expired) }
 
       subject { described_class.notify_automatic_deletion_to_user([deleted_dossier], dossier.user.email) }
 
@@ -142,8 +145,8 @@ RSpec.describe DossierMailer, type: :mailer do
   end
 
   describe '.notify_automatic_deletion_to_administration' do
-    let(:dossier) { create(:dossier) }
-    let(:deleted_dossier) { DeletedDossier.create_from_dossier(dossier, :expired) }
+    let(:dossier) { create(:dossier, :en_construction) }
+    let(:deleted_dossier) { create(:deleted_dossier, dossier: dossier, reason: :expired) }
 
     subject { described_class.notify_automatic_deletion_to_administration([deleted_dossier], dossier.user.email) }
 

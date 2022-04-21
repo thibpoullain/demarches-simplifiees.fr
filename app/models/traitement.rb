@@ -2,13 +2,14 @@
 #
 # Table name: traitements
 #
-#  id                :bigint           not null, primary key
-#  instructeur_email :string
-#  motivation        :string
-#  process_expired   :boolean
-#  processed_at      :datetime
-#  state             :string
-#  dossier_id        :bigint
+#  id                       :bigint           not null, primary key
+#  instructeur_email        :string
+#  motivation               :string
+#  process_expired          :boolean
+#  process_expired_migrated :boolean          default(FALSE)
+#  processed_at             :datetime
+#  state                    :string
+#  dossier_id               :bigint
 #
 class Traitement < ApplicationRecord
   belongs_to :dossier, optional: false
@@ -21,7 +22,7 @@ class Traitement < ApplicationRecord
     includes(:dossier)
       .termine
       .where(dossier: procedure.dossiers)
-      .where.not('dossiers.en_construction_at' => nil, :processed_at => nil)
+      .where.not('dossiers.depose_at' => nil, processed_at: nil)
       .order(:processed_at)
   end
 
@@ -42,9 +43,9 @@ class Traitement < ApplicationRecord
       .to_sql
 
     sql = <<~EOF
-      select date_trunc('month', r1.processed_at) as month, count(r1.processed_at)
+      select date_trunc('month', r1.processed_at::TIMESTAMPTZ AT TIME ZONE '#{Time.zone.formatted_offset}'::INTERVAL) as month, count(r1.processed_at)
       from (#{last_traitements_per_dossier}) as r1
-      group by date_trunc('month', r1.processed_at)
+      group by date_trunc('month', r1.processed_at::TIMESTAMPTZ AT TIME ZONE '#{Time.zone.formatted_offset}'::INTERVAL)
       order by month desc
     EOF
 

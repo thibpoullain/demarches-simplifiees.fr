@@ -109,6 +109,10 @@ Pour exécuter les tests de l'application, plusieurs possibilités :
 
         bin/rspec --only-failures
 
+- Lancer un ou des tests systèmes avec un browser
+
+        NO_HEADLESS=1 bin/rspec spec/system
+
 ### Ajout de taches à exécuter au déploiement
 
         rails generate after_party:task task_name
@@ -128,14 +132,7 @@ Le projet utilise plusieurs linters pour vérifier la lisibilité et la qualité
 
 ## Déploiement
 
-Dans le cas d’un déploiement sur plusieurs serveurs, l’application peut être déployée avec la tâche :
-
-```
-DOMAINS="web1 web2" BRANCH="main" bin/rake deploy
-```
-
-En interne, cette tâche utilise [mina](https://github.com/mina-deploy/mina) pour lancer les commandes
-de déploiement sur tous les serveurs spécifiés.
+Voir les notes de déploiement dans [DEPLOYMENT.md](doc/DEPLOYMENT.md)
 
 ## Tâches courantes
 

@@ -189,6 +189,18 @@ FactoryBot.define do
       type_de_champ { association :type_de_champ_cnaf, procedure: dossier.procedure }
     end
 
+    factory :champ_dgfip, class: 'Champs::DgfipChamp' do
+      type_de_champ { association :type_de_champ_dgfip, procedure: dossier.procedure }
+    end
+
+    factory :champ_pole_emploi, class: 'Champs::PoleEmploiChamp' do
+      type_de_champ { association :type_de_champ_pole_emploi, procedure: dossier.procedure }
+    end
+
+    factory :champ_mesri, class: 'Champs::MesriChamp' do
+      type_de_champ { association :type_de_champ_mesri, procedure: dossier.procedure }
+    end
+
     factory :champ_siret, class: 'Champs::SiretChamp' do
       type_de_champ { association :type_de_champ_siret, procedure: dossier.procedure }
       association :etablissement, factory: [:etablissement]

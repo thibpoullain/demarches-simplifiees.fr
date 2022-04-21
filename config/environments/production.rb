@@ -1,4 +1,5 @@
 require "active_support/core_ext/integer/time"
+require Rails.root.join("app/lib/balancer_delivery_method")
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -96,36 +97,20 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   if ENV['MAILTRAP_ENABLED'] == 'enabled'
-    config.action_mailer.delivery_method = :smtp
-    config.action_mailer.smtp_settings = {
-      user_name: Rails.application.secrets.mailtrap[:username],
-      password: Rails.application.secrets.mailtrap[:password],
-      address: 'smtp.mailtrap.io',
-      domain: 'smtp.mailtrap.io',
-      port: '2525',
-      authentication: :cram_md5
+    config.action_mailer.delivery_method = :mailtrap
+
+  elsif ENV['SENDINBLUE_ENABLED'] == 'enabled' && ENV['SENDINBLUE_BALANCING'] == 'enabled'
+    ActionMailer::Base.add_delivery_method :balancer, BalancerDeliveryMethod
+    config.action_mailer.balancer_settings = {
+      sendinblue: ENV.fetch('SENDINBLUE_BALANCING_VALUE').to_i,
+      mailjet: 100 - ENV.fetch('SENDINBLUE_BALANCING_VALUE').to_i
     }
+    config.action_mailer.delivery_method = :balancer
+
   elsif ENV['SENDINBLUE_ENABLED'] == 'enabled'
-    config.action_mailer.delivery_method = :smtp
-    config.action_mailer.smtp_settings = {
-      user_name: Rails.application.secrets.sendinblue[:username],
-      password: Rails.application.secrets.sendinblue[:smtp_key],
-      address: 'smtp-relay.sendinblue.com',
-      domain: 'smtp-relay.sendinblue.com',
-      port: '587',
-      authentication: :cram_md5
-    }
-  elsif ENV['SMTP_ENABLED'] == 'enabled'
-    config.action_mailer.delivery_method = :smtp
-    config.action_mailer.smtp_settings = {
-      user_name: Rails.application.secrets.smtp[:username],
-      password: Rails.application.secrets.smtp[:password],
-      address: ENV['SMTP_HOST'],
-      domain: ENV['SMTP_DOMAIN'],
-      port: ENV['SMTP_PORT']
-      # Ajustement possible : :cram_md5 ou :plain ou :login
-      # authentication: :cram_md5
-    }
+    config.action_mailer.delivery_method = :sendinblue
+  elsif ENV['MAILCATCHER_ENABLED'] == 'enabled'
+    config.action_mailer.delivery_method = :mailcatcher
   else
     config.action_mailer.delivery_method = :mailjet
   end
@@ -142,14 +127,12 @@ Rails.application.configure do
   # the I18n.default_locale when a translation cannot be found).
   config.i18n.fallbacks = true
 
-  if ENV['FOG_ENABLED'] == 'enabled'
-    config.active_storage.service = :openstack
-  elsif ENV['S3_ENABLED'] == 'enabled'
-    config.active_storage.service = :s3
+  config.active_storage.service = ENV.fetch("ACTIVE_STORAGE_SERVICE").to_sym
+
+  if ENV['ACTIVE_STORAGE_SERVICE'] == 's3'
     # Les PJ sont affichées au travers l'applicatif (pour application ICAP, le cas échéant)
+    # ie : URL de la forme https://demat-social[...] plutôt que https://storage-eb4.cegedim[...]
     config.active_storage.resolve_model_to_route = :rails_storage_proxy
-  else
-    raise Exception.new "Un mode de stockage objet doit être configuré : FOG_ENABLED ou S3_ENABLED"
   end
 
   # Send deprecation notices to registered listeners.

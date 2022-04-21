@@ -1,0 +1,54 @@
+en:
+  links:
+    provider:
+      name: "DINUM"
+      url: "https://numerique.gouv.fr"
+    footer:
+      accessibilite:
+        label: "Accessibility: not compliant"
+        title: "Accessibility: not compliant"
+        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_accessibilite.pdf"
+      aide:
+        label: "Help"
+        title: "Frequently Asked Questions"
+        url: "https://faq.demarches-simplifiees.fr"
+      cgu:
+        label: "ToS"
+        title: "Terms of Service"
+        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU.pdf"
+      confidentialite:
+        label: "Confidentiality declaration"
+        title: "Confidentiality declaration"
+        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_Politique_de_confidentialite.pdf"
+      contact:
+        label: "Contact"
+        title: "Contact"
+      contact_technique:
+        label: "Technical contact"
+        title: "Technical contact"
+      doc:
+        label: "Documentation"
+        title: "Documentation"
+        url: "https://doc.demarches-simplifiees.fr"
+      doc_nouveautes:
+        label: "News"
+        title: "News"
+        url: "https://doc.demarches-simplifiees.fr/nouveautes"
+      faq:
+        label: "FAQ"
+        title: "Frequently Asked Questions"
+        url: "https://faq.demarches-simplifiees.fr"
+      faq_admin:
+        label: "FAQ"
+        title: "Frequently Asked Questions"
+        url: "https:///faq.demarches-simplifiees.fr/collection/1-administrateur-creation-dun-formulaire"
+      mentions_legales:
+        label: "Legal notices"
+        title: "Legal notices"
+        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_Mentions-legales.pdf"
+      stats:
+        label: "Statistics"
+      webinaire:
+        label: "Online workshop registration"
+        title: "Online workshop registration"
+        url: "https://app.livestorm.co/demarches-simplifiees"

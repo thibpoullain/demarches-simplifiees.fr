@@ -18,6 +18,12 @@ fr:
         <p><a href=%{link_instruction_info}>En savoir plus</a></p>
         <br>
         <p>Si vous souhaitez poser une question pour un problème technique sur le site, utilisez le formulaire ci-dessous. Nous ne pourrons pas vous renseigner sur l’instruction de votre dossier.</p>"
+      product:
+        question: J’ai une idée d’amélioration pour votre site
+        answer_html: "<p>Une idée ? Pensez à consulter notre <strong>tableau de bord des améliorations</strong></p>
+        <ul><li>Votez pour vos améliorations prioritaires;</li>
+        <li>Proposez votre propre idée.</li></ul>
+        <p><strong><a href=%{link_product}>➡ Accéder au tableau des améliorations</a></strong></p>"
       lost_user:
         question: Je ne trouve pas la démarche que je veux faire
         answer_html: "<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : %{base_url}/commencer/NOM_DE_LA_DEMARCHE.</p>"

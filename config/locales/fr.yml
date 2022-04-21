@@ -20,10 +20,14 @@
 # available at http://guides.rubyonrails.org/i18n.html.
 
 fr:
+  invisible_captcha:
+    custom_message: 'Si vous êtes un humain, veuillez ignorer ce champs'
+
   help: 'Aide'
   utils:
     'yes': Oui
     'no': Non
+    i_dont_know: Je ne sais pas
     deconnexion: "Déconnexion"
     pj: "Pièces jointes"
     asterisk_html: Les champs suivis d’un astérisque ( <span class = mandatory> * </span> ) sont obligatoires.
@@ -31,9 +35,12 @@ fr:
     subject: Sujet
     message: Message
     send_mail: Envoyer le message
+    procedure: Démarches
   helpers:
     procedure:
       testing_procedure: démarche en test
+      close: Close
+      unpublished: Dépubliée
     commentaire:
       send_message_to_instructeur: "Envoyer un message à l’instructeur"
       reply_in_mailbox: "Répondre dans la messagerie."
@@ -43,6 +50,7 @@ fr:
         line1: Un outil simple
         line2: pour gérer les formulaires
         line3: administratifs dématérialisés.
+        are_you_new: Vous êtes nouveau sur %{app_name} ?
     locale_dropdown:
       languages: "Langues"
     notifications:
@@ -50,7 +58,6 @@ fr:
         access: Consulter mon dossier
         question: J’ai une question
         reply: Répondre à ce message
-
   views:
     commencer:
       show:
@@ -130,14 +137,55 @@ fr:
           edit_identity: "Modifier l’identité"
     instructeurs:
       dossiers:
+        tab_steps:
+          to_follow: à suivre
+          total: au total
+          request: Demande
+          private_annotations: Annotations privées
+          external_opinion: Avis externes
+          messaging: Messagerie
+          involved_persons: Personnes impliquées
+        tab_explainations:
+          a_suivre: Aucun instructeur n’est affecté au suivi de ces dossiers. Soyez le premier !
+          suivis: Les dossiers qui sont dans cet onglet sont uniquement ceux que vous suivez. Vous pouvez échanger avec le demandeur jusqu'à pouvoir les accepter, les refuser ou les classer sans suite.
+          traites: "Les dossiers dans cet onglet sont terminés : ils ont été acceptés, refusés ou classés sans suite."
+          tous: Tous les dossiers qui ont été déposés sur cette démarche, quel que soit le statut.
+          supprimes_recemment: Tous les dossiers terminés et supprimés par les instructeurs sur cette démarche
+          archives:  "Les dossiers de cet onglet sont archivés : vous ne pouvez plus y répondre, et les demandeurs ne peuvent plus les modifier."
+          expirant: Les dossiers n'expireront pas avant la période de conservation des données.
+        archived_dossier: "Le dossier sera conservé 1 mois supplémentaire"
+        delete_dossier: "Supprimer le dossier"
         deleted_by_user: "Dossier supprimé par l'usager"
+        deleted_by_administration: "Dossier supprimé par l'administration"
+        restore: "Restaurer"
+        filters:
+          column: Colonne
+          value: Valeur
+          add_filter: Ajouter le filtre
+          title: Filtrer
+        personalize: Personnaliser
+        download: Télécharger un dossier
+        follow_file: Suivre le dossier
+        stop_follow: Ne plus suivre
+        save: Enregistrer
+        no_file: Aucun dossier
+        dossier_synthesis: Synthèse des dossiers
+      avis:
+        introduction_file_explaination: "Fichier joint à la demande d’avis"
     users:
       dossiers:
+        archived_dossier: "Votre dossier sera conservé %{duree_conservation_dossiers_dans_ds} mois supplémentaire"
         autosave:
           autosave_draft: Votre brouillon est automatiquement enregistré.
+          autosave_confirmation: Brouillon enregistré
+          more_information: More informations
           more_infos: En savoir plus
         identite:
           identity_data: Données d’identité
+          civility: Civilité
+          first_name: Prénom
+          last_name: Nom
+          birthdate: Date de naissance
           complete_data: Merci de remplir vos informations personnelles pour accéder à la démarche.
           continue: Continuer
         merci:
@@ -177,6 +225,8 @@ fr:
           mailbox: "La messagerie vous permet de contacter l’instructeur en charge de votre dossier."
         demande:
           edit_dossier: "Modifier le dossier"
+        search:
+          search_file: Rechercher un dossier
         index:
           dossiers: "Dossiers"
         dossiers_list:
@@ -190,7 +240,6 @@ fr:
           edit_dossier: "Modifier le dossier"
           start_other_dossier: "Commencer un autre dossier"
           delete_dossier: "Supprimer le dossier"
-          hide_dossier: "Supprimer de votre interface"
           transfer_dossier: "Transferer le dossier"
           edit_draft: "Modifier le brouillon"
           actions: "Actions"
@@ -202,10 +251,9 @@ fr:
           remember_me: Se souvenir de moi
           reset_password: Mot de passe oublié ?
           connection: Se connecter
-          are_you_new: Vous êtes nouveau sur %{app_name} ?
           find_procedure: Trouvez votre démarche
-          instructor_or_admin: Vous êtes instructeur ou administrateur ?
-          connect_with_agent_connect: Se connecter avec AgentConnect
+          state_civil_servant: Vous êtes agent de la fonction publique d’État ?
+          connect_with_agent_connect: Accédez à notre page dédiée
       passwords:
         reset_link_sent:
           email_sent_html: "Nous vous avons envoyé un email à l’adresse <strong>%{email}</strong>."
@@ -239,6 +287,7 @@ fr:
     attributes:
       default_attributes: &default_attributes
         password: 'Le mot de passe'
+        requested_merge_into: 'La nouvelle adresse email'
       user:
         siret: 'Numéro SIRET'
         << : *default_attributes
@@ -246,6 +295,8 @@ fr:
         << : *default_attributes
       super_admin:
         << : *default_attributes
+      procedure:
+        zone: Zone qui met en œuvre la démarche
     errors:
       messages:
         not_a_phone: 'Numéro de téléphone invalide'
@@ -266,6 +317,8 @@ fr:
               not_strong: 'n’est pas assez complexe'
             password_confirmation:
               confirmation: ': Les deux mots de passe ne correspondent pas'
+            requested_merge_into:
+              same: "ne peut être identique à l’ancienne"
         invite:
           attributes:
             email:
@@ -293,6 +346,12 @@ fr:
               invalid: "doit être composé au maximum de 7 chiffres"
             code_postal:
               invalid: "doit posséder 5 caractères"
+        "champs/dgfip_champ":
+          attributes:
+            numero_fiscal:
+              invalid: "doit posséder 13 ou 14 caractères"
+            reference_avis:
+              invalid: "doit posséder 13 ou 14 caractères"
   errors:
     messages:
       saml_not_authorized: "Vous n’êtes pas autorisé à accéder à ce service."
@@ -308,6 +367,8 @@ fr:
         connexion: "Erreur lors de la connexion à France Connect."
         forbidden_html: "Seul-e-s les usagers peuvent se connecter via France Connect. En tant qu’instructeur ou administrateur, nous vous invitons à <a href='%{reset_link}'>réininitialiser votre mot de passe</a>."
       procedure_archived: "Cette démarche en ligne a été close, il n’est plus possible de déposer de dossier."
+      empty_repetition: '« %{value} » doit comporter au moins un champ répétable'
+      empty_drop_down: '« %{value} » doit comporter au moins un choix sélectionnable'
       # procedure_not_draft: "Cette démarche n’est maintenant plus en brouillon."
       cadastres_empty:
         one: "Aucune parcelle cadastrale sur la zone sélectionnée"
@@ -350,18 +411,22 @@ fr:
       zero: dossier invité
       one: dossier invité
       other: dossiers invités
-    dossiers_supprimes:
-      zero: dossier supprimé
-      one: dossier supprimé
-      other: dossiers supprimés
+    dossiers_supprimes_recemment:
+      zero: supprimé recemment
+      one:  supprimé recemment
+      other: supprimés recemment
+    dossiers_supprimes_definitivement:
+      zero: supprimé définitivement
+      one:  supprimé définitivement
+      other: supprimés définitivement
     dossiers_transferes:
       zero: demande de transfert
       one: demande de transfert
       other: demandes de transfert
     dossiers_close_to_expiration:
-      zero: dossier expirant
-      one: dossier expirant
-      other: dossiers expirant
+      zero: expirant
+      one: expirant
+      other: expirant
     dossier_trouve:
       zero: 0 dossier trouvé
       one: 1 dossier trouvé
@@ -383,13 +448,13 @@ fr:
       test_procedure: "Ce dossier est déposé sur une démarche en test. Toute modification de la démarche par l’administrateur (ajout d'un champ, publication de la démarche...) entraînera sa suppression."
       no_access: "Vous n’avez pas accès à ce dossier"
       no_longer_editable: "Votre dossier ne peut plus être modifié"
+
       create_commentaire:
         message_send: "Votre message a bien été envoyé à l’instructeur en charge de votre dossier."
       ask_deletion:
         undergoingreview: "L’instruction de votre dossier a commencé, il n’est plus possible de supprimer votre dossier. Si vous souhaitez annuler l’instruction contactez votre administration par la messagerie de votre dossier."
-        deleted_dossier: "Votre dossier a bien été supprimé."
-      extend_conservation:
-        archived_dossier: "Votre dossier sera conservé un mois supplémentaire"
+        soft_deleted_dossier: "Votre dossier a bien été supprimé de votre interface"
+      restore: "Votre dossier a bien été restauré"
       update_brouillon:
         draft_saved: "Votre brouillon a bien été sauvegardé."
       etablissement:
@@ -398,7 +463,15 @@ fr:
         identity_saved: "Identité enregistrée"
       attestation:
         no_longer_available: "L’attestation n'est plus disponible sur ce dossier."
-  new_administrateur:
+  instructeurs:
+    dossiers:
+       deleted_by_instructeur: "Le dossier a bien été supprimé de votre interface"
+       impossible_deletion: "Supression impossible : le dossier n'est pas traité"
+       restore: "Le dossier a bien été restauré"
+       labels:
+        to_follow: à suivre
+        total: dossiers
+  administrateurs:
     procedures:
       show:
         ready: "Validé"
@@ -407,12 +480,12 @@ fr:
     jeton_particulier:
       show:
         configure_token: "Configurer le jeton API Particulier"
-        api_particulier_description_html: "%{app_name} utilise <a href=\"https://api.gouv.fr/les-api/api-particulier\">API Particulier</a> qui permet de récupérer les données familiales (CAF).<br />Renseignez ici le <a href=\"https://api.gouv.fr/les-api/api-particulier/demande-acces\">jeton API Particulier</a> propre à votre démarche."
+        api_particulier_description_html: "%{app_name} utilise <a href=\"https://api.gouv.fr/les-api/api-particulier\">API Particulier</a> qui permet d'accéder aux données familiales (CAF), aux données fiscales (DGFiP), au statut pôle-emploi et au statut étudiant d'un citoyen.<br />Renseignez ici le <a href=\"https://api.gouv.fr/les-api/api-particulier/demande-acces\">jeton API Particulier</a> propre à votre démarche."
         token_description: "Il doit contenir au minimum 15 caractères."
       update:
         token_ok: "Le jeton a bien été mis à jour"
-        no_scopes_token: "Mise à jour impossible : le jeton n'a pas acces aux données.<br /><br />Vérifier le auprès de <a href='https://datapass.api.gouv.fr/'>https://datapass.api.gouv.fr/</a>"
-        not_found_token: "Mise à jour impossible : le jeton n'a pas été trouvé ou n'est pas actif<br /><br />Vérifier le auprès de <a href='https://datapass.api.gouv.fr/'>https://datapass.api.gouv.fr/</a>"
+        no_scopes_token: "Mise à jour impossible : le jeton n'a pas acces aux données.<br /><br />Vérifiez-le auprès de <a href='https://datapass.api.gouv.fr/'>https://datapass.api.gouv.fr/</a>"
+        not_found_token: "Mise à jour impossible : le jeton n'a pas été trouvé ou n'est pas actif<br /><br />Vérifiez-le auprès de <a href='https://datapass.api.gouv.fr/'>https://datapass.api.gouv.fr/</a>"
         network_error:  "Mise à jour impossible : une erreur réseau est survenue"
       api_particulier:
         already_configured: "Déjà rempli"
@@ -421,7 +494,7 @@ fr:
       show:
         title: "Définir les sources de données"
         data_sources: "Sources de données"
-        explication_html: "<p>API Particulier facilite l’accès des administrations aux données familiales (CAF) pour simplifier les démarches administratives mises en œuvre par les collectivités et les administrations.<br> Cela permet aux administrations d’accéder à des informations certifiées à la source et ainsi : </p> <ul> <li>de s’affranchir des pièces justificatives lors des démarches en ligne,</li> <li>de réduire le nombre d’erreurs de saisie,</li> <li>d’écarter le risque de fraude documentaire.</li> </ul> <p> <strong>Important&nbsp;:</strong> les disposition de l'article <a href='https://www.legifrance.gouv.fr/affichCodeArticle.do?cidTexte=LEGITEXT000031366350&amp;idArticle=LEGIARTI000031367412&amp;dateTexte=&amp;categorieLien=cid'>L144-8</a> n’autorisent que l’échange des informations strictement nécessaires pour traiter une démarche.<br /><br />En conséquence, ne sélectionnez ici que les données auxquelles vous aurez accès d’un point de vue légal.</p>"
+        explication_html: "<p>API Particulier facilite l’accès des administrations aux données familiales (CAF), aux données fiscales (DGFiP), au statut pôle-emploi et au statut étudiant d'un citoyen pour simplifier les démarches administratives mises en œuvre par les collectivités et les administrations.<br> Cela permet aux administrations d’accéder à des informations certifiées à la source et ainsi : </p> <ul> <li>de s’affranchir des pièces justificatives lors des démarches en ligne,</li> <li>de réduire le nombre d’erreurs de saisie,</li> <li>d’écarter le risque de fraude documentaire.</li> </ul> <p> <strong>Important&nbsp;:</strong> les disposition de l'article <a href='https://www.legifrance.gouv.fr/affichCodeArticle.do?cidTexte=LEGITEXT000031366350&amp;idArticle=LEGIARTI000031367412&amp;dateTexte=&amp;categorieLien=cid'>L144-8</a> n’autorisent que l’échange des informations strictement nécessaires pour traiter une démarche.<br /><br />En conséquence, ne sélectionnez ici que les données auxquelles vous aurez accès d’un point de vue légal.</p>"
       update:
         sources_ok: 'Mise à jour effectuée'
     procedures:
@@ -429,6 +502,8 @@ fr:
         ready: "Validé"
         needs_configuration: "À configurer"
         configure_api_particulier_token: "Configurer le jeton API particulier"
+  zones:
+    ministeres: Ministères
   france_connect:
     particulier:
       password_confirmation:
@@ -449,3 +524,20 @@ fr:
         invalid_password: "Mauvais mot de passe"
         connection_done: "Les comptes FranceConnect et %{application_name} sont à présent fusionnés"
         merger_token_expired: "Le délai pour fusionner les comptes FranceConnect et %{application_name} est expirée. Veuillez recommencer la procédure pour vous fusionner les comptes."
+  shared:
+    procedures:
+      stats:
+        usual_processing_time: "Temps de traitement usuel"
+        processing_time_description: "%{percentile}% des demandes des %{span} derniers jours ont été traitées en moins de %{days}."
+        processing_time: "Temps de traitement"
+        since_procedure_creation: "depuis le lancement de la démarche"
+        nb_days: "Nb Jours"
+        processing_time_graph_description: "Temps de traitement entre le passage en instruction et la réponse (accepté, refusé, ou classé sans suite) pour 90% des dossiers"
+        status_evolution_details: "depuis le lancement de la démarche"
+        status_evolution: "Avancée des dossiers"
+        acceptance_rate: "Taux d’acceptation"
+        acceptance_rate_details: "depuis le lancement de la démarche"
+        rate: "Taux"
+        dossiers_count: "Nb dossiers"
+        weekly_distribution: "Répartition par semaine"
+        weekly_distribution_details: "au cours des 6 derniers mois"

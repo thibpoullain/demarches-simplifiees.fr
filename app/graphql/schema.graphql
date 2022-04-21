@@ -233,6 +233,30 @@ type CiviliteChamp implements Champ {
   value: Civilite
 }
 
+type Commune {
+  """
+  Le code INSEE
+  """
+  code: String!
+  name: String!
+}
+
+type CommuneChamp implements Champ {
+  commune: Commune
+  departement: Departement
+  id: ID!
+
+  """
+  Libellé du champ.
+  """
+  label: String!
+
+  """
+  La valeur du champ sous forme texte.
+  """
+  stringValue: String
+}
+
 """
 GeoJSON coordinates
 """
@@ -649,6 +673,11 @@ enum DemarcheState {
   publiee
 }
 
+type Departement {
+  code: String!
+  name: String!
+}
+
 """
 Represents direct upload credentials
 """
@@ -689,22 +718,42 @@ type Dossier {
   champs(id: ID): [Champ!]!
 
   """
+  Date de dépôt.
+  """
+  dateDepot: ISO8601DateTime!
+
+  """
   Date de la dernière modification.
   """
   dateDerniereModification: ISO8601DateTime!
 
   """
-  Date de dépôt.
+  Date d’expiration.
+  """
+  dateExpiration: ISO8601DateTime
+
+  """
+  Date du dernier passage en construction.
   """
   datePassageEnConstruction: ISO8601DateTime!
 
   """
-  Date de passage en instruction.
+  Date du dernier passage en instruction.
   """
   datePassageEnInstruction: ISO8601DateTime
 
   """
-  Date de traitement.
+  Date de la suppression par l’administration.
+  """
+  dateSuppressionParAdministration: ISO8601DateTime
+
+  """
+  Date de la suppression par l’usager.
+  """
+  dateSuppressionParUsager: ISO8601DateTime
+
+  """
+  Date du dernier traitement.
   """
   dateTraitement: ISO8601DateTime
   demandeur: Demandeur!
@@ -736,6 +785,7 @@ type Dossier {
   L’état du dossier.
   """
   state: DossierState!
+  traitements: [Traitement!]!
   usager: Profile!
 }
 
@@ -1843,6 +1893,14 @@ enum TitreIdentiteGrantType {
   piece_justificative
 }
 
+type Traitement {
+  dateTraitement: ISO8601DateTime!
+  emailAgentTraitant: String
+  id: ID!
+  motivation: String
+  state: DossierState!
+}
+
 enum TypeDeChamp {
   """
   Adresse
@@ -1900,6 +1958,11 @@ enum TypeDeChamp {
   departements
 
   """
+  Données de la Direction générale des Finances publiques
+  """
+  dgfip
+
+  """
   Lien vers un autre dossier
   """
   dossier_link
@@ -1945,6 +2008,11 @@ enum TypeDeChamp {
   linked_drop_down_list
 
   """
+  Données du Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation
+  """
+  mesri
+
+  """
   Choix multiples
   """
   multiple_drop_down_list
@@ -1968,6 +2036,11 @@ enum TypeDeChamp {
   Pièce justificative
   """
   piece_justificative
+
+  """
+  Situation Pôle emploi
+  """
+  pole_emploi
 
   """
   Régions

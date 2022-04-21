@@ -37,4 +37,6 @@ fr:
           iban: 'Iban'
           annuaire_education: 'Annuaire de l’éducation'
           cnaf: 'Données de la Caisse nationale des allocations familiales'
-
+          dgfip: 'Données de la Direction générale des Finances publiques'
+          pole_emploi: 'Situation Pôle emploi'
+          mesri: "Données du Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation"

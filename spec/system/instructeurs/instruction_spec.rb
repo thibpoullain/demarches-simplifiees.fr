@@ -70,9 +70,7 @@ describe 'Instructing a dossier:', js: true do
     click_on procedure.libelle
     click_on 'traité'
     click_on 'Actions'
-    accept_confirm do
-      click_on 'Supprimer le dossier'
-    end
+    click_on 'Supprimer le dossier'
     click_on 'traité'
     expect(page).not_to have_button('Actions')
   end
@@ -107,7 +105,9 @@ describe 'Instructing a dossier:', js: true do
     assert_performed_jobs 1
 
     click_on "Télécharger tous les dossiers"
-    click_on "Demander un export au format .xlsx"
+    within(:css, '.procedure-actions') do
+      click_on "Demander un export au format .xlsx"
+    end
     expect(page).to have_text('Nous générons cet export.')
     expect(page).to have_text('Un export au format .xlsx est en train d’être généré')
 
@@ -116,13 +116,25 @@ describe 'Instructing a dossier:', js: true do
     expect(page).to have_text('Nous générons cet export.')
     expect(page).to have_text('Un export des 30 derniers jours au format .xlsx est en train d’être généré')
 
+    click_on "Télécharger un dossier"
+    within(:css, '.dossiers-export') do
+      click_on "Demander un export au format .csv"
+    end
+    expect(page).to have_text('Nous générons cet export.')
+    expect(page).to have_text('Un export au format .csv est en train d’être généré')
+
     perform_enqueued_jobs(only: ExportJob)
-    assert_performed_jobs 3
+    assert_performed_jobs 4
     page.driver.browser.navigate.refresh
 
     click_on "Télécharger tous les dossiers"
     expect(page).to have_text('Télécharger l’export au format .xlsx')
     expect(page).to have_text('Télécharger l’export des 30 derniers jours au format .xlsx')
+    # close dropdown menu
+    click_on "Télécharger tous les dossiers"
+
+    click_on "Télécharger un dossier"
+    expect(page).to have_text('Télécharger l’export au format .xlsx')
   end
 
   scenario 'A instructeur can see the personnes impliquées' do
@@ -165,8 +177,8 @@ describe 'Instructing a dossier:', js: true do
 
     click_on 'Personnes impliquées'
 
-    select_multi_combobox('email instructeur', instructeur_2.email, instructeur_2.id)
-    select_multi_combobox('email instructeur', instructeur_3.email, instructeur_3.id)
+    select_combobox('Emails', instructeur_2.email, instructeur_2.email, check: false)
+    select_combobox('Emails', instructeur_3.email, instructeur_3.email, check: false)
 
     click_on 'Envoyer'
 
@@ -181,15 +193,19 @@ describe 'Instructing a dossier:', js: true do
     let(:commentaire) { create(:commentaire, instructeur: instructeur, dossier: dossier) }
 
     before do
-      dossier.passer_en_instruction!(instructeur)
-      champ.piece_justificative_file.attach(io: File.open(path), filename: "piece_justificative_0.pdf", content_type: "application/pdf")
+      dossier.passer_en_instruction!(instructeur: instructeur)
+      champ.piece_justificative_file
+        .attach(io: File.open(path),
+                filename: "piece_justificative_0.pdf",
+                content_type: "application/pdf",
+                metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE })
 
       log_in(instructeur.email, password)
       visit instructeur_dossier_path(procedure, dossier)
     end
 
     scenario 'A instructeur can download an archive containing a single attachment' do
-      find(:css, '.attached').click
+      find(:css, '[aria-controls=print-pj-menu]').click
       click_on 'Télécharger le dossier et toutes ses pièces jointes'
       # For some reason, clicking the download link does not trigger the download in the headless browser ;
       # So we need to go to the download link directly
@@ -207,7 +223,12 @@ describe 'Instructing a dossier:', js: true do
     end
 
     scenario 'A instructeur can download an archive containing several identical attachments' do
-      commentaire.piece_jointe.attach(io: File.open(path), filename: "piece_justificative_0.pdf", content_type: "application/pdf")
+      commentaire
+        .piece_jointe
+        .attach(io: File.open(path),
+                filename: "piece_justificative_0.pdf",
+                content_type: "application/pdf",
+                metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE })
 
       visit telecharger_pjs_instructeur_dossier_path(procedure, dossier)
       DownloadHelpers.wait_for_download

@@ -31,6 +31,7 @@ module TPS
     # config.i18n.load_path += Dir[Rails.root.join('my', 'locales', '*.{rb,yml}').to_s]
     config.i18n.default_locale = :fr
     config.i18n.load_path += Dir[Rails.root.join('config', 'locales', '**', '*.{rb,yml}')]
+    config.i18n.load_path += Dir[Rails.root.join('config', 'custom_locales', '**', '*.{rb,yml}')]
     config.i18n.available_locales = [:fr, :en]
     config.i18n.fallbacks = [:fr]
 
@@ -51,6 +52,9 @@ module TPS
     # Set the queue name for the mail delivery jobs to 'mailers'
     config.action_mailer.deliver_later_queue_name = :mailers
 
+    # Allow the error messages format to be customized
+    config.active_model.i18n_customize_full_message = true
+
     # Set the queue name for the analysis jobs to 'active_storage_analysis'
     config.active_storage.queues.analysis = :active_storage_analysis
 
@@ -60,8 +64,8 @@ module TPS
     end
 
     config.middleware.use Rack::Attack
-    config.middleware.use Flipper::Middleware::Memoizer,
-      preload: [:instructeur_bypass_email_login_token]
+    # Ensure we make maximum one call per feature per request.
+    config.middleware.use Flipper::Middleware::Memoizer
 
     config.ds_env = ENV.fetch('DS_ENV', Rails.env)
 
@@ -73,5 +77,9 @@ module TPS
     }
 
     config.skylight.probes += [:graphql]
+
+    # Custom Configuration
+    # @see https://guides.rubyonrails.org/configuring.html#custom-configuration
+    config.x.clamav.enabled = ENV.fetch("CLAMAV_ENABLED", "enabled") == "enabled"
   end
 end

@@ -33,6 +33,7 @@
 #  monavis_embed                             :text
 #  organisation                              :string
 #  path                                      :string           not null
+#  procedure_expires_when_termine_enabled    :boolean          default(FALSE)
 #  published_at                              :datetime
 #  routing_criteria_name                     :text             default("Votre ville")
 #  routing_enabled                           :boolean
@@ -47,6 +48,7 @@
 #  parent_procedure_id                       :bigint
 #  published_revision_id                     :bigint
 #  service_id                                :bigint
+#  zone_id                                   :bigint
 #
 
 class Procedure < ApplicationRecord
@@ -74,16 +76,28 @@ class Procedure < ApplicationRecord
   has_many :published_types_de_champ_private, through: :published_revision, source: :types_de_champ_private
   has_many :draft_types_de_champ, through: :draft_revision, source: :types_de_champ
   has_many :draft_types_de_champ_private, through: :draft_revision, source: :types_de_champ_private
+  has_one :draft_attestation_template, through: :draft_revision, source: :attestation_template
+  has_one :published_attestation_template, through: :published_revision, source: :attestation_template
+
+  has_one :published_dossier_submitted_message, dependent: :destroy, through: :published_revision, source: :dossier_submitted_message
+  has_one :draft_dossier_submitted_message, dependent: :destroy, through: :draft_revision, source: :dossier_submitted_message
+  has_many :dossier_submitted_messages, through: :revisions, source: :dossier_submitted_message
 
   has_many :experts_procedures, dependent: :destroy
   has_many :experts, through: :experts_procedures
 
   has_one :module_api_carto, dependent: :destroy
-  has_one :attestation_template, dependent: :destroy
+  has_one :legacy_attestation_template, class_name: 'AttestationTemplate', dependent: :destroy
+  has_many :attestation_templates, through: :revisions, source: :attestation_template
 
   belongs_to :parent_procedure, class_name: 'Procedure', optional: true
   belongs_to :canonical_procedure, class_name: 'Procedure', optional: true
   belongs_to :service, optional: true
+  belongs_to :zone, optional: true
+
+  def active_dossier_submitted_message
+    published_dossier_submitted_message || draft_dossier_submitted_message
+  end
 
   def active_revision
     brouillon? ? draft_revision : published_revision
@@ -101,7 +115,7 @@ class Procedure < ApplicationRecord
     if brouillon?
       TypeDeChamp.fillable
         .joins(:revision_types_de_champ)
-        .where(revision_types_de_champ: { revision: draft_revision })
+        .where(revision_types_de_champ: { revision: draft_revision, parent_id: nil })
         .order(:private, :position)
     else
       # fetch all type_de_champ.stable_id for all the revisions expect draft
@@ -110,12 +124,14 @@ class Procedure < ApplicationRecord
         .joins(:revisions)
         .where(procedure_revisions: { procedure_id: id })
         .where.not(procedure_revisions: { id: draft_revision_id })
+        .where(revision_types_de_champ: { parent_id: nil })
         .group(:stable_id)
         .select('MAX(types_de_champ.id)')
 
       # fetch the more recent procedure_revision_types_de_champ
       # which includes recents_ids
       recents_prtdc = ProcedureRevisionTypeDeChamp
+        .root
         .where(type_de_champ_id: recent_ids)
         .where.not(revision_id: draft_revision_id)
         .group(:type_de_champ_id)
@@ -135,7 +151,10 @@ class Procedure < ApplicationRecord
       TypeDeChamp.root
         .public_only
         .fillable
-        .where(revision: revisions - [draft_revision])
+        .joins(:revisions)
+        .where(procedure_revisions: { procedure_id: id })
+        .where.not(procedure_revisions: { id: draft_revision_id })
+        .where(revision_types_de_champ: { parent_id: nil })
         .order(:created_at)
         .uniq
     end
@@ -148,13 +167,16 @@ class Procedure < ApplicationRecord
       TypeDeChamp.root
         .private_only
         .fillable
-        .where(revision: revisions - [draft_revision])
+        .joins(:revisions)
+        .where(procedure_revisions: { procedure_id: id })
+        .where.not(procedure_revisions: { id: draft_revision_id })
+        .where(revision_types_de_champ: { parent_id: nil })
         .order(:created_at)
         .uniq
     end
   end
 
-  has_many :administrateurs_procedures
+  has_many :administrateurs_procedures, dependent: :delete_all
   has_many :administrateurs, through: :administrateurs_procedures, after_remove: -> (procedure, _admin) { procedure.validate! }
   has_many :groupe_instructeurs, dependent: :destroy
   has_many :instructeurs, through: :groupe_instructeurs
@@ -233,6 +255,14 @@ class Procedure < ApplicationRecord
   validates :description, presence: true, allow_blank: false, allow_nil: false
   validates :administrateurs, presence: true
   validates :lien_site_web, presence: true, if: :publiee?
+  validates :draft_types_de_champ,
+    'types_de_champ/no_empty_repetition': true,
+    'types_de_champ/no_empty_drop_down': true,
+    if: :validate_for_publication?
+  validates :draft_types_de_champ_private,
+    'types_de_champ/no_empty_repetition': true,
+    'types_de_champ/no_empty_drop_down': true,
+    if: :validate_for_publication?
   validate :check_juridique
   validates :path, presence: true, format: { with: /\A[a-z0-9_\-]{3,200}\z/ }, uniqueness: { scope: [:path, :closed_at, :hidden_at, :unpublished_at], case_sensitive: false }
   validates :duree_conservation_dossiers_dans_ds, allow_nil: false, numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: MAX_DUREE_CONSERVATION }
@@ -357,7 +387,7 @@ class Procedure < ApplicationRecord
   end
 
   def draft_changed?
-    publiee? && published_revision.changed?(draft_revision) && revision_changes.present?
+    publiee? && published_revision.different_from?(draft_revision) && revision_changes.present?
   end
 
   def revision_changes
@@ -411,14 +441,15 @@ class Procedure < ApplicationRecord
 
     populate_champ_stable_ids
     include_list = {
-      attestation_template: [],
       draft_revision: {
         revision_types_de_champ: {
           type_de_champ: :types_de_champ
         },
         revision_types_de_champ_private: {
           type_de_champ: :types_de_champ
-        }
+        },
+        attestation_template: [],
+        dossier_submitted_message: []
       }
     }
     include_list[:groupe_instructeurs] = :instructeurs if !is_different_admin
@@ -463,7 +494,9 @@ class Procedure < ApplicationRecord
     procedure.save
     procedure.draft_types_de_champ.update_all(revision_id: procedure.draft_revision.id)
     procedure.draft_types_de_champ_private.update_all(revision_id: procedure.draft_revision.id)
-    TypeDeChamp.where(parent: procedure.draft_types_de_champ.repetition + procedure.draft_types_de_champ_private.repetition).update_all(revision_id: procedure.draft_revision.id)
+    types_de_champ_in_repetition = TypeDeChamp.where(parent: procedure.draft_types_de_champ.repetition + procedure.draft_types_de_champ_private.repetition)
+    types_de_champ_in_repetition.update_all(revision_id: procedure.draft_revision.id)
+    types_de_champ_in_repetition.each(&:migrate_parent!)
 
     if is_different_admin || from_library
       procedure.draft_types_de_champ.each { |tdc| tdc.options&.delete(:old_pj) }
@@ -478,27 +511,6 @@ class Procedure < ApplicationRecord
 
   def total_dossier
     self.dossiers.state_not_brouillon.size
-  end
-
-  def export_filename(format)
-    procedure_identifier = path || "procedure-#{id}"
-    "dossiers_#{procedure_identifier}_#{Time.zone.now.strftime('%Y-%m-%d_%H-%M')}.#{format}"
-  end
-
-  def export(dossiers)
-    ProcedureExportService.new(self, dossiers)
-  end
-
-  def to_csv(dossiers)
-    export(dossiers).to_csv
-  end
-
-  def to_xlsx(dossiers)
-    export(dossiers).to_xlsx
-  end
-
-  def to_ods(dossiers)
-    export(dossiers).to_ods
   end
 
   def procedure_overview(start_date, groups)
@@ -552,6 +564,10 @@ class Procedure < ApplicationRecord
 
   def whitelist!
     touch(:whitelisted_at)
+  end
+
+  def attestation_template
+    published_attestation_template || draft_attestation_template
   end
 
   def closed_mail_template_attestation_inconsistency_state
@@ -616,6 +632,10 @@ class Procedure < ApplicationRecord
     !AssignTo.exists?(groupe_instructeur: groupe_instructeurs)
   end
 
+  def revised?
+    feature_enabled?(:procedure_revisions) && revisions.size > 2
+  end
+
   def routee?
     routing_enabled? || groupe_instructeurs.size > 1
   end
@@ -631,7 +651,7 @@ class Procedure < ApplicationRecord
   end
 
   def can_be_deleted_by_administrateur?
-    brouillon? || dossiers.state_instruction_commencee.empty?
+    brouillon? || dossiers.state_en_instruction.empty?
   end
 
   def can_be_deleted_by_manager?
@@ -645,17 +665,27 @@ class Procedure < ApplicationRecord
       close!
     end
 
-    dossiers.each do |dossier|
-      dossier.discard_and_keep_track!(author, :procedure_removed)
+    dossiers.visible_by_administration.each do |dossier|
+      dossier.hide_and_keep_track!(author, :procedure_removed)
     end
 
     discard!
   end
 
+  def purge_discarded
+    if dossiers.empty?
+      destroy
+    end
+  end
+
+  def self.purge_discarded
+    discarded_expired.find_each(&:purge_discarded)
+  end
+
   def restore(author)
     if discarded? && undiscard
-      dossiers.with_discarded.discarded.find_each do |dossier|
-        dossier.restore_if_discarded_with_procedure(author)
+      dossiers.hidden_by_administration.find_each do |dossier|
+        dossier.restore(author)
       end
     end
   end
@@ -699,19 +729,35 @@ class Procedure < ApplicationRecord
   def publish_revision!
     update!(draft_revision: create_new_revision, published_revision: draft_revision)
     published_revision.touch(:published_at)
-    dossiers.state_brouillon.find_each do |dossier|
-      DossierRebaseJob.perform_later(dossier)
-    end
+    dossiers
+      .state_not_termine
+      .find_each { |dossier| DossierRebaseJob.perform_later(dossier) }
   end
 
   def cnaf_enabled?
     api_particulier_sources['cnaf'].present?
   end
 
+  def dgfip_enabled?
+    api_particulier_sources['dgfip'].present?
+  end
+
+  def pole_emploi_enabled?
+    api_particulier_sources['pole_emploi'].present?
+  end
+
+  def mesri_enabled?
+    api_particulier_sources['mesri'].present?
+  end
+
   private
 
+  def validate_for_publication?
+    validation_context == :publication || publiee?
+  end
+
   def before_publish
-    update!(closed_at: nil, unpublished_at: nil)
+    assign_attributes(closed_at: nil, unpublished_at: nil)
   end
 
   def after_publish(canonical_procedure = nil)

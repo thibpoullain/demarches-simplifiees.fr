@@ -8,12 +8,15 @@ module ApplicationHelper
   end
 
   def flash_class(level, sticky: false, fixed: false)
-    class_names = case level
+    class_names = []
+
+    case level
     when 'notice'
-      ['alert-success']
-    when 'alert'
-      ['alert-danger']
+      class_names << 'alert-success'
+    when 'alert', 'error'
+      class_names << 'alert-danger'
     end
+
     if sticky
       class_names << 'sticky'
     end
@@ -50,7 +53,7 @@ module ApplicationHelper
   end
 
   def render_champ(champ)
-    champ_selector = ".editable-champ[data-champ-id=\"#{champ.id}\"]"
+    champ_selector = "##{champ.input_group_id}"
     form_html = render 'shared/dossiers/edit', dossier: champ.dossier, apercu: false
     champ_html = Nokogiri::HTML.fragment(form_html).at_css(champ_selector).to_s
     # rubocop:disable Rails/OutputSafety

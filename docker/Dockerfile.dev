@@ -1,4 +1,4 @@
-FROM ruby:2.7
+FROM ruby:3.1.2
 
 RUN apt update && apt install -y libcurl3-dev libpq-dev zlib1g-dev libssl-dev libreadline-dev zlib1g-dev
 
@@ -17,15 +17,13 @@ RUN apt-get update && apt-get install -y google-chrome-stable
 RUN mkdir /opt/ds
 WORKDIR /opt/ds
 
+RUN useradd -ms /bin/bash demat-social
+
+# Copie de ces fichiers de manière à ce que les gems / nodes ne soient pas toujours retéléchargées
 COPY package.json /opt/ds
 COPY yarn.lock /opt/ds
 COPY Gemfile /opt/ds
 COPY Gemfile.lock /opt/ds
-
-RUN useradd -ms /bin/bash demat-social
-RUN chmod o+rwx /opt/ds
-
-USER demat-social
 
 RUN mkdir /usr/local/bundle/gems && \
     mkdir node_modules && \
@@ -34,7 +32,7 @@ RUN mkdir /usr/local/bundle/gems && \
 
 RUN bundle config path /usr/local/bundle/cache && \
     bundle config cache_path /usr/local/bundle/cache
- 
+
 RUN bundle install --jobs 20 --retry 5
 RUN yarn install
 

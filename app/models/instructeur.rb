@@ -9,10 +9,10 @@
 #  created_at               :datetime
 #  updated_at               :datetime
 #  agent_connect_id         :string
+#  user_id                  :bigint           not null
 #
 class Instructeur < ApplicationRecord
-  has_many :administrateurs_instructeurs
-  has_many :administrateurs, through: :administrateurs_instructeurs
+  has_and_belongs_to_many :administrateurs
 
   has_many :assign_to, dependent: :destroy
   has_many :groupe_instructeurs, through: :assign_to
@@ -31,7 +31,7 @@ class Instructeur < ApplicationRecord
   has_many :archives
   has_many :bulk_messages, dependent: :destroy
 
-  has_one :user, dependent: :nullify
+  belongs_to :user
 
   scope :with_instant_email_message_notifications, -> {
     includes(:assign_to).where(assign_tos: { instant_email_message_notifications_enabled: true })
@@ -81,14 +81,13 @@ class Instructeur < ApplicationRecord
     end
   end
 
-  def remove_from_groupe_instructeur(groupe_instructeur)
-    if groupe_instructeur.in?(groupe_instructeurs)
-      groupe_instructeurs.destroy(groupe_instructeur)
-      follows
-        .joins(:dossier)
-        .where(dossiers: { groupe_instructeur: groupe_instructeur })
-        .update_all(unfollowed_at: Time.zone.now)
-    end
+  NOTIFICATION_SETTINGS = [:daily_email_notifications_enabled, :instant_email_dossier_notifications_enabled, :instant_email_message_notifications_enabled, :weekly_email_notifications_enabled]
+
+  def notification_settings(procedure_id)
+    assign_to
+      .joins(:groupe_instructeur)
+      .find_by(groupe_instructeurs: { procedure_id: procedure_id })
+      &.slice(*NOTIFICATION_SETTINGS) || {}
   end
 
   def last_week_overview
@@ -111,7 +110,11 @@ class Instructeur < ApplicationRecord
   end
 
   def procedure_presentation_and_errors_for_procedure_id(procedure_id)
-    assign_to.joins(:groupe_instructeur).find_by(groupe_instructeurs: { procedure_id: procedure_id }).procedure_presentation_or_default_and_errors
+    assign_to
+      .joins(:groupe_instructeur)
+      .includes(:instructeur, :procedure)
+      .find_by(groupe_instructeurs: { procedure_id: procedure_id })
+      .procedure_presentation_or_default_and_errors
   end
 
   def notifications_for_dossier(dossier)
@@ -142,6 +145,7 @@ class Instructeur < ApplicationRecord
 
   def notifications_for_groupe_instructeurs(groupe_instructeurs)
     Dossier
+      .visible_by_administration
       .not_archived
       .where(groupe_instructeur: groupe_instructeurs)
       .merge(followed_dossiers)
@@ -161,6 +165,7 @@ class Instructeur < ApplicationRecord
     groupe_instructeur_ids = Dossier
       .send(scope) # :en_cours or :termine (or any other Dossier scope)
       .merge(followed_dossiers)
+      .visible_by_administration
       .with_notifications
       .select(:groupe_instructeur_id)
 
@@ -182,8 +187,8 @@ class Instructeur < ApplicationRecord
       nb_notification = notifications[:en_cours].count + notifications[:termines].count
 
       h = {
-        nb_en_construction: groupe.dossiers.en_construction.count,
-        nb_en_instruction: groupe.dossiers.en_instruction.count,
+        nb_en_construction: groupe.dossiers.visible_by_administration.en_construction.count,
+        nb_en_instruction: groupe.dossiers.visible_by_administration.en_instruction.count,
         nb_accepted: Traitement.where(dossier: groupe.dossiers.accepte, processed_at: Time.zone.yesterday.beginning_of_day..Time.zone.yesterday.end_of_day).count,
         nb_notification: nb_notification
       }
@@ -233,24 +238,40 @@ class Instructeur < ApplicationRecord
   def dossiers_count_summary(groupe_instructeur_ids)
     query = <<~EOF
       SELECT
-        COUNT(DISTINCT dossiers.id) FILTER (where not archived AND dossiers.state in ('en_construction', 'en_instruction') AND follows.id IS NULL) AS a_suivre,
-        COUNT(DISTINCT dossiers.id) FILTER (where not archived AND dossiers.state in ('en_construction', 'en_instruction') AND follows.instructeur_id = :instructeur_id) AS suivis,
-        COUNT(DISTINCT dossiers.id) FILTER (where not archived AND dossiers.state in ('accepte', 'refuse', 'sans_suite')) AS traites,
-        COUNT(DISTINCT dossiers.id) FILTER (where not archived) AS tous,
-        COUNT(DISTINCT dossiers.id) FILTER (where archived)     AS archives
-      FROM "dossiers"
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NULL AND not archived AND dossiers.state in ('en_construction', 'en_instruction') AND follows.id IS NULL) AS a_suivre,
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NULL AND not archived AND dossiers.state in ('en_construction', 'en_instruction') AND follows.instructeur_id = :instructeur_id) AS suivis,
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NULL AND not archived AND dossiers.state in ('accepte', 'refuse', 'sans_suite')) AS traites,
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NULL AND not archived) AS tous,
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NULL AND archived) AS archives,
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NOT NULL AND not archived AND dossiers.state in ('accepte', 'refuse', 'sans_suite')) AS supprimes_recemment,
+        COUNT(DISTINCT dossiers.id) FILTER (where dossiers.hidden_by_administration_at IS NULL AND procedures.procedure_expires_when_termine_enabled
+          AND (
+            dossiers.state in ('accepte', 'refuse', 'sans_suite')
+              AND dossiers.processed_at + dossiers.conservation_extension + (procedures.duree_conservation_dossiers_dans_ds * INTERVAL '1 month') - INTERVAL :expires_in < :now
+          ) OR (
+            dossiers.state in ('en_construction')
+              AND dossiers.en_construction_at + dossiers.conservation_extension + (duree_conservation_dossiers_dans_ds * INTERVAL '1 month') - INTERVAL :expires_in < :now
+          )
+        ) AS expirant
+      FROM dossiers
+        INNER JOIN procedure_revisions
+          ON procedure_revisions.id = dossiers.revision_id
+        INNER JOIN procedures
+          ON procedures.id = procedure_revisions.procedure_id
         LEFT OUTER JOIN follows
           ON  follows.dossier_id = dossiers.id
           AND follows.unfollowed_at IS NULL
-      WHERE "dossiers"."hidden_at" IS NULL
-        AND "dossiers"."state" != 'brouillon'
-        AND "dossiers"."groupe_instructeur_id" in (:groupe_instructeur_ids)
+      WHERE dossiers.state != 'brouillon'
+        AND dossiers.groupe_instructeur_id in (:groupe_instructeur_ids)
+        AND (dossiers.hidden_by_user_at IS NULL OR dossiers.state != 'en_construction')
     EOF
 
     sanitized_query = ActiveRecord::Base.sanitize_sql([
       query,
       instructeur_id: id,
-      groupe_instructeur_ids: groupe_instructeur_ids
+      groupe_instructeur_ids: groupe_instructeur_ids,
+      now: Time.zone.now,
+      expires_in: Dossier::INTERVAL_BEFORE_EXPIRATION
     ])
 
     Dossier.connection.select_all(sanitized_query).first

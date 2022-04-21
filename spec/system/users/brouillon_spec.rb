@@ -23,18 +23,19 @@ describe 'The user' do
     choose('Madame')
     fill_in('email', with: 'loulou@yopmail.com')
     fill_in('phone', with: '0123456789')
+    scroll_to(find_field('Non'), align: :center)
     choose('Non')
     choose('val2')
     check('val1')
     check('val3')
     select('bravo', from: form_id_for('simple_choice_drop_down_list_long'))
-    select_multi_combobox('multiple_choice_drop_down_list_long', 'alp', 'alpha')
-    select_multi_combobox('multiple_choice_drop_down_list_long', 'cha', 'charly')
+    select_combobox('multiple_choice_drop_down_list_long', 'alp', 'alpha')
+    select_combobox('multiple_choice_drop_down_list_long', 'cha', 'charly')
 
     select_combobox('pays', 'aust', 'Australie')
     select_combobox('regions', 'Ma', 'Martinique')
     select_combobox('departements', 'Ai', '02 - Aisne')
-    select_combobox('communes', 'Ai', '02 - Aisne')
+    select_combobox('communes', 'Ai', '02 - Aisne', check: false)
     select_combobox('communes', 'Ambl', 'Ambléon (01300)')
 
     check('engagement')
@@ -87,11 +88,11 @@ describe 'The user' do
     expect(page).to have_checked_field('val1')
     expect(page).to have_checked_field('val3')
     expect(page).to have_selected_value('simple_choice_drop_down_list_long', selected: 'bravo')
-    check_selected_values('multiple_choice_drop_down_list_long', ['alpha', 'charly'])
-    expect(page).to have_hidden_field('pays', with: 'Australie')
-    expect(page).to have_hidden_field('regions', with: 'Martinique')
-    expect(page).to have_hidden_field('departements', with: '02 - Aisne')
-    expect(page).to have_hidden_field('communes', with: 'Ambléon (01300)')
+    check_selected_value('multiple_choice_drop_down_list_long', with: ['alpha', 'charly'])
+    check_selected_value('pays', with: 'Australie')
+    check_selected_value('regions', with: 'Martinique')
+    check_selected_value('departements', with: '02 - Aisne')
+    check_selected_value('communes', with: 'Ambléon (01300)')
     expect(page).to have_checked_field('engagement')
     expect(page).to have_field('dossier_link', with: '123')
     expect(page).to have_text('file.pdf')
@@ -166,6 +167,8 @@ describe 'The user' do
   end
 
   scenario 'extends dossier experation date more than one time, ', js: true do
+    simple_procedure.update(procedure_expires_when_termine_enabled: true)
+    allow(simple_procedure).to receive(:feature_enabled?).with(:procedure_process_expired_dossiers_termine).and_return(true)
     user_old_dossier = create(:dossier,
                               procedure: simple_procedure,
                               created_at: simple_procedure.duree_conservation_dossiers_dans_ds.month.ago,
@@ -174,15 +177,14 @@ describe 'The user' do
     visit brouillon_dossier_path(user_old_dossier)
 
     expect(page).to have_css('.card-title', text: 'Votre dossier va expirer', visible: true)
-    click_on "Repousser sa suppression"
-    expect(page).not_to have_button("Repousser sa suppression")
+    find('#test-user-repousser-expiration').click
+    expect(page).not_to have_selector('#test-user-repousser-expiration')
 
-    Timecop.freeze(1.month.from_now) do
+    Timecop.freeze(simple_procedure.duree_conservation_dossiers_dans_ds.month.from_now) do
       visit brouillon_dossier_path(user_old_dossier)
-
       expect(page).to have_css('.card-title', text: 'Votre dossier va expirer', visible: true)
-      click_on "Repousser sa suppression"
-      expect(page).not_to have_button("Repousser sa suppression")
+      find('#test-user-repousser-expiration').click
+      expect(page).not_to have_selector('#test-user-repousser-expiration')
     end
   end
 
@@ -334,10 +336,6 @@ describe 'The user' do
 
     expect(page).to have_content("Données d’identité")
     expect(page).to have_current_path(identite_dossier_path(user_dossier))
-  end
-
-  def form_id_for(libelle)
-    find(:xpath, ".//label[contains(text()[normalize-space()], '#{libelle}')]")[:for]
   end
 
   def form_id_for_datetime(libelle)

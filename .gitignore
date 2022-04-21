@@ -32,8 +32,13 @@ yarn-debug.log*
 /public/assets
 /docs
 
-*.lock
-
 # Local Netlify folder
 .netlify
 
+# Custom locales
+/config/custom_locales/*
+!/config/custom_locales/.keep
+
+# Custom views
+/app/custom_views/*
+!/app/custom_views/.keep

@@ -19,6 +19,12 @@ module Instructeurs
       end
     end
 
+    def extend_conservation
+      dossier.extend_conservation(1.month)
+      flash[:notice] = t('views.instructeurs.dossiers.archived_dossier')
+      redirect_back(fallback_location: instructeur_dossier_path(@dossier.procedure, @dossier))
+    end
+
     def geo_data
       send_data dossier.to_feature_collection.to_json,
         type: 'application/json',
@@ -26,9 +32,9 @@ module Instructeurs
     end
 
     def apercu_attestation
-      @attestation = dossier.procedure.attestation_template.render_attributes_for(dossier: dossier)
+      @attestation = dossier.attestation_template.render_attributes_for(dossier: dossier)
 
-      render 'new_administrateur/attestation_templates/show', formats: [:pdf]
+      render 'administrateurs/attestation_templates/show', formats: [:pdf]
     end
 
     def bilans_bdf
@@ -37,7 +43,7 @@ module Instructeurs
     end
 
     def show
-      @demande_seen_at = current_instructeur.follows.find_by(dossier: dossier)&.demande_seen_at
+      @demande_seen_at = current_instructeur.follows.find_by(dossier: dossier_with_champs)&.demande_seen_at
 
       respond_to do |format|
         format.pdf do
@@ -90,29 +96,29 @@ module Instructeurs
     def follow
       current_instructeur.follow(dossier)
       flash.notice = 'Dossier suivi'
-      redirect_back(fallback_location: instructeur_procedures_url)
+      redirect_back(fallback_location: instructeur_procedure_path(procedure))
     end
 
     def unfollow
       current_instructeur.unfollow(dossier)
       flash.notice = "Vous ne suivez plus le dossier nº #{dossier.id}"
 
-      redirect_back(fallback_location: instructeur_procedures_url)
+      redirect_back(fallback_location: instructeur_procedure_path(procedure))
     end
 
     def archive
       dossier.archiver!(current_instructeur)
-      redirect_back(fallback_location: instructeur_procedures_url)
+      redirect_back(fallback_location: instructeur_procedure_path(procedure))
     end
 
     def unarchive
       dossier.desarchiver!(current_instructeur)
-      redirect_back(fallback_location: instructeur_procedures_url)
+      redirect_back(fallback_location: instructeur_procedure_path(procedure))
     end
 
     def passer_en_instruction
       begin
-        dossier.passer_en_instruction!(current_instructeur)
+        dossier.passer_en_instruction!(instructeur: current_instructeur)
         flash.notice = 'Dossier passé en instruction.'
       rescue AASM::InvalidTransition => e
         flash.alert = aasm_error_message(e, target_state: :en_instruction)
@@ -135,7 +141,7 @@ module Instructeurs
     def repasser_en_instruction
       begin
         flash.notice = "Le dossier #{dossier.id} a été repassé en instruction."
-        dossier.repasser_en_instruction!(current_instructeur)
+        dossier.repasser_en_instruction!(instructeur: current_instructeur)
       rescue AASM::InvalidTransition => e
         flash.alert = aasm_error_message(e, target_state: :en_instruction)
       end
@@ -147,19 +153,21 @@ module Instructeurs
       motivation = params[:dossier] && params[:dossier][:motivation]
       justificatif = params[:dossier] && params[:dossier][:justificatif_motivation]
 
+      h = { instructeur: current_instructeur, motivation: motivation, justificatif: justificatif }
+
       begin
         case params[:process_action]
         when "refuser"
           target_state = :refuse
-          dossier.refuser!(current_instructeur, motivation, justificatif: justificatif)
+          dossier.refuser!(h)
           flash.notice = "Dossier considéré comme refusé."
         when "classer_sans_suite"
           target_state = :sans_suite
-          dossier.classer_sans_suite!(current_instructeur, motivation, justificatif: justificatif)
+          dossier.classer_sans_suite!(h)
           flash.notice = "Dossier considéré comme sans suite."
         when "accepter"
           target_state = :accepte
-          dossier.accepter!(current_instructeur, motivation, justificatif: justificatif)
+          dossier.accepter!(h)
           flash.notice = "Dossier traité avec succès."
         end
       rescue AASM::InvalidTransition => e
@@ -195,8 +203,7 @@ module Instructeurs
     end
 
     def update_annotations
-      dossier = current_instructeur.dossiers.includes(champs_private: :type_de_champ).find(params[:dossier_id])
-      dossier.assign_attributes(champs_private_params)
+      dossier_with_champs.assign_attributes(champs_private_params)
       if dossier.champs_private.any?(&:changed?)
         dossier.last_champ_private_updated_at = Time.zone.now
       end
@@ -211,21 +218,30 @@ module Instructeurs
     end
 
     def telecharger_pjs
-      return head(:forbidden) if !dossier.export_and_attachments_downloadable?
-
-      files = ActiveStorage::DownloadableFile.create_list_from_dossier(dossier)
+      files = ActiveStorage::DownloadableFile.create_list_from_dossiers(Dossier.where(id: dossier.id))
 
       zipline(files, "dossier-#{dossier.id}.zip")
     end
 
-    def delete_dossier
+    def destroy
       if dossier.termine?
-        dossier.discard_and_keep_track!(current_instructeur, :instructeur_request)
-        flash.notice = 'Le dossier a bien été supprimé'
-        redirect_to instructeur_procedure_path(procedure)
+        dossier.hide_and_keep_track!(current_instructeur, :instructeur_request)
+        flash.notice = t('instructeurs.dossiers.deleted_by_instructeur')
       else
-        flash.alert = "Suppression impossible : le dossier n’est pas terminé"
-        redirect_back(fallback_location: instructeur_procedures_url)
+        flash.alert = t('instructeurs.dossiers.impossible_deletion')
+      end
+      redirect_back(fallback_location: instructeur_procedure_path(procedure))
+    end
+
+    def restore
+      dossier = current_instructeur.dossiers.find(params[:dossier_id])
+      dossier.restore(current_instructeur)
+      flash.notice = t('instructeurs.dossiers.restore')
+
+      if dossier.termine?
+        redirect_to instructeur_procedure_path(procedure, statut: :traites)
+      else
+        redirect_back(fallback_location: instructeur_procedure_path(procedure))
       end
     end
 
@@ -234,7 +250,16 @@ module Instructeurs
     def dossier
       @dossier ||= current_instructeur
         .dossiers
-        .includes(champs: :type_de_champ)
+        .visible_by_administration
+        .find(params[:dossier_id])
+    end
+
+    def dossier_with_champs
+      @dossier ||= current_instructeur
+        .dossiers
+        .visible_by_administration
+        .with_champs
+        .with_annotations
         .find(params[:dossier_id])
     end
 

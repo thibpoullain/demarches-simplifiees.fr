@@ -56,14 +56,12 @@ Rails.application.configure do
   config.action_mailer.raise_delivery_errors = true
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
-  if ENV['FOG_ENABLED'] == 'enabled'
-    config.active_storage.service = :openstack
-  elsif ENV['S3_ENABLED'] == 'enabled'
-    config.active_storage.service = :s3
+  config.active_storage.service = ENV.fetch("ACTIVE_STORAGE_SERVICE").to_sym
+
+  if ENV['ACTIVE_STORAGE_SERVICE'] == 's3'
     # Les PJ sont affichées au travers l'applicatif (pour application ICAP, le cas échéant)
+    # ie : URL de la forme https://demat-social[...] plutôt que https://storage-eb4.cegedim[...]
     config.active_storage.resolve_model_to_route = :rails_storage_proxy
-  else
-    config.active_storage.service = :local
   end
 
   # Print deprecation notices to the Rails logger.
@@ -99,55 +97,14 @@ Rails.application.configure do
   config.assets.raise_runtime_errors = true
 
   # Action Mailer settings
+  config.action_mailer.delivery_method = :letter_opener
 
-  if ENV['SENDINBLUE_ENABLED'] == 'enabled'
-    config.action_mailer.delivery_method = :smtp
-    config.action_mailer.smtp_settings = {
-      user_name: Rails.application.secrets.sendinblue[:username],
-      password: Rails.application.secrets.sendinblue[:smtp_key],
-      address: 'smtp-relay.sendinblue.com',
-      domain: 'smtp-relay.sendinblue.com',
-      port: '587',
-      authentication: :cram_md5
-    }
-  else
-    # https://usehelo.com
-    if ENV['HELO_ENABLED'] == 'enabled'
-      config.action_mailer.delivery_method = :smtp
-      config.action_mailer.smtp_settings = {
-        user_name: 'demarches-simplifiees',
-        password: '',
-        address: '127.0.0.1',
-        domain: '127.0.0.1',
-        port: ENV.fetch('HELO_PORT', '2525'),
-        authentication: :plain
-      }
-    elsif ENV['SMTP_ENABLED'] == 'enabled'
-      config.action_mailer.delivery_method = :smtp
-      config.action_mailer.smtp_settings = {
-        user_name: Rails.application.secrets.smtp[:username],
-        password: Rails.application.secrets.smtp[:password],
-        address: ENV['SMTP_HOST'],
-        domain: ENV['SMTP_DOMAIN'],
-        port: ENV['SMTP_PORT']
-        # Ajustement possible : :plain ou :login ou :cram_md5
-        # authentication: :cram_md5
-      }
-    else
-      config.action_mailer.delivery_method = :letter_opener_web
-    end
-
-    config.action_mailer.default_url_options = {
-      host: 'localhost',
-      port: 3000
-    }
-
-    config.action_mailer.asset_host = "http://" + ENV['APP_HOST'] + ":3000"
-  end
+  config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST") }
+  config.action_mailer.asset_host = "http://" + ENV.fetch("APP_HOST")
 
   Rails.application.routes.default_url_options = {
-    host: 'localhost',
-    port: 3000
+    host: ENV.fetch("APP_HOST"),
+    protocol: :http
   }
 
   # Use Content-Security-Policy-Report-Only headers

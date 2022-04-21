@@ -9,44 +9,11 @@ module Manager
     def scoped_resource
       if unfiltered_list?
         # Don't display discarded dossiers in the unfiltered list…
-        Dossier.kept
+        Dossier.visible_by_administration
       else
         # … but allow them to be searched and displayed.
-        Dossier.with_discarded
+        Dossier
       end
-    end
-
-    #
-    # Custom actions
-    #
-
-    def discard
-      dossier = Dossier.find(params[:id])
-      dossier.discard_and_keep_track!(current_super_admin, :manager_request)
-
-      logger.info("Le dossier #{dossier.id} est supprimé par #{current_super_admin.email}")
-      flash[:notice] = "Le dossier #{dossier.id} a été supprimé."
-
-      redirect_to manager_dossier_path(dossier)
-    end
-
-    def restore
-      dossier = Dossier.with_discarded.find(params[:id])
-      dossier.restore(current_super_admin)
-
-      flash[:notice] = "Le dossier #{dossier.id} a été restauré."
-
-      redirect_to manager_dossier_path(dossier)
-    end
-
-    def repasser_en_instruction
-      dossier = Dossier.find(params[:id])
-      dossier.repasser_en_instruction(current_super_admin)
-
-      logger.info("Le dossier #{dossier.id} est repassé en instruction par #{current_super_admin.email}")
-      flash[:notice] = "Le dossier #{dossier.id} est repassé en instruction."
-
-      redirect_to manager_dossier_path(dossier)
     end
 
     private

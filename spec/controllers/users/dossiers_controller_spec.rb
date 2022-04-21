@@ -464,6 +464,17 @@ describe Users::DossiersController, type: :controller do
         end
       end
 
+      context "when the dossier was created on a routee procedure, but routage was later disabled" do
+        let(:dossier) { create(:dossier, groupe_instructeur: nil, user: user) }
+
+        it "sets a default groupe_instructeur" do
+          subject
+
+          expect(response).to redirect_to(merci_dossier_path(dossier))
+          expect(dossier.reload.groupe_instructeur).to eq(dossier.procedure.defaut_groupe_instructeur)
+        end
+      end
+
       context "on an closed procedure" do
         before { dossier.procedure.close! }
 
@@ -850,6 +861,16 @@ describe Users::DossiersController, type: :controller do
         end
         it { expect(assigns(:statut)).to eq('en-cours') }
       end
+
+      context 'when the instructeur archive the dossier' do
+        before do
+          own_dossier2.update!(archived: true)
+          get(:index, params: { statut: 'en-cours' })
+        end
+        it { expect(assigns(:statut)).to eq('en-cours') }
+        it { expect(assigns(:dossiers_traites).map(&:id)).to eq([own_dossier2.id]) }
+        it { expect(own_dossier2.archived).to be_truthy }
+      end
     end
 
     describe 'sort order' do
@@ -990,15 +1011,14 @@ describe Users::DossiersController, type: :controller do
     end
   end
 
-  describe '#ask_deletion' do
+  describe '#delete_dossier' do
     before { sign_in(user) }
 
-    subject { post :ask_deletion, params: { id: dossier.id } }
+    subject { patch :delete_dossier, params: { id: dossier.id } }
 
     shared_examples_for "the dossier can not be deleted" do
       it "doesn’t notify the deletion" do
-        expect(DossierMailer).not_to receive(:notify_deletion_to_administration)
-        expect(DossierMailer).not_to receive(:notify_deletion_to_user)
+        expect(DossierMailer).not_to receive(:notify_en_construction_deletion_to_administration)
         subject
       end
 
@@ -1013,18 +1033,23 @@ describe Users::DossiersController, type: :controller do
       let(:dossier) { create(:dossier, :en_construction, user: user, autorisation_donnees: true) }
 
       it "notifies the user and the admin of the deletion" do
-        expect(DossierMailer).to receive(:notify_deletion_to_administration).with(kind_of(DeletedDossier), dossier.procedure.administrateurs.first.email).and_return(double(deliver_later: nil))
-        expect(DossierMailer).to receive(:notify_deletion_to_user).with(kind_of(DeletedDossier), dossier.user.email).and_return(double(deliver_later: nil))
+        expect(DossierMailer).to receive(:notify_en_construction_deletion_to_administration).with(kind_of(Dossier), dossier.procedure.administrateurs.first.email).and_return(double(deliver_later: nil))
         subject
       end
 
-      it "deletes the dossier" do
+      it "hide the dossier and does not create a deleted dossier" do
         procedure = dossier.procedure
         dossier_id = dossier.id
         subject
-        expect(Dossier.find_by(id: dossier_id)).to eq(nil)
-        expect(procedure.deleted_dossiers.count).to eq(1)
-        expect(procedure.deleted_dossiers.first.dossier_id).to eq(dossier_id)
+        expect(Dossier.find_by(id: dossier_id)).to be_present
+        expect(Dossier.find_by(id: dossier_id).hidden_by_user_at).to be_present
+        expect(procedure.deleted_dossiers.count).to eq(0)
+      end
+
+      it "fill hidden by reason" do
+        subject
+        expect(dossier.reload.hidden_by_reason).not_to eq(nil)
+        expect(dossier.reload.hidden_by_reason).to eq("user_request")
       end
 
       it { is_expected.to redirect_to(dossiers_path) }
@@ -1033,7 +1058,7 @@ describe Users::DossiersController, type: :controller do
         let(:dossier) { create(:dossier, :en_instruction, user: user, autorisation_donnees: true) }
 
         it_behaves_like "the dossier can not be deleted"
-        it { is_expected.to redirect_to(dossier_path(dossier)) }
+        it { is_expected.to redirect_to(dossiers_path) }
       end
     end
 
@@ -1043,6 +1068,21 @@ describe Users::DossiersController, type: :controller do
 
       it_behaves_like "the dossier can not be deleted"
       it { is_expected.to redirect_to(root_path) }
+    end
+  end
+
+  describe '#restore' do
+    before { sign_in(user) }
+    subject { patch :restore, params: { id: dossier.id } }
+
+    context 'when the user want to restore his dossier' do
+      let!(:dossier) { create(:dossier, :with_individual, state: :accepte, en_construction_at: Time.zone.yesterday.beginning_of_day.utc, hidden_by_user_at: Time.zone.yesterday.beginning_of_day.utc, user: user, autorisation_donnees: true) }
+
+      before { subject }
+
+      it 'must have hidden_by_user_at nil' do
+        expect(dossier.reload.hidden_by_user_at).to be_nil
+      end
     end
   end
 
@@ -1149,6 +1189,35 @@ describe Users::DossiersController, type: :controller do
     it 'works' do
       get :index
       expect(response).to have_http_status(:ok)
+    end
+  end
+
+  describe '#extend_conservation' do
+    let(:procedure) { create(:procedure, duree_conservation_dossiers_dans_ds: 3) }
+    let(:dossier) { create(:dossier, procedure: procedure, user: user) }
+    subject { post :extend_conservation, params: { dossier_id: dossier.id } }
+    context 'when user logged in' do
+      before { sign_in(user) }
+      it 'works' do
+        expect(subject).to redirect_to(dossier_path(dossier))
+      end
+
+      it 'extends conservation_extension by duree_conservation_dossiers_dans_ds' do
+        subject
+        expect(dossier.reload.conservation_extension).to eq(procedure.duree_conservation_dossiers_dans_ds.months)
+      end
+
+      it 'flashed notice success' do
+        subject
+        expect(flash[:notice]).to eq(I18n.t('views.users.dossiers.archived_dossier', duree_conservation_dossiers_dans_ds: procedure.duree_conservation_dossiers_dans_ds))
+      end
+    end
+
+    context 'when not logged in' do
+      it 'fails' do
+       subject
+       expect { expect(response).to redirect_to(new_user_session_path) }
+     end
     end
   end
 end

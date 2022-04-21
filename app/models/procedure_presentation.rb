@@ -25,8 +25,9 @@ class ProcedurePresentation < ApplicationRecord
   FILTERS_VALUE_MAX_LENGTH = 100
 
   belongs_to :assign_to, optional: false
+  has_many :exports, dependent: :destroy
 
-  delegate :procedure, to: :assign_to
+  delegate :procedure, :instructeur, to: :assign_to
 
   validate :check_allowed_displayed_fields
   validate :check_allowed_sort_column
@@ -36,42 +37,43 @@ class ProcedurePresentation < ApplicationRecord
 
   def fields
     fields = [
-      field_hash('Créé le', 'self', 'created_at'),
-      field_hash('En construction le', 'self', 'en_construction_at'),
-      field_hash('Mis à jour le', 'self', 'updated_at'),
-      field_hash('Demandeur', 'user', 'email'),
-      field_hash('Email instructeur', 'followers_instructeurs', 'email'),
-      field_hash('Groupe instructeur', 'groupe_instructeur', 'label')
+      field_hash('self', 'created_at'),
+      field_hash('self', 'en_construction_at'),
+      field_hash('self', 'depose_at'),
+      field_hash('self', 'updated_at'),
+      field_hash('user', 'email'),
+      field_hash('followers_instructeurs', 'email'),
+      field_hash('groupe_instructeur', 'label')
     ]
 
     if procedure.for_individual
       fields.push(
-        field_hash("Prénom", "individual", "prenom"),
-        field_hash("Nom", "individual", "nom"),
-        field_hash("Civilité", "individual", "gender")
+        field_hash("individual", "prenom"),
+        field_hash("individual", "nom"),
+        field_hash("individual", "gender")
       )
     end
 
     if !procedure.for_individual
       fields.push(
-        field_hash('SIREN', 'etablissement', 'entreprise_siren'),
-        field_hash('Forme juridique', 'etablissement', 'entreprise_forme_juridique'),
-        field_hash('Nom commercial', 'etablissement', 'entreprise_nom_commercial'),
-        field_hash('Raison sociale', 'etablissement', 'entreprise_raison_sociale'),
-        field_hash('SIRET siège social', 'etablissement', 'entreprise_siret_siege_social'),
-        field_hash('Date de création', 'etablissement', 'entreprise_date_creation')
+        field_hash('etablissement', 'entreprise_siren'),
+        field_hash('etablissement', 'entreprise_forme_juridique'),
+        field_hash('etablissement', 'entreprise_nom_commercial'),
+        field_hash('etablissement', 'entreprise_raison_sociale'),
+        field_hash('etablissement', 'entreprise_siret_siege_social'),
+        field_hash('etablissement', 'entreprise_date_creation')
       )
 
       fields.push(
-        field_hash('SIRET', 'etablissement', 'siret'),
-        field_hash('Libellé NAF', 'etablissement', 'libelle_naf'),
-        field_hash('Code postal', 'etablissement', 'code_postal')
+        field_hash('etablissement', 'siret'),
+        field_hash('etablissement', 'libelle_naf'),
+        field_hash('etablissement', 'code_postal')
       )
     end
 
     fields.concat procedure.types_de_champ_for_procedure_presentation
       .pluck(:libelle, :private, :stable_id)
-      .map { |(libelle, is_private, stable_id)| field_hash(libelle, is_private ? TYPE_DE_CHAMP_PRIVATE : TYPE_DE_CHAMP, stable_id.to_s) }
+      .map { |(libelle, is_private, stable_id)| field_hash(is_private ? TYPE_DE_CHAMP_PRIVATE : TYPE_DE_CHAMP, stable_id.to_s, label: libelle) }
 
     fields
   end
@@ -83,7 +85,15 @@ class ProcedurePresentation < ApplicationRecord
     ]
   end
 
-  def sorted_ids(dossiers, count, instructeur)
+  def displayed_fields_for_headers
+    [
+      *displayed_fields,
+      field_hash('self', 'id', classname: 'number-col'),
+      field_hash('self', 'state', classname: 'state-col')
+    ]
+  end
+
+  def sorted_ids(dossiers, count)
     table, column, order = sort.values_at(TABLE, COLUMN, 'order')
 
     case table
@@ -120,10 +130,10 @@ class ProcedurePresentation < ApplicationRecord
       end
     when 'followers_instructeurs'
       assert_supported_column(table, column)
-      # LEFT OUTER JOIN allows to keep dossiers without assignated instructeurs yet
+      # LEFT OUTER JOIN allows to keep dossiers without assigned instructeurs yet
       dossiers
         .includes(:followers_instructeurs)
-        .joins('LEFT OUTER JOIN users instructeurs_users ON instructeurs_users.instructeur_id = instructeurs.id')
+        .joins('LEFT OUTER JOIN users instructeurs_users ON instructeurs_users.id = instructeurs.user_id')
         .order("instructeurs_users.email #{order}")
         .pluck(:id)
         .uniq
@@ -166,7 +176,7 @@ class ProcedurePresentation < ApplicationRecord
         assert_supported_column(table, column)
         dossiers
           .includes(:followers_instructeurs)
-          .joins('INNER JOIN users instructeurs_users ON instructeurs_users.instructeur_id = instructeurs.id')
+          .joins('INNER JOIN users instructeurs_users ON instructeurs_users.id = instructeurs.user_id')
           .filter_ilike('instructeurs_users', :email, values)
       when 'user', 'individual'
         dossiers
@@ -178,6 +188,17 @@ class ProcedurePresentation < ApplicationRecord
           .filter_ilike(table, column, values)
       end.pluck(:id)
     end.reduce(:&)
+  end
+
+  def filtered_sorted_ids(dossiers, statut, count: nil)
+    dossiers_by_statut = dossiers.by_statut(instructeur, statut)
+    dossiers_sorted_ids = self.sorted_ids(dossiers_by_statut, count || dossiers_by_statut.size)
+
+    if filters[statut].present?
+      filtered_ids(dossiers_by_statut, statut).intersection(dossiers_sorted_ids)
+    else
+      dossiers_sorted_ids
+    end
   end
 
   def human_value_for_filter(filter)
@@ -250,6 +271,10 @@ class ProcedurePresentation < ApplicationRecord
     })
   end
 
+  def snapshot
+    slice(:filters, :sort, :displayed_fields)
+  end
+
   private
 
   def field_id(field)
@@ -306,11 +331,12 @@ class ProcedurePresentation < ApplicationRecord
     end
   end
 
-  def field_hash(label, table, column)
+  def field_hash(table, column, label: nil, classname: '')
     {
-      'label' => label,
+      'label' => label || I18n.t(column, scope: [:activerecord, :attributes, :procedure_presentation, :fields, table]),
       TABLE => table,
-      COLUMN => column
+      COLUMN => column,
+      'classname' => classname
     }
   end
 

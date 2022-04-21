@@ -13,42 +13,22 @@ class ProcedureArchiveService
     Archive.find_or_create_archive(type, month, groupe_instructeurs)
   end
 
-  def collect_files_archive(archive, instructeur)
-    if archive.time_span_type == 'everything'
-      dossiers = @procedure.dossiers.state_termine
+  def make_and_upload_archive(archive, instructeur)
+    dossiers = Dossier.visible_by_administration
+      .where(groupe_instructeur: archive.groupe_instructeurs)
+
+    dossiers = if archive.time_span_type == 'everything'
+      dossiers.state_termine
     else
-      dossiers = @procedure.dossiers.processed_in_month(archive.month)
+      dossiers.processed_in_month(archive.month)
     end
 
-    files = create_list_of_attachments(dossiers)
+    attachments = ActiveStorage::DownloadableFile.create_list_from_dossiers(dossiers)
 
-    tmp_file = Tempfile.new(['tc', '.zip'])
-
-    Zip::OutputStream.open(tmp_file) do |zipfile|
-      bug_reports = ''
-      files.each do |attachment, pj_filename|
-        zipfile.put_next_entry("#{zip_root_folder(@procedure)}/#{pj_filename}")
-        begin
-          zipfile.puts(attachment.download)
-        rescue
-          bug_reports += "Impossible de récupérer le fichier #{pj_filename}\n"
-        end
-      end
-      if !bug_reports.empty?
-        zipfile.put_next_entry("#{zip_root_folder(@procedure)}/LISEZMOI.txt")
-        zipfile.puts(bug_reports)
-      end
+    DownloadableFileService.download_and_zip(@procedure, attachments, zip_root_folder(archive)) do |zip_filepath|
+      ArchiveUploader.new(procedure: @procedure, filename: archive.filename(@procedure), filepath: zip_filepath)
+        .upload(archive)
     end
-
-    archive.file.attach(
-      io: File.open(tmp_file),
-      filename: archive.filename(@procedure),
-      # we don't want to run virus scanner on this file
-      metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE }
-    )
-    tmp_file.delete
-    archive.make_available!
-    InstructeurMailer.send_archive(instructeur, @procedure, archive).deliver_later
   end
 
   def self.procedure_files_size(procedure)
@@ -63,21 +43,15 @@ class ProcedureArchiveService
 
   private
 
-  def zip_root_folder(procedure)
-    "procedure-#{@procedure.id}"
-  end
-
-  def create_list_of_attachments(dossiers)
-    dossiers.flat_map do |dossier|
-      ActiveStorage::DownloadableFile.create_list_from_dossier(dossier)
-    end
+  def zip_root_folder(archive)
+    "procedure-#{@procedure.id}-#{archive.id}"
   end
 
   def self.attachments_from_champs_piece_justificative(champs)
     champs
       .filter { |c| c.type_champ == TypeDeChamp.type_champs.fetch(:piece_justificative) }
-      .filter { |pj| pj.piece_justificative_file.attached? }
       .map(&:piece_justificative_file)
+      .filter(&:attached?)
   end
 
   def self.liste_pieces_justificatives_for_archive(dossier)

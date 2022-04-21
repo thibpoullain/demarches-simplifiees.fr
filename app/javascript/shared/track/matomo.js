@@ -1,18 +1,24 @@
-const { key, enabled } = gon.matomo || {};
+const { cookieDomain, domain, enabled, host, key } = gon.matomo || {};
 
 if (enabled) {
   window._paq = window._paq || [];
 
-  const url = '//stats.data.gouv.fr/';
-  const trackerUrl = `${url}piwik.php`;
-  const jsUrl = `${url}piwik.js`;
+  const jsUrl = `//${host}/piwik.js`;
+  const trackerUrl = `//${host}/piwik.php`;
 
+  //
   // Configure Matomo analytics
-  window._paq.push(['setCookieDomain', '*.www.demarches-simplifiees.fr']);
-  window._paq.push(['setDomains', ['*.www.demarches-simplifiees.fr']]);
+  //
+
+  window._paq.push(['setCookieDomain', cookieDomain]);
+  window._paq.push(['setDomains', [domain]]);
+  // Don’t store any cookies or send any tracking request when the "Do Not Track" browser setting is enabled.
   window._paq.push(['setDoNotTrack', true]);
+  // When enabling external link tracking, consider that it will also report links to attachments.
+  // You’ll want to exclude links to attachments from being tracked – for instance using Matomo's
+  // `setCustomRequestProcessing` callback.
+  // window._paq.push(['enableLinkTracking']);
   window._paq.push(['trackPageView']);
-  window._paq.push(['enableLinkTracking']);
 
   // Load script from Matomo
   window._paq.push(['setTrackerUrl', trackerUrl]);

@@ -1,24 +1,30 @@
 class PiecesJustificativesService
-  def self.liste_documents(dossier, for_expert)
-    pjs_champs = pjs_for_champs(dossier, for_expert)
-    pjs_commentaires = pjs_for_commentaires(dossier)
-    pjs_dossier = pjs_for_dossier(dossier, for_expert)
+  def self.liste_documents(dossiers, for_expert)
+    bill_ids = []
 
-    (pjs_champs + pjs_commentaires + pjs_dossier)
-      .filter(&:attached?)
-  end
+    docs = dossiers.in_batches.flat_map do |batch|
+      pjs = pjs_for_champs(batch, for_expert) +
+        pjs_for_commentaires(batch) +
+        pjs_for_dossier(batch)
 
-  def self.liste_pieces_justificatives(dossier)
-    pjs_champs = pjs_for_champs(dossier)
-    pjs_commentaires = pjs_for_commentaires(dossier)
+      if !for_expert
+        # some bills are shared among operations
+        # so first, all the bill_ids are fetched
+        operation_logs, some_bill_ids = operation_logs_and_signature_ids(batch)
 
-    (pjs_champs + pjs_commentaires)
-      .filter(&:attached?)
-  end
+        pjs += operation_logs
+        bill_ids += some_bill_ids
+      end
 
-  def self.pieces_justificatives_total_size(dossier)
-    liste_pieces_justificatives(dossier)
-      .sum(&:byte_size)
+      pjs
+    end
+
+    if !for_expert
+      # then the bills are retrieved without duplication
+      docs += signatures(bill_ids.uniq)
+    end
+
+    docs
   end
 
   def self.serialize_types_de_champ_as_type_pj(revision)
@@ -120,40 +126,126 @@ class PiecesJustificativesService
 
   private
 
-  def self.pjs_for_champs(dossier, for_expert = false)
-    allowed_champs = for_expert ? dossier.champs : dossier.champs + dossier.champs_private
+  def self.pjs_for_champs(dossiers, for_expert = false)
+    champs = Champ
+      .joins(:piece_justificative_file_attachment)
+      .where(type: "Champs::PieceJustificativeChamp", dossier: dossiers)
 
-    allowed_child_champs = allowed_champs
-      .filter { |c| c.type_champ == TypeDeChamp.type_champs.fetch(:repetition) }
-      .flat_map(&:champs)
-
-    (allowed_champs + allowed_child_champs)
-      .filter { |c| c.type_champ == TypeDeChamp.type_champs.fetch(:piece_justificative) }
-      .map(&:piece_justificative_file)
-  end
-
-  def self.pjs_for_commentaires(dossier)
-    dossier
-      .commentaires
-      .map(&:piece_jointe)
-  end
-
-  def self.pjs_for_dossier(dossier, for_expert = false)
-    pjs = [
-      dossier.justificatif_motivation,
-      dossier.attestation&.pdf,
-      dossier.etablissement&.entreprise_attestation_sociale,
-      dossier.etablissement&.entreprise_attestation_fiscale
-    ].flatten.compact
-
-    if !for_expert
-      bill_signatures = dossier.dossier_operation_logs.filter_map(&:bill_signature).uniq
-      pjs += [
-        dossier.dossier_operation_logs.map(&:serialized),
-        bill_signatures.map(&:serialized),
-        bill_signatures.map(&:signature)
-      ].flatten.compact
+    if for_expert
+      champs = champs.where(private: false)
     end
-    pjs
+
+    champ_id_dossier_id = champs
+      .pluck(:id, :dossier_id)
+      .to_h
+
+    ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Champ", record_id: champ_id_dossier_id.keys)
+      .filter { |a| safe_attachment(a) }
+      .map do |a|
+        dossier_id = champ_id_dossier_id[a.record_id]
+        ActiveStorage::DownloadableFile.pj_and_path(dossier_id, a)
+      end
+  end
+
+  def self.pjs_for_commentaires(dossiers)
+    commentaire_id_dossier_id = Commentaire
+      .joins(:piece_jointe_attachment)
+      .where(dossier: dossiers)
+      .pluck(:id, :dossier_id)
+      .to_h
+
+    ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Commentaire", record_id: commentaire_id_dossier_id.keys)
+      .filter { |a| safe_attachment(a) }
+      .map do |a|
+        dossier_id = commentaire_id_dossier_id[a.record_id]
+        ActiveStorage::DownloadableFile.pj_and_path(dossier_id, a)
+      end
+  end
+
+  def self.pjs_for_dossier(dossiers)
+    motivations(dossiers) +
+      attestations(dossiers) +
+      etablissements(dossiers)
+  end
+
+  def self.etablissements(dossiers)
+    etablissement_id_dossier_id = Etablissement
+      .where(dossier: dossiers)
+      .pluck(:id, :dossier_id)
+      .to_h
+
+    ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Etablissement", record_id: etablissement_id_dossier_id.keys)
+      .map do |a|
+        dossier_id = etablissement_id_dossier_id[a.record_id]
+        ActiveStorage::DownloadableFile.pj_and_path(dossier_id, a)
+      end
+  end
+
+  def self.motivations(dossiers)
+    ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Dossier", name: "justificatif_motivation", record_id: dossiers)
+      .filter { |a| safe_attachment(a) }
+      .map do |a|
+        dossier_id = a.record_id
+        ActiveStorage::DownloadableFile.pj_and_path(dossier_id, a)
+      end
+  end
+
+  def self.attestations(dossiers)
+    attestation_id_dossier_id = Attestation
+      .joins(:pdf_attachment)
+      .where(dossier: dossiers)
+      .pluck(:id, :dossier_id)
+      .to_h
+
+    ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "Attestation", record_id: attestation_id_dossier_id.keys)
+      .map do |a|
+        dossier_id = attestation_id_dossier_id[a.record_id]
+        ActiveStorage::DownloadableFile.pj_and_path(dossier_id, a)
+      end
+  end
+
+  def self.operation_logs_and_signature_ids(dossiers)
+    dol_id_dossier_id_bill_id = DossierOperationLog
+      .where(dossier: dossiers)
+      .pluck(:id, :dossier_id, :bill_signature_id)
+
+    dol_id_dossier_id = dol_id_dossier_id_bill_id
+      .map { |dol_id, dossier_id, _| [dol_id, dossier_id] }
+      .to_h
+
+    bill_ids = dol_id_dossier_id_bill_id.map(&:third).uniq.compact
+
+    serialized_dols = ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "DossierOperationLog", record_id: dol_id_dossier_id.keys)
+      .map do |a|
+        dossier_id = dol_id_dossier_id[a.record_id]
+        ActiveStorage::DownloadableFile.pj_and_path(dossier_id, a)
+      end
+
+    [serialized_dols, bill_ids]
+  end
+
+  def self.signatures(bill_ids)
+    ActiveStorage::Attachment
+      .includes(:blob)
+      .where(record_type: "BillSignature", record_id: bill_ids)
+      .map { |bill| ActiveStorage::DownloadableFile.bill_and_path(bill) }
+  end
+
+  def self.safe_attachment(attachment)
+    attachment
+      .blob
+      .metadata[:virus_scan_result] == ActiveStorage::VirusScanner::SAFE
   end
 end

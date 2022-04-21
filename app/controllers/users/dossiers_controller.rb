@@ -6,9 +6,11 @@ module Users
 
     ACTIONS_ALLOWED_TO_ANY_USER = [:index, :recherche, :new, :transferer_all]
     ACTIONS_ALLOWED_TO_OWNER_OR_INVITE = [:show, :demande, :messagerie, :brouillon, :update_brouillon, :modifier, :update, :create_commentaire]
+    ACTIONS_ALLOWED_TO_OWNER_OR_INVITE_HIDDEN = [:restore]
 
-    before_action :ensure_ownership!, except: ACTIONS_ALLOWED_TO_ANY_USER + ACTIONS_ALLOWED_TO_OWNER_OR_INVITE
+    before_action :ensure_ownership!, except: ACTIONS_ALLOWED_TO_ANY_USER + ACTIONS_ALLOWED_TO_OWNER_OR_INVITE + ACTIONS_ALLOWED_TO_OWNER_OR_INVITE_HIDDEN
     before_action :ensure_ownership_or_invitation!, only: ACTIONS_ALLOWED_TO_OWNER_OR_INVITE
+    before_action :ensure_ownership_or_invitation_hidden!, only: ACTIONS_ALLOWED_TO_OWNER_OR_INVITE_HIDDEN
     before_action :ensure_dossier_can_be_updated, only: [:update_identite, :update_brouillon, :modifier, :update]
     before_action :forbid_invite_submission!, only: [:update_brouillon]
     before_action :forbid_closed_submission!, only: [:update_brouillon]
@@ -16,17 +18,21 @@ module Users
     before_action :store_user_location!, only: :new
 
     def index
-      @user_dossiers = current_user.dossiers.includes(:procedure).not_termine.order_by_updated_at.page(page)
-      @dossiers_traites = current_user.dossiers.includes(:procedure).termine.not_hidden_by_user.order_by_updated_at.page(page)
-      @dossiers_invites = current_user.dossiers_invites.includes(:procedure).order_by_updated_at.page(page)
-      @dossiers_supprimes = current_user.deleted_dossiers.order_by_updated_at.page(page)
+      dossiers = Dossier.includes(:procedure).order_by_updated_at.page(page)
+      dossiers_visibles = dossiers.visible_by_user
+
+      @user_dossiers = current_user.dossiers.state_not_termine.merge(dossiers_visibles)
+      @dossiers_traites = current_user.dossiers.state_termine.merge(dossiers_visibles)
+      @dossiers_close_to_expiration = current_user.dossiers.close_to_expiration.merge(dossiers_visibles)
+      @dossiers_invites = current_user.dossiers_invites.merge(dossiers_visibles)
+      @dossiers_supprimes_recemment = current_user.dossiers.hidden_by_user.merge(dossiers)
+      @dossiers_supprimes_definitivement = current_user.deleted_dossiers.order_by_updated_at.page(page)
       @dossier_transfers = DossierTransfer
         .includes(dossiers: :user)
         .with_dossiers
         .where(email: current_user.email)
         .page(page)
-      @dossiers_close_to_expiration = current_user.dossiers.close_to_expiration.page(page)
-      @statut = statut(@user_dossiers, @dossiers_traites, @dossiers_invites, @dossiers_supprimes, @dossier_transfers, @dossiers_close_to_expiration, params[:statut])
+      @statut = statut(@user_dossiers, @dossiers_traites, @dossiers_invites, @dossiers_supprimes_recemment, @dossiers_supprimes_definitivement, @dossier_transfers, @dossiers_close_to_expiration, params[:statut])
     end
 
     def show
@@ -105,7 +111,7 @@ module Users
       sanitized_siret = siret_model.siret
       begin
         etablissement = APIEntrepriseService.create_etablissement(@dossier, sanitized_siret, current_user.id)
-      rescue APIEntreprise::API::Error::RequestFailed, APIEntreprise::API::Error::BadGateway, APIEntreprise::API::Error::TimedOut
+      rescue APIEntreprise::API::Error::RequestFailed, APIEntreprise::API::Error::BadGateway, APIEntreprise::API::Error::TimedOut, APIEntreprise::API::Error::ServiceUnavailable
         return render_siret_error(t('errors.messages.siret_network_error'))
       end
       if etablissement.nil?
@@ -168,9 +174,9 @@ module Users
     end
 
     def extend_conservation
-      dossier.update(conservation_extension: dossier.conservation_extension + 1.month)
-      flash[:notice] = t('.archived_dossier')
-      redirect_to dossier_path(@dossier)
+      dossier.extend_conservation(dossier.procedure.duree_conservation_dossiers_dans_ds.months)
+      flash[:notice] = t('views.users.dossiers.archived_dossier', duree_conservation_dossiers_dans_ds: dossier.procedure.duree_conservation_dossiers_dans_ds)
+      redirect_back(fallback_location: dossier_path(@dossier))
     end
 
     def modifier
@@ -212,16 +218,14 @@ module Users
       end
     end
 
-    def ask_deletion
-      dossier = current_user.dossiers.includes(:user, procedure: :administrateurs).find(params[:id])
-
+    def delete_dossier
       if dossier.can_be_deleted_by_user?
-        dossier.discard_and_keep_track!(current_user, :user_request)
-        flash.notice = t('.deleted_dossier')
+        dossier.hide_and_keep_track!(current_user, :user_request)
+        flash.notice = t('users.dossiers.ask_deletion.soft_deleted_dossier')
         redirect_to dossiers_path
       else
-        flash.notice = t('.undergoingreview')
-        redirect_to dossier_path(dossier)
+        flash.alert = t('users.dossiers.ask_deletion.undergoingreview')
+        redirect_to dossiers_path
       end
     end
 
@@ -277,7 +281,7 @@ module Users
 
     def dossier_for_help
       dossier_id = params[:id] || params[:dossier_id]
-      @dossier || (dossier_id.present? && Dossier.find_by(id: dossier_id.to_i))
+      @dossier || (dossier_id.present? && Dossier.visible_by_user.find_by(id: dossier_id.to_i))
     end
 
     def transferer
@@ -288,10 +292,9 @@ module Users
       @transfer = DossierTransfer.new(dossiers: current_user.dossiers)
     end
 
-    def hide_dossier
-      dossier = current_user.dossiers.includes(:user, procedure: :administrateurs).find(params[:id])
-      dossier.update(hidden_by_user_at: Time.zone.now)
-      flash.notice = t('users.dossiers.ask_deletion.deleted_dossier')
+    def restore
+      hidden_dossier.restore(current_user)
+      flash.notice = t('users.dossiers.restore')
       redirect_to dossiers_path
     end
 
@@ -300,12 +303,13 @@ module Users
     # if the status tab is filled, then this tab
     # else first filled tab
     # else en-cours
-    def statut(mes_dossiers, dossiers_traites, dossiers_invites, dossiers_supprimes, dossier_transfers, dossiers_close_to_expiration, params_statut)
+    def statut(mes_dossiers, dossiers_traites, dossiers_invites, dossiers_supprimes_recemment, dossiers_supprimes_definitivement, dossier_transfers, dossiers_close_to_expiration, params_statut)
       tabs = {
         'en-cours' => mes_dossiers.present?,
         'traites' => dossiers_traites.present?,
         'dossiers-invites' => dossiers_invites.present?,
-        'dossiers-supprimes' => dossiers_supprimes.present?,
+        'dossiers-supprimes-recemment' => dossiers_supprimes_recemment.present?,
+        'dossiers-supprimes-definitivement' => dossiers_supprimes_definitivement.present?,
         'dossiers-transferes' => dossier_transfers.present?,
         'dossiers-expirant' => dossiers_close_to_expiration.present?
       }
@@ -348,21 +352,25 @@ module Users
     def champs_params
       params.permit(dossier: {
         champs_attributes: [
-          :id, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :piece_justificative_file, :departement, :code_departement, value: [],
-          champs_attributes: [:id, :_destroy, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :piece_justificative_file, :departement, :code_departement, value: []]
+          :id, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :identifiant, :numero_fiscal, :reference_avis, :ine, :piece_justificative_file, :departement, :code_departement, value: [],
+          champs_attributes: [:id, :_destroy, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :identifiant, :numero_fiscal, :reference_avis, :ine, :piece_justificative_file, :departement, :code_departement, value: []]
         ]
       })
     end
 
     def dossier
-      @dossier ||= Dossier.find(params[:id] || params[:dossier_id])
+      @dossier ||= Dossier.visible_by_user.find(params[:id] || params[:dossier_id])
+    end
+
+    def hidden_dossier
+      @hidden_dossier ||= Dossier.hidden_by_user.find(params[:id] || params[:dossier_id])
     end
 
     def dossier_with_champs
-      Dossier.with_champs.find(params[:id])
+      Dossier.with_champs.visible_by_user.find(params[:id])
     end
 
-    def change_groupe_instructeur?
+    def should_change_groupe_instructeur?
       if params[:dossier].key?(:groupe_instructeur_id)
         groupe_instructeur_id = params[:dossier][:groupe_instructeur_id]
         if groupe_instructeur_id.nil?
@@ -378,6 +386,14 @@ module Users
       if groupe_instructeur_id.present?
         @dossier.procedure.groupe_instructeurs.find(groupe_instructeur_id)
       end
+    end
+
+    def should_fill_groupe_instructeur?
+      !@dossier.procedure.routee? && @dossier.groupe_instructeur_id.nil?
+    end
+
+    def defaut_groupe_instructeur
+      @dossier.procedure.defaut_groupe_instructeur
     end
 
     def update_dossier_and_compute_errors
@@ -396,9 +412,13 @@ module Users
 
         if !@dossier.save(**validation_options)
           errors += @dossier.errors.full_messages
-        elsif change_groupe_instructeur?
+        elsif should_change_groupe_instructeur?
           @dossier.assign_to_groupe_instructeur(groupe_instructeur_from_params)
         end
+      end
+
+      if should_fill_groupe_instructeur?
+        @dossier.assign_to_groupe_instructeur(defaut_groupe_instructeur)
       end
 
       if !save_draft?
@@ -420,6 +440,12 @@ module Users
 
     def ensure_ownership_or_invitation!
       if !current_user.owns_or_invite?(dossier)
+        forbidden!
+      end
+    end
+
+    def ensure_ownership_or_invitation_hidden!
+      if !current_user.owns_or_invite?(hidden_dossier)
         forbidden!
       end
     end

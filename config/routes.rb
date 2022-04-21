@@ -10,7 +10,7 @@ Rails.application.routes.draw do
   #
 
   namespace :manager do
-    resources :procedures, only: [:index, :show] do
+    resources :procedures, only: [:index, :show, :edit, :update] do
       post 'whitelist', on: :member
       post 'draft', on: :member
       post 'discard', on: :member
@@ -19,6 +19,8 @@ Rails.application.routes.draw do
       post 'change_piece_justificative_template', on: :member
       get 'export_mail_brouillons', on: :member
     end
+
+    resources :archives, only: [:index, :show]
 
     resources :dossiers, only: [:index, :show] do
       post 'discard', on: :member
@@ -39,7 +41,7 @@ Rails.application.routes.draw do
       put 'unblock_email'
     end
 
-    resources :instructeurs, only: [:index, :show] do
+    resources :instructeurs, only: [:index, :show, :edit, :update] do
       post 'reinvite', on: :member
       delete 'delete', on: :member
     end
@@ -53,6 +55,8 @@ Rails.application.routes.draw do
     resources :services, only: [:index, :show]
 
     resources :super_admins, only: [:index, :show, :destroy]
+
+    resources :zones, only: [:index, :show]
 
     post 'demandes/create_administrateur'
     post 'demandes/refuse_administrateur'
@@ -103,7 +107,6 @@ Rails.application.routes.draw do
     get '/users/no_procedure' => 'users/sessions#no_procedure'
     get 'connexion-par-jeton/:id' => 'users/sessions#sign_in_by_link', as: 'sign_in_by_link'
     get 'lien-envoye' => 'users/sessions#link_sent', as: 'link_sent'
-    get 'lien-envoye/:email' => 'users/sessions#link_sent', constraints: { email: /.*/ }, as: 'link_sent_legacy' # legacy, can be removed as soon as the previous line is deployed to production servers
     get '/users/password/reset-link-sent' => 'users/passwords#reset_link_sent'
   end
 
@@ -191,7 +194,7 @@ Rails.application.routes.draw do
   end
 
   # order matters: we don't want those routes to match /admin/procedures/:id
-  get 'admin/procedures/new' => 'new_administrateur/procedures#new', as: :new_admin_procedure
+  get 'admin/procedures/new' => 'administrateurs/procedures#new', as: :new_admin_procedure
 
   namespace :admin do
     get 'activate' => '/administrateurs/activate#new'
@@ -214,7 +217,7 @@ Rails.application.routes.draw do
   # API
   #
 
-  authenticated :user, lambda { |user| user.administrateur_id } do
+  authenticated :user, lambda { |user| user.administrateur? } do
     mount GraphqlPlayground::Rails::Engine, at: "/graphql", graphql_path: "/api/v2/graphql"
   end
 
@@ -268,8 +271,8 @@ Rails.application.routes.draw do
         get 'demande'
         get 'messagerie'
         post 'commentaire' => 'dossiers#create_commentaire'
-        post 'ask_deletion'
-        patch 'hide_dossier'
+        patch 'delete_dossier'
+        patch 'restore', to: 'dossiers#restore'
         get 'attestation'
         get 'transferer', to: 'dossiers#transferer'
       end
@@ -308,6 +311,7 @@ Rails.application.routes.draw do
             get 'instruction'
             get 'messagerie'
             post 'commentaire' => 'avis#create_commentaire'
+            delete 'delete_commentaire' => 'avis#delete_commentaire'
             post 'avis' => 'avis#create_avis'
             get 'bilans_bdf'
             get 'telecharger_pjs' => 'avis#telecharger_pjs'
@@ -359,10 +363,10 @@ Rails.application.routes.draw do
         get 'email_usagers'
         post 'create_multiple_commentaire'
 
-        resources :dossiers, only: [:show], param: :dossier_id do
+        resources :dossiers, only: [:show, :destroy], param: :dossier_id do
           member do
             resources :commentaires, only: [:destroy]
-
+            post 'repousser-expiration' => 'dossiers#extend_conservation'
             get 'attestation'
             get 'geo_data'
             get 'apercu_attestation'
@@ -375,7 +379,7 @@ Rails.application.routes.draw do
             patch 'unfollow'
             patch 'archive'
             patch 'unarchive'
-            patch 'supprimer-dossier' => 'dossiers#delete_dossier'
+            patch 'restore'
             patch 'annotations' => 'dossiers#update_annotations'
             post 'commentaire' => 'dossiers#create_commentaire'
             post 'passer-en-instruction' => 'dossiers#passer_en_instruction'
@@ -398,7 +402,7 @@ Rails.application.routes.draw do
   # Administrateur
   #
 
-  namespace :admin, module: 'new_administrateur' do
+  scope module: 'administrateurs', path: 'admin', as: 'admin' do
     resources :procedures do
       collection do
         get 'new_from_existing'
@@ -408,6 +412,7 @@ Rails.application.routes.draw do
         get 'apercu'
         get 'champs'
         get 'annotations'
+        get 'modifications'
         get 'monavis'
         patch 'update_monavis'
         get 'jeton'
@@ -465,6 +470,7 @@ Rails.application.routes.draw do
       resource :attestation_template, only: [:edit, :update, :create] do
         get 'preview', on: :member
       end
+      resource :dossier_submitted_message, only: [:edit, :update, :create]
       # ADDED TO ACCESS IT FROM THE IFRAME
       get 'attestation_template/preview' => 'attestation_templates#preview'
     end

@@ -7,16 +7,16 @@
 #  encrypted_token :string
 #  created_at      :datetime
 #  updated_at      :datetime
+#  user_id         :bigint           not null
 #
 class Administrateur < ApplicationRecord
   include ActiveRecord::SecureToken
 
   has_and_belongs_to_many :instructeurs
-  has_many :administrateurs_procedures
-  has_many :procedures, through: :administrateurs_procedures
+  has_and_belongs_to_many :procedures
   has_many :services
 
-  has_one :user, dependent: :nullify
+  belongs_to :user
 
   default_scope { eager_load(:user) }
 
