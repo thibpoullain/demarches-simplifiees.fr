@@ -13,9 +13,14 @@ en:
         title: "Frequently Asked Questions"
         url: "https://faq.demarches-simplifiees.fr"
       cgu:
-        label: "ToS"
-        title: "Terms of Service"
-        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU.pdf"
+        usager:
+          label: "ToS User"
+          title: "Terms of Service - User"
+          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf"
+        agent:
+          label: "ToS Agent"
+          title: "Terms of Service - Agent"
+          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf"
       confidentialite:
         label: "Confidentiality declaration"
         title: "Confidentiality declaration"

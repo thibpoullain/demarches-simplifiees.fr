@@ -28,9 +28,14 @@ fr:
         title: "Le site de Beta.gouv.fr"
         url: "https://beta.gouv.fr"
       cgu:
-        label: "CGU"
-        title: "Conditions Générales d'Utilisation"
-        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU.pdf"
+        usager:
+          label: "CGU Usager"
+          title: "Conditions Générales d'Utilisation - Usager"
+          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf"
+        agent:
+          label: "CGU Agent"
+          title: "Conditions Générales d'Utilisation - Agent"
+          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf"
       confidentialite:
         label: "Déclaration de confidentialité"
         title: "Déclaration de confidentialité"

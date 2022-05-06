@@ -42,3 +42,6 @@ yarn-debug.log*
 # Custom views
 /app/custom_views/*
 !/app/custom_views/.keep
+
+/nbproject/*
+
