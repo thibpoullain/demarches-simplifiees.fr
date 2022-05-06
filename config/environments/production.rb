@@ -111,6 +111,15 @@ Rails.application.configure do
     config.action_mailer.delivery_method = :sendinblue
   elsif ENV['MAILCATCHER_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :mailcatcher
+  elsif ENV['SMTP_ENABLED'] == 'enabled'
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+      user_name: Rails.application.secrets.smtp[:username],
+      password: Rails.application.secrets.smtp[:password],
+      address: ENV['SMTP_HOST'],
+      domain: ENV['SMTP_DOMAIN'],
+      port: ENV['SMTP_PORT']
+    }
   else
     config.action_mailer.delivery_method = :mailjet
   end
