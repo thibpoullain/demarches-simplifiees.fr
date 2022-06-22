@@ -29,6 +29,7 @@ class TypeDeChamp < ApplicationRecord
     checkbox: 'checkbox',
     civilite: 'civilite',
     email: 'email',
+    nir: 'nir',
     phone: 'phone',
     address: 'address',
     yes_no: 'yes_no',

@@ -71,6 +71,11 @@ FactoryBot.define do
       value { 'yoda@beta.gouv.fr' }
     end
 
+    factory :champ_nir, class: 'Champs::NirChamp' do
+      type_de_champ { association :type_de_champ_nir, procedure: dossier.procedure }
+      value { '153124500723148' }
+    end
+
     factory :champ_phone, class: 'Champs::PhoneChamp' do
       type_de_champ { association :type_de_champ_phone, procedure: dossier.procedure }
       value { '0666666666' }

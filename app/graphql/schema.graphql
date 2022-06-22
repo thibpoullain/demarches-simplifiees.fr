@@ -2076,6 +2076,11 @@ enum TypeDeChamp {
   Oui/Non
   """
   yes_no
+
+  """
+  Numéro de sécurité sociale
+  """
+  nir
 }
 
 enum TypeOrganisme {

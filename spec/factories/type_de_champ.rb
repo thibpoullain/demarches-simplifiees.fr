@@ -66,6 +66,9 @@ FactoryBot.define do
     factory :type_de_champ_email do
       type_champ { TypeDeChamp.type_champs.fetch(:email) }
     end
+    factory :type_de_champ_nir do
+      type_champ { TypeDeChamp.type_champs.fetch(:nir) }
+    end
     factory :type_de_champ_phone do
       type_champ { TypeDeChamp.type_champs.fetch(:phone) }
     end
