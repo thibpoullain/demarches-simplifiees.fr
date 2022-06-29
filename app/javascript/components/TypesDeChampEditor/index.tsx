@@ -35,9 +35,7 @@ export default function TypesDeChampEditor(props: TypesDeChampEditorProps) {
     types_de_champ: [],
     mandatory: false,
     private: props.isAnnotation,
-    libelle: `${props.isAnnotation ? 'Nouvelle annotation' : 'Nouveau champ'} ${
-      props.typeDeChampsTypes[0][0]
-    }`
+    libelle: `${props.isAnnotation ? 'Nouvelle annotation' : 'Nouveau champ'} `
   };
   const state: State = {
     flash: new Flash(props.isAnnotation),
