@@ -1,6 +1,6 @@
 namespace :after_party do
   desc 'Exécute la tâche after_party correspondante à la VERSION, seulement si elle n\'a jamais été jouée sur cette instance.'
-  task :run_version do
+  task run_version: :environment do
     if ENV['VERSION']
       version_cible = ENV['VERSION']
     else
