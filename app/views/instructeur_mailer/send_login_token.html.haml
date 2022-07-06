@@ -12,7 +12,7 @@
   %b plusieurs fois.
 
 %p
-  Si vous n'êtes pas a l'origine de la connexion, votre mot de passe a été corrompu. Vous pouvez le changer
-  %a= link_to "ici", "/users/password/new"
+  Si vous n'êtes pas a l'origine de la connexion, votre mot de passe a été compromis. Vous devez le changer
+  = link_to('ici.', new_password_url(:user))
 
 = render partial: "layouts/mailers/signature"
