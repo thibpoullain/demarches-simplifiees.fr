@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://demarches-simplifiees.fr/finess.schema.json",
+  "title": "Établissement Finess",
+  "type": "object",
+  "properties": {
+    "date_extract_finess": {
+      "type": "date"
+    },
+    "date_autorisation": {
+      "type": "date"
+    },
+    "date_ouverture": {
+      "type": "date"
+    },
+    "finess": {
+      "type": "string"
+    },
+    "rs": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "statut_jur_lib": {
+      "type": "string"
+    },
+    "categ_lib_court": {
+      "type": "string"
+    },
+    "ej_finess": {
+      "type": "string"
+    }, 
+    "adresse_num_voie": {
+      "type": "string"
+    },
+    "adresse_comp_voie": {
+      "type": "string"
+    },
+    "adresse_type_voie": {
+      "type": "string"
+    },
+    "adresse_nom_voie": {
+      "type": "string"
+    },
+    "adresse_code_postal": {
+      "type": "string"
+    },
+    "adresse_lib_routage": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "finess",
+    "rs",
+    "adresse_lib_routage",
+    "adresse_code_postal",
+    "ej_finess",
+    "type",
+    "date_ouverture",
+    "date_autorisation",
+    "date_extract_finess",
+    "statut_jur_lib",
+    "categ_lib_court"    
+  ]
+}

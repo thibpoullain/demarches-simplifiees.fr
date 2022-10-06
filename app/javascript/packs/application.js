@@ -60,6 +60,7 @@ registerReactComponents({
   ComboAnnuaireEducationSearch: Loadable(() =>
     import('../components/ComboAnnuaireEducationSearch')
   ),
+  ComboFinessSearch: Loadable(() => import('../components/ComboFinessSearch')),
   ComboCommunesSearch: Loadable(() =>
     import('../components/ComboCommunesSearch')
   ),

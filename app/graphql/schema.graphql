@@ -2081,6 +2081,11 @@ enum TypeDeChamp {
   Numéro de sécurité sociale
   """
   nir
+
+  """
+  Numéro FINESS
+  """
+  finess
 }
 
 enum TypeOrganisme {

@@ -8,6 +8,7 @@ type Gon = {
       api_geo_url?: string;
       api_adresse_url?: string;
       api_education_url?: string;
+      api_opendatasoft_url?: string;
     };
   };
 };
@@ -16,6 +17,7 @@ declare const window: Window & typeof globalThis & Gon;
 const API_EDUCATION_QUERY_LIMIT = 5;
 const API_GEO_QUERY_LIMIT = 5;
 const API_ADRESSE_QUERY_LIMIT = 5;
+const API_FINESS_QUERY_LIMIT = 5;
 
 // When searching for short strings like "mer", le exact match shows up quite far in
 // the ordering (~50).
@@ -26,8 +28,12 @@ const API_ADRESSE_QUERY_LIMIT = 5;
 // NB: 60 is arbitrary, we may add more if needed.
 const API_GEO_COMMUNES_QUERY_LIMIT = 60;
 
-const { api_geo_url, api_adresse_url, api_education_url } =
-  window.gon.autocomplete || {};
+const {
+  api_geo_url,
+  api_adresse_url,
+  api_education_url,
+  api_opendatasoft_url
+} = window.gon.autocomplete || {};
 
 type QueryKey = readonly [
   scope: string,
@@ -50,6 +56,11 @@ function buildURL(scope: string, term: string, extra?: string) {
       return `${url}codePostal=${term}`;
     }
     return `${url}nom=${term}&boost=population`;
+  } else if (scope === 'finess') {
+    // https://public.opendatasoft.com/api/records/1.0/search/?dataset=finess-entite-juridique&q=240013292
+    //return `${api_finess_url}`;
+    //return `${api_opendatasoft_url}?dataset=finess-entite-juridique&q=${term}&rows=${API_FINESS_QUERY_LIMIT}`;
+    return `${api_opendatasoft_url}/search?dataset=t_finess&q=${term}&rows=${API_FINESS_QUERY_LIMIT}`;
   } else if (isNumeric(term)) {
     const code = term.padStart(2, '0');
     return `${api_geo_url}/${scope}?code=${code}&limit=${API_GEO_QUERY_LIMIT}`;

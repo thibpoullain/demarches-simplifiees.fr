@@ -36,6 +36,8 @@
               = render partial: "shared/champs/textarea/show", locals: { champ: c }
             - when TypeDeChamp.type_champs.fetch(:annuaire_education)
               = render partial: "shared/champs/annuaire_education/show", locals: { champ: c }
+            - when TypeDeChamp.type_champs.fetch(:finess)
+              = render partial: "shared/champs/finess/show", locals: { champ: c }
             - when TypeDeChamp.type_champs.fetch(:cnaf)
               = render partial: "shared/champs/cnaf/show", locals: { champ: c, profile: profile }
             - when TypeDeChamp.type_champs.fetch(:dgfip)

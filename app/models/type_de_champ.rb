@@ -30,6 +30,7 @@ class TypeDeChamp < ApplicationRecord
     civilite: 'civilite',
     email: 'email',
     nir: 'nir',
+    finess: 'finess',
     phone: 'phone',
     address: 'address',
     yes_no: 'yes_no',
