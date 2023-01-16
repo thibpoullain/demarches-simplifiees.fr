@@ -17,7 +17,7 @@ declare const window: Window & typeof globalThis & Gon;
 const API_EDUCATION_QUERY_LIMIT = 5;
 const API_GEO_QUERY_LIMIT = 5;
 const API_ADRESSE_QUERY_LIMIT = 5;
-const API_FINESS_QUERY_LIMIT = 5;
+const API_FINESS_QUERY_LIMIT = 10;
 
 // When searching for short strings like "mer", le exact match shows up quite far in
 // the ordering (~50).
@@ -42,6 +42,7 @@ type QueryKey = readonly [
 ];
 
 function buildURL(scope: string, term: string, extra?: string) {
+  const chfiness = term;
   term = encodeURIComponent(term.replace(/\(|\)/g, ''));
   if (scope === 'adresse') {
     return `${api_adresse_url}/search?q=${term}&limit=${API_ADRESSE_QUERY_LIMIT}`;
@@ -57,10 +58,25 @@ function buildURL(scope: string, term: string, extra?: string) {
     }
     return `${url}nom=${term}&boost=population`;
   } else if (scope === 'finess') {
-    // https://public.opendatasoft.com/api/records/1.0/search/?dataset=finess-entite-juridique&q=240013292
-    //return `${api_finess_url}`;
-    //return `${api_opendatasoft_url}?dataset=finess-entite-juridique&q=${term}&rows=${API_FINESS_QUERY_LIMIT}`;
-    return `${api_opendatasoft_url}/search?dataset=t_finess&q=${term}&rows=${API_FINESS_QUERY_LIMIT}`;
+    const reg = chfiness.split(' ');
+    let ch = '';
+    for (let i = 0; i < reg.length - 1; i++) {
+      ch =
+        ch +
+        '%23search(rs,finess,adresse_lib_routage,adresse_code_postal,"' +
+        reg[i] +
+        '") AND ';
+    }
+    ch =
+      ch +
+      '%23search(rs,finess,adresse_lib_routage,adresse_code_postal,"' +
+      reg[reg.length - 1] +
+      '")';
+    //term = "search(rs,finess,adresse_lib_routage,\""+term+"\")";
+    console.log(
+      `${api_opendatasoft_url}/search?dataset=t_finess&q=${ch}&rows=${API_FINESS_QUERY_LIMIT}&1=1`
+    );
+    return `${api_opendatasoft_url}/search?dataset=t_finess&q=${ch}&rows=${API_FINESS_QUERY_LIMIT}`;
   } else if (isNumeric(term)) {
     const code = term.padStart(2, '0');
     return `${api_geo_url}/${scope}?code=${code}&limit=${API_GEO_QUERY_LIMIT}`;

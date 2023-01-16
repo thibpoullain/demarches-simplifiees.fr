@@ -12,8 +12,11 @@ function ComboFinessSearch(props) {
         minimumInputLength={3}
         transformResults={(_, { records }) => records}
         transformResult={({
-          fields: { finess: id, rs, adresse_lib_routage }
-        }) => [id, `${rs}, ${adresse_lib_routage} (${id})`]}
+          fields: { finess: id, rs, adresse_lib_routage, adresse_code_postal }
+        }) => [
+          id,
+          `${rs}, ${adresse_lib_routage} ${adresse_code_postal} (${id}) `
+        ]}
         {...props}
       />
     </QueryClientProvider>

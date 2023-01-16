@@ -3,7 +3,7 @@ class APIFiness::API
   end
 
   def self.get_finess(id)
-    call([API_OPENDATASOFT_URL, 'search'].join('/'), 't_finess', { 'finess': id })
+    call([API_OPENDATASOFT_URL, 'search'].join('/'), 't_finess', { 'q': 'finess:' + id })
   end
 
   private

@@ -1,7 +1,0 @@
-- if champ.data.blank?
-  = champ.to_s
-%table.table.vertical.dossier-champs
-  %tbody
-    %tr
-      %th.libelle Raison Sociale :
-      %td= champ.data['rs']

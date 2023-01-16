@@ -1,1 +1,43 @@
-%p= champ.blank? ? 'Non renseigné' : champ
+- if !champ.data || champ.data.nil? || champ.data.blank? || !champ.data['rs'] || champ.data['rs'].nil?
+  = champ.to_s
+- else
+  %table.table.vertical.dossier-champs
+    %tbody
+      %tr
+        %th.libelle Raison Sociale :
+        %td= champ.data['rs']
+      %tr
+        %th.libelle Finess :
+        %td= champ.data['finess']
+      %tr
+        %th.libelle Type :
+        %td= champ.data['type']
+      %tr
+        %th.libelle Adresse :
+        %td= "#{champ.data['adresse_num_voie']}, #{champ.data['adresse_comp_voie']} #{champ.data['adresse_type_voie']} #{champ.data['adresse_nom_voie']} #{champ.data['adresse_lieuditbp']} #{champ.data['adresse_code_postal']} #{champ.data['adresse_lib_routage']}"
+      %tr
+        %th.libelle Statut juridique :
+        %td= champ.data['statut_jur_lib']
+      %tr
+        %th.libelle Catégorie :
+        %td= champ.data['categ_lib_court']
+      - if champ.data['siren'].present?
+        %tr
+          %th.libelle Siren/Siret :
+          %td= "#{champ.data['siren']} / #{champ.data['siret']}"
+      - else
+        %tr
+          %th.libelle Siren/Siret :
+          %td= champ.data['siret']
+      %tr
+        %th.libelle Finess EJ :
+        %td= champ.data['ej_finess']
+      %tr
+        %th.libelle Date d'autorisation :
+        %td= champ.data['date_autorisation']
+      %tr
+        %th.libelle Date d'ouverture :
+        %td= champ.data['date_ouverture']
+      %tr
+        %th.libelle Date d'actualisation des informations :
+        %td= champ.data['date_extract_finess']
