@@ -12,6 +12,7 @@ gem 'after_party'
 gem 'anchored'
 gem 'aws-sdk-s3', '~> 1.113', require: false # Stockage S3 dont cegedim
 gem 'bcrypt'
+gem 'bcrypt_pbkdf' # idem
 gem 'bootsnap', '>= 1.4.4', require: false # Reduces boot times through caching; required in config/boot.rb
 gem 'browser'
 gem 'charlock_holmes'
@@ -29,6 +30,7 @@ gem 'devise-i18n'
 gem 'devise-two-factor'
 gem 'discard'
 gem 'dotenv-rails', require: 'dotenv/rails-now' # dotenv should always be loaded before rails
+gem 'ed25519' # Gestion de davantage de formats de cles SSH
 gem 'flipper'
 gem 'flipper-active_record'
 gem 'flipper-ui'
@@ -59,6 +61,7 @@ gem 'mailjet', require: false
 gem 'matrix' # needed by prawn and not default in ruby 3.1
 gem 'net-imap', require: false # See https://github.com/mikel/mail/pull/1439
 gem 'net-pop', require: false # same
+gem 'net-sftp'
 gem 'net-smtp', require: false # same
 gem 'openid_connect'
 gem 'pg'

@@ -44,3 +44,6 @@ yarn-debug.log*
 !/app/custom_views/.keep
 
 /nbproject/*
+
+# Les fichiers versés dans le SFTP de test ne sont pas à commiter
+/sftp_fake/upload

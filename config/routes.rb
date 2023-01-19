@@ -85,6 +85,11 @@ Rails.application.routes.draw do
   get "/status" => "status#index"
 
   #
+  # Custom export
+  #
+  get "/custom_export/:id" => "api/v1/export#show"
+
+  #
   # Authentication
   #
 
@@ -225,6 +230,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       resources :procedures, only: [:index, :show] do
         resources :dossiers, only: [:index, :show]
+        resources :export, only: [:show]
       end
     end
 
