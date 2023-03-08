@@ -66,6 +66,10 @@ dans un service dédié, et indiquer à rails d'utiliser delayed_job:
     bin/rake jobs:work
     RAILS_QUEUE_ADAPTER=delayed_job bin/rails server
 
+### Lancement de l'application depuis Scalingo
+
+[![Deploy on Scalingo](https://cdn.scalingo.com/deploy/button.svg)](https://dashboard.scalingo.com/create/app?source=https://github.com/DNUM-SocialGouv/demat-social.git#main)
+
 ### Utilisateurs de test
 
 En local, un utilisateur de test est créé automatiquement, avec les identifiants `test@exemple.fr`/`this is a very complicated password !`. (voir [db/seeds.rb](https://github.com/betagouv/demarches-simplifiees.fr/blob/dev/db/seeds.rb))

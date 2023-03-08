@@ -1,5 +1,7 @@
 source 'https://rubygems.org'
 
+ruby "3.1.3"
+
 gem 'aasm'
 gem 'acsv'
 gem 'active_link_to' # Automatically set a class on active links

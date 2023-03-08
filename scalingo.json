@@ -1,0 +1,26 @@
+{
+    "env": {
+      "IS_REVIEW_APP": {
+        "value": "true"
+      },
+      "APP_HOST": {
+        "generator": "url",
+        "template": "%URL%"
+      }
+    },
+    "addons": [
+      {
+        "plan": "postgresql:postgresql-sandbox"
+      }
+    ],
+    "formation": {
+      "web": {
+        "amount": 1,
+        "size": "M"
+      },
+      "job": {
+        "amount": 1,
+        "size": "S"
+      }
+    }
+}
