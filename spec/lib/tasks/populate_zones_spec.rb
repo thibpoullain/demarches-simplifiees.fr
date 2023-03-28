@@ -9,6 +9,6 @@ describe 'populate_zones' do
 
   it 'populates zones' do
     run_task
-    expect(Zone.find_by(acronym: 'PM').label).to eq "Premier ministre"
+    expect(Zone.find_by(acronym: 'ARS ARA').label).to eq "ARS Auvergne-Rhône-Alpes"
   end
 end
