@@ -1,37 +1,61 @@
 ministeres:
-  - MAA:
-    label: "Ministère de l'Agriculture et de l'Alimentation"
-  - MC:
-    label: "Ministère de la Culture"
-  - MAS:
-    label: "Ministère des Solidarités et de la Santé"
-  - MTEI:
-    label: "Ministère du Travail"
-  - MEAE:
-    label: "Ministère de l'Europe et des Affaires étrangères"
-  - MEF:
-    label: "Ministère de l'Économie, des Finances et de la Relance"
-  - MJS:
-    label: "Ministère de la Jeunesse et des Sports"
-  - MEN:
-    label: "Ministère de l'Éducation nationale, de la Jeunesse et des Sports"
-  - ESR:
-    label: "Ministère de l'Enseignement supérieur, de la Recherche et de l'Innovation"
-  - MI:
-    label: "Ministère de l'Intérieur"
-  - MINARM:
-    label: "Ministère des Armées"
-  - MJ:
-    label: "Ministère de la Justice"
-  - MTES:
-    label: "Ministère de la Transition écologique"
-  - MCTRCT:
-    label: "Ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales"
-  - PM:
-    label: "Premier ministre"
-  - MER:
-    label: "Ministère de la Mer"
-  - MTFP:
-    label: "Ministère de la Transformation et de la Fonction publiques"
-  - OM:
-    label: "Ministère des Outre-mer"
+  - ARS ARA:
+    label: "ARS Auvergne-Rhône-Alpes"
+  - ARS BFC:
+    label: "ARS Bourgogne-Franche-Comté"
+  - ARS BRET:
+    label: "ARS Bretagne"
+  - ARS CVL:
+    label: "ARS Centre-Val de Loire"
+  - ARS COR:
+    label: "ARS Corse"
+  - ARS GE:
+    label: "ARS Grand Est"
+  - ARS GUAD:
+    label: "ARS Guadeloupe"
+  - ARS GUY:
+    label: "ARS Guyane"
+  - ARS HDF:
+    label: "ARS Hauts-de-France"
+  - ARS IF:
+    label: "ARS Île-de-France"
+  - ARS REU:
+    label: "ARS La Réunion"
+  - ARS MART:
+    label: "ARS Martinique"
+  - ARS MAY:
+    label: "ARS Mayotte"
+  - ARS NORM:
+    label: "ARS Normandie"
+  - ARS NA:
+    label: "ARS Nouvelle-Aquitaine"
+  - ARS OCC:
+    label: "ARS Occitanie"
+  - ARS PDL:
+    label: "Pays de la Loire"
+  - ARS PACA:
+    label: "ARS Provence-Alpes-Côte d'Azur"
+  - BCJS:
+    label: "Bureau de la communication Jeunesse et sports"
+  - DICOM:
+    label: "Délégation à l'information et à la communication"
+  - DAEI:
+    label: "Délégation aux affaires européennes et internationales"
+  - DSS:
+    label: "Direction de la sécurité sociale"
+  - DAJ:
+    label: "Direction des affaires juridiques"
+  - DFAS:
+    label: "Direction des finances, des achats et des services"
+  - DRH:
+    label: "Direction des ressources humaines des ministères sociaux"
+  - DNUM:
+    label: "Direction du numérique"
+  - DGOS:
+    label: "Direction générale de l’offre de soins"
+  - DGCS:
+    label: "Direction générale de la cohésion sociale"
+  - DGS:
+    label: "Direction générale de la santé"
+  - SG:
+    label: "Secrétariat général des ministères chargés des affaires sociales"
