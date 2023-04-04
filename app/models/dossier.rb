@@ -242,6 +242,7 @@ class Dossier < ApplicationRecord
   scope :downloadable_sorted, -> {
     state_not_brouillon
       .visible_by_administration
+      .where(hidden_by_user_at: nil)
       .includes(
         :user,
         :individual,
