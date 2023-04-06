@@ -59,3 +59,7 @@ ministeres:
     label: "Direction générale de la santé"
   - SG:
     label: "Secrétariat général des ministères chargés des affaires sociales"
+  - SPF:
+    label: Santé Publique France
+  - AUTRE:
+    lable: "Autre"
