@@ -194,6 +194,10 @@ FactoryBot.define do
       type_de_champ { association :type_de_champ_finess, procedure: dossier.procedure }
     end
 
+    factory :champ_rppsante, class: 'Champs::RppsanteChamp' do
+      type_de_champ { association :type_de_champ_rppsante, procedure: dossier.procedure }
+    end
+
     factory :champ_cnaf, class: 'Champs::CnafChamp' do
       type_de_champ { association :type_de_champ_cnaf, procedure: dossier.procedure }
     end

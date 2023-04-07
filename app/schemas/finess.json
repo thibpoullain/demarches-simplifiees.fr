@@ -3,7 +3,7 @@
   "$id": "http://demarches-simplifiees.fr/finess.schema.json",
   "title": "Établissement & Entité Juridique Finess",
   "type": "object",
-  "properties": {      
+  "properties": {
     "date_extract_finess": {
       "type": "date"
     },
@@ -42,17 +42,22 @@
     },
     "adresse_num_voie": {
       "type": "integer",
-      "default": " "
+      "nullable": true,
+      "default": ""
     },
     "adresse_comp_voie": {
       "type": "string",
-      "default": " "
+      "default": ""
     },
     "adresse_type_voie": {
-      "type": "string"
+      "type": "string",
+      "nullable": true,
+      "default": ""
     },
     "adresse_nom_voie": {
-      "type": "string"
+      "type": "string",
+      "nullable": true,
+      "default": ""
     },
     "adresse_code_postal": {
       "type": "string"
@@ -68,9 +73,6 @@
     "type",
     "date_extract_finess",
     "statut_jur_lib",
-    "adresse_num_voie",
-    "adresse_type_voie",
-    "adresse_nom_voie",
     "adresse_lib_routage",
     "adresse_code_postal"
   ]

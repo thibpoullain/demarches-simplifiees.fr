@@ -18,6 +18,7 @@ const API_EDUCATION_QUERY_LIMIT = 5;
 const API_GEO_QUERY_LIMIT = 5;
 const API_ADRESSE_QUERY_LIMIT = 5;
 const API_FINESS_QUERY_LIMIT = 10;
+const API_RPPSANTE_QUERY_LIMIT = 10;
 
 // When searching for short strings like "mer", le exact match shows up quite far in
 // the ordering (~50).
@@ -42,7 +43,7 @@ type QueryKey = readonly [
 ];
 
 function buildURL(scope: string, term: string, extra?: string) {
-  const chfiness = term;
+  const chOpendatasoft = term;
   term = encodeURIComponent(term.replace(/\(|\)/g, ''));
   if (scope === 'adresse') {
     return `${api_adresse_url}/search?q=${term}&limit=${API_ADRESSE_QUERY_LIMIT}`;
@@ -58,7 +59,7 @@ function buildURL(scope: string, term: string, extra?: string) {
     }
     return `${url}nom=${term}&boost=population`;
   } else if (scope === 'finess') {
-    const reg = chfiness.split(' ');
+    const reg = chOpendatasoft.split(' ');
     let ch = '';
     for (let i = 0; i < reg.length - 1; i++) {
       ch =
@@ -77,6 +78,26 @@ function buildURL(scope: string, term: string, extra?: string) {
       `${api_opendatasoft_url}/search?dataset=t_finess&q=${ch}&rows=${API_FINESS_QUERY_LIMIT}&1=1`
     );
     return `${api_opendatasoft_url}/search?dataset=t_finess&q=${ch}&rows=${API_FINESS_QUERY_LIMIT}`;
+  } else if (scope === 'rppsante') {
+    const reg = chOpendatasoft.split(' ');
+    let ch = '';
+    for (let i = 0; i < reg.length - 1; i++) {
+      ch =
+        ch +
+        '%23search(identification_nationale_pp,prenom_d_exercice,libelle_profession,nom_d_exercice,code_postal_coord_structure,libelle_commune_coord_structure,"' +
+        reg[i] +
+        '") AND ';
+    }
+    ch =
+      ch +
+      '%23search(identification_nationale_pp,prenom_d_exercice,libelle_profession,nom_d_exercice,code_postal_coord_structure,libelle_commune_coord_structure,"' +
+      reg[reg.length - 1] +
+      '")';
+    ch = ch + ' AND NOT %23null(libelle_commune_coord_structure) ';
+    console.log(
+      `${api_opendatasoft_url}/search?dataset=ps_libreacces_personne_activite&q=${ch}&rows=${API_RPPSANTE_QUERY_LIMIT}&1=1`
+    );
+    return `${api_opendatasoft_url}/search?dataset=ps_libreacces_personne_activite&q=${ch}&rows=${API_RPPSANTE_QUERY_LIMIT}`;
   } else if (isNumeric(term)) {
     const code = term.padStart(2, '0');
     return `${api_geo_url}/${scope}?code=${code}&limit=${API_GEO_QUERY_LIMIT}`;

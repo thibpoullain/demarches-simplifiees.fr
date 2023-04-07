@@ -2086,6 +2086,12 @@ enum TypeDeChamp {
   Numéro FINESS
   """
   finess
+
+  """
+  Numéro RPPS
+  """
+  rppsante
+
 }
 
 enum TypeOrganisme {

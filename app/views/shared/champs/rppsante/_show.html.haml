@@ -1,0 +1,45 @@
+- if !champ.data || champ.data.nil? || champ.data.blank? || !champ.data['raison_sociale_site'] || champ.data['raison_sociale_site'].nil?
+  = champ.to_s
+- else
+  %table.table.vertical.dossier-champs
+    %tbody
+      %tr
+        %th.libelle= champ.to_s
+      %tr
+        %th.libelle Numéro RPPS :
+        %td= champ.data['identification_nationale_pp']
+      - if champ.data['libelle_civilite_d_exercice'].present?
+        %tr
+          %th.libelle Professionnel :
+          %td= "#{champ.data['libelle_civilite_d_exercice']} #{champ.data['prenom_d_exercice']} #{champ.data['nom_d_exercice']}"
+      - else
+        %tr
+          %th.libelle Professionnel :
+          %td= "#{champ.data['libelle_civilite']} #{champ.data['prenom_d_exercice']} #{champ.data['nom_d_exercice']}"
+      %tr
+        %th.libelle Profession :
+        %td= champ.data['libelle_profession']
+      %tr
+        %th.libelle Catégorie professionnelle :
+        %td= champ.data['libelle_categorie_professionnelle']
+      %tr
+        %th.libelle Savoir faire :
+        %td= champ.data['libelle_savoir_faire']
+      %tr
+        %th.libelle Mode d'exercice :
+        %td= champ.data['libelle_mode_exercice']
+      %tr
+        %th.libelle SIRET site d'exercice :
+        %td= champ.data['numero_siret_site']
+      %tr
+        %th.libelle FINESS site d'exercice :
+        %td= champ.data['numero_finess_site']
+      %tr
+        %th.libelle Autorité d'enregistrement :
+        %td= champ.data['autorite_d_enregistrement']
+      %tr
+        %th.libelle Secteur d'activité :
+        %td= champ.data['libelle_secteur_d_activite']
+      %tr
+        %th.libelle Info RPPS au :
+        %td= champ.updated_at.strftime('%d/%m/%Y')

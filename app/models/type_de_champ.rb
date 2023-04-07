@@ -31,6 +31,7 @@ class TypeDeChamp < ApplicationRecord
     email: 'email',
     nir: 'nir',
     finess: 'finess',
+    rppsante: 'rppsante',
     phone: 'phone',
     address: 'address',
     yes_no: 'yes_no',

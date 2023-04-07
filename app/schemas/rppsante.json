@@ -1,0 +1,116 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "http://demarches-simplifiees.fr/rpps.schema.json",
+  "title": "Répertoire Partagé des Professionnels intervenant dans le système de Santé",
+  "type": "object",
+  "properties": {
+    "numero_voie_coord_structure": {
+      "type": "integer"
+    },
+    "libelle_type_de_voie_coord_structure": {
+      "type": "string"
+    },
+    "code_secteur_d_activite": {
+      "type": "string"
+    },
+    "code_type_de_voie_coord_structure": {
+      "type": "string"
+    },
+    "telephone_coord_structure": {
+      "type": "string"
+    },
+    "nom_d_exercice": {
+      "type": "string"
+    },
+    "libelle_categorie_professionnelle": {
+      "type": "string"
+    },
+    "numero_finess_etablissement_juridique": {
+      "type": "string"
+    },
+    "libelle_voie_coord_structure": {
+      "type": "string"
+    },
+    "numero_siret_site": {
+      "type": "integer"
+    },
+    "identifiant_pp": {
+      "type": "string"
+    },
+    "libelle_commune_coord_structure": {
+      "type": "string"
+    },
+    "adresse_e_mail_coord_structure": {
+      "type": "string",
+      "default": " "
+    },
+    "libelle_profession": {
+      "type": "string"
+    },
+    "code_commune_coord_structure": {
+      "type": "string"
+    },
+    "libelle_secteur_d_activite": {
+      "type": "string"
+    },
+    "code_civilite": {
+      "type": "string"
+    },
+    "code_profession": {
+      "type": "integer"
+    },
+    "code_postal_coord_structure": {
+      "type": "string"
+    },
+    "type_d_identifiant_pp": {
+      "type": "integer"
+    },
+    "code_mode_exercice": {
+      "type": "string"
+    },
+    "identifiant_technique_de_la_structure": {
+      "type": "string"
+    },
+    "raison_sociale_site": {
+      "type": "string"
+    },
+    "telecopie_coord_structure": {
+      "type": "string"
+    },
+    "identification_nationale_pp": {
+      "type": "string"
+    },
+    "libelle_mode_exercice": {
+      "type": "string"
+    },
+    "numero_finess_site": {
+      "type": "string"
+    },
+    "ancien_identifiant_de_la_structure": {
+      "type": "integer"
+    },
+    "bureau_cedex_coord_structure": {
+      "type": "string"
+    },
+    "code_categorie_professionnelle": {
+      "type": "string"
+    },
+    "autorite_d_enregistrement": {
+      "type": "string"
+    },
+    "libelle_civilite": {
+      "type": "string"
+    },
+    "prenom_d_exercice": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "identification_nationale_pp",
+    "nom_d_exercice",
+    "prenom_d_exercice",
+    "libelle_civilite",
+    "code_postal_coord_structure",
+    "libelle_commune_coord_structure"
+  ]
+}

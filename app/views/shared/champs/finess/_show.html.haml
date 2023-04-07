@@ -1,11 +1,21 @@
-- if !champ.data || champ.data.nil? || champ.data.blank? || !champ.data['rs'] || champ.data['rs'].nil?
+- if !champ.data || champ.data.nil? || champ.data.blank? || (!champ.data['et_rs'].present? && !champ.data['ej_rs'].present? && !champ.data['rs'].present?)
   = champ.to_s
 - else
   %table.table.vertical.dossier-champs
     %tbody
       %tr
-        %th.libelle Raison Sociale :
-        %td= champ.data['rs']
+        %th.libelle= champ.to_s
+      - if champ.data['type']=='EJ' && champ.data['ej_rs'].present? && !champ.data['et_rs'].blank?
+        %tr
+          %th.libelle Raison sociale :
+          %td= champ.data['ej_rs']
+      - else champ.data['type']=='ET' && champ.data['et_rs'].present? && !champ.data['et_rs'].blank?
+        %tr
+          %th.libelle Raison sociale :
+          - if champ.data['et_rs'].present?
+            %td= champ.data['et_rs']
+          - else
+            %td= champ.data['rs']
       %tr
         %th.libelle Finess :
         %td= champ.data['finess']
@@ -14,7 +24,10 @@
         %td= champ.data['type']
       %tr
         %th.libelle Adresse :
-        %td= "#{champ.data['adresse_num_voie']}, #{champ.data['adresse_comp_voie']} #{champ.data['adresse_type_voie']} #{champ.data['adresse_nom_voie']} #{champ.data['adresse_lieuditbp']} #{champ.data['adresse_code_postal']} #{champ.data['adresse_lib_routage']}"
+        - if !champ.data['adresse_num_voie'].blank?
+          %td= "#{champ.data['adresse_num_voie']}, #{champ.data['adresse_comp_voie']} #{champ.data['adresse_type_voie']} #{champ.data['adresse_nom_voie']} #{champ.data['adresse_lieuditbp']} #{champ.data['adresse_code_postal']} #{champ.data['adresse_lib_routage']}"
+        - else
+          %td= "#{champ.data['adresse_comp_voie']} #{champ.data['adresse_type_voie']} #{champ.data['adresse_nom_voie']} #{champ.data['adresse_lieuditbp']} #{champ.data['adresse_code_postal']} #{champ.data['adresse_lib_routage']}"
       %tr
         %th.libelle Statut juridique :
         %td= champ.data['statut_jur_lib']

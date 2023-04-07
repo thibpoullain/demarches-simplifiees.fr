@@ -1,0 +1,37 @@
+require 'json_schemer'
+
+class APIRppsante::RppsanteAdapter
+  class InvalidSchemaError < ::StandardError
+    def initialize(errors)
+      super(errors.map(&:to_json).join("\n"))
+    end
+  end
+
+  def initialize(id)
+    @id = id
+  end
+
+  def to_params
+    record = data_source[:records].first
+    if record.present?
+      properties = record[:fields].merge({ geometry: record[:geometry] }).deep_stringify_keys
+      # API sends numbers as strings sometime. Try to parse.
+      if schemer.valid?(properties)
+        properties
+      else
+        errors = schemer.validate(properties).to_a
+        raise InvalidSchemaError.new(errors)
+      end
+    end
+  end
+
+  private
+
+  def data_source
+    @data_source ||= JSON.parse(APIRppsante::API.get_rppsante(@id), symbolize_names: true)
+  end
+
+  def schemer
+    @schemer ||= JSONSchemer.schema(Rails.root.join('app/schemas/rppsante.json'))
+  end
+end

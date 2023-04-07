@@ -160,6 +160,9 @@ FactoryBot.define do
     factory :type_de_champ_finess do
       type_champ { TypeDeChamp.type_champs.fetch(:finess) }
     end
+    factory :type_de_champ_rppsante do
+      type_champ { TypeDeChamp.type_champs.fetch(:rppsante) }
+    end
     factory :type_de_champ_cnaf do
       type_champ { TypeDeChamp.type_champs.fetch(:cnaf) }
     end
