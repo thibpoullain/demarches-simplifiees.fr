@@ -3,6 +3,9 @@
       "IS_REVIEW_APP": {
         "value": "true"
       },
+      "DEMANDE_INSCRIPTION_ADMIN_PAGE_URL": {
+        "value": "https://demat.social.gouv.fr/commencer/demande-de-creation-de-compte-administrateur"
+      },  
       "APP_HOST": {
         "generator": "url",
         "template": "%URL%"

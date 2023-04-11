@@ -82,3 +82,12 @@
         -#     class: "cta-panel-button-white",
         -#     target: "_blank",
         -#     rel: "noopener noreferrer"
+
+  .landing-panel
+    .container
+      .cta-panel-wrapper
+        %div
+          %h2.cta-panel-title Votre administration est prête pour dématérialiser
+          %p.cta-panel-explanation.grey Créez un premier formulaire de test en quelques minutes
+        %div
+          = link_to "Créer votre compte administrateur", DEMANDE_INSCRIPTION_ADMIN_PAGE_URL, class: "role-panel-button-secondary"
