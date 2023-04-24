@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean          default(FALSE)
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,6 +17,7 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::DgfipChamp < Champs::TextChamp
@@ -49,5 +50,17 @@ class Champs::DgfipChamp < Champs::TextChamp
     if numero_fiscal.present? && reference_avis.present?
       { reference_avis: reference_avis, numero_fiscal: numero_fiscal }.to_json
     end
+  end
+
+  def numero_fiscal_input_id
+    "#{input_id}-numero_fiscal"
+  end
+
+  def reference_avis_input_id
+    "#{input_id}-reference_avis"
+  end
+
+  def focusable_input_id
+    numero_fiscal_input_id
   end
 end

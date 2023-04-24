@@ -1,0 +1,17 @@
+= render Dropdown::MenuComponent.new(wrapper: :div, wrapper_options: {class: ['edit-identity-action']}, menu_options: {  class:['edit-identity-content'] }) do |menu|
+  - menu.with_button_inner_html do
+    = t("views.shared.dossiers.demande.my_identity")
+
+  - menu.with_form do
+    - if dossier.procedure.for_individual
+      = render partial: "shared/dossiers/identite_individual", locals: { individual: dossier.individual }
+
+      .center
+        = link_to t('views.shared.dossiers.demande.edit_identity'), identite_dossier_path(dossier), class: 'fr-btn fr-btn--secondary'
+
+    - elsif dossier.etablissement
+      = render partial: "shared/dossiers/identite_entreprise", locals: { etablissement: dossier.etablissement, short_identity: true, profile: "usager" }
+
+      .center
+        = link_to t('views.shared.dossiers.demande.edit_siret'), siret_dossier_path(dossier), class: 'button'
+

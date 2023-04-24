@@ -68,6 +68,7 @@ search:
     - app/assets/images
     - app/assets/fonts
     - app/assets/videos
+    - app/components
 
   ## Alternatively, the only files or `File.fnmatch patterns` to search in `paths`:
   ## If specified, this settings takes priority over `exclude`, but `exclude` still applies.
@@ -96,6 +97,7 @@ search:
 
 ## Consider these keys used:
 ignore_unused:
+- 'errors.format'
 - 'activerecord.models.*'
 - 'activerecord.attributes.*'
 - 'activerecord.errors.*'
@@ -105,6 +107,12 @@ ignore_unused:
 - 'pluralize.*'
 - 'views.pagination.*'
 - 'time.formats.default'
+- 'instructeurs.dossiers.filterable_state.*'
+- 'views.prefill_descriptions.edit.possible_values.*'
+- 'helpers.page_entries_info.*'
+- 'combo_search_component.result_slot_html.*'
+- 'combo_search_component.screen_reader_instructions'
+- 'links.common.*'
 # - '{devise,kaminari,will_paginate}.*'
 # - 'simple_form.{yes,no}'
 # - 'simple_form.{placeholders,hints,labels}.*'

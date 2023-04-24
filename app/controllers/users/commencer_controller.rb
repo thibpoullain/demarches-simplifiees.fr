@@ -7,6 +7,17 @@ module Users
       return procedure_not_found if @procedure.blank? || @procedure.brouillon?
       @revision = @procedure.published_revision
 
+      if params[:prefill_token].present? || commencer_page_is_reloaded?
+        retrieve_prefilled_dossier(params[:prefill_token] || session[:prefill_token])
+      elsif prefill_params_present?
+        build_prefilled_dossier
+      end
+
+      if user_signed_in?
+        set_prefilled_dossier_ownership if @prefilled_dossier&.orphan?
+        check_prefilled_dossier_ownership if @prefilled_dossier
+      end
+
       render 'commencer/show'
     end
 
@@ -19,15 +30,15 @@ module Users
     end
 
     def dossier_vide_pdf
-      @procedure = retrieve_procedure
+      @procedure = retrieve_procedure_with_closed
       return procedure_not_found if @procedure.blank? || @procedure.brouillon?
 
       generate_empty_pdf(@procedure.published_revision)
     end
 
     def dossier_vide_pdf_test
-      @procedure = retrieve_procedure
-      return procedure_not_found if @procedure.blank? || (@procedure.publiee? && !@procedure.draft_changed?)
+      @procedure = retrieve_procedure_with_closed
+      return procedure_not_found if @procedure.blank?
 
       generate_empty_pdf(@procedure.draft_revision)
     end
@@ -62,15 +73,62 @@ module Users
 
     private
 
+    def commencer_page_is_reloaded?
+      session[:prefill_token].present? && session[:prefill_params] == params.to_unsafe_h
+    end
+
+    def prefill_params_present?
+      params.keys.find { |param| param.split('_').first == "champ" }
+    end
+
     def retrieve_procedure
       Procedure.publiees.or(Procedure.brouillons).find_by(path: params[:path])
+    end
+
+    def retrieve_procedure_with_closed
+      Procedure.publiees.or(Procedure.brouillons).or(Procedure.closes).order(published_at: :desc).find_by(path: params[:path])
+    end
+
+    def build_prefilled_dossier
+      @prefilled_dossier = Dossier.new(
+        revision: @revision,
+        groupe_instructeur: @procedure.defaut_groupe_instructeur_for_new_dossier,
+        state: Dossier.states.fetch(:brouillon),
+        prefilled: true
+      )
+      @prefilled_dossier.build_default_individual
+      if @prefilled_dossier.save
+        @prefilled_dossier.prefill!(PrefillParams.new(@prefilled_dossier, params.to_unsafe_h).to_a)
+      end
+      session[:prefill_token] = @prefilled_dossier.prefill_token
+      session[:prefill_params] = params.to_unsafe_h
+    end
+
+    def retrieve_prefilled_dossier(prefill_token)
+      @prefilled_dossier = Dossier.state_brouillon.prefilled.find_by!(prefill_token: prefill_token)
+    end
+
+    # The prefilled dossier is not owned yet, and the user is signed in: they become the new owner
+    def set_prefilled_dossier_ownership
+      @prefilled_dossier.update!(user: current_user)
+      DossierMailer.with(dossier: @prefilled_dossier).notify_new_draft.deliver_later
+    end
+
+    # The prefilled dossier is owned by another user: raise an exception
+    def check_prefilled_dossier_ownership
+      raise ActiveRecord::RecordNotFound unless @prefilled_dossier.owned_by?(current_user)
     end
 
     def procedure_not_found
       procedure = Procedure.find_by(path: params[:path])
 
-      if procedure&.close?
-        flash.alert = t('errors.messages.procedure_archived')
+      if procedure&.replaced_by_procedure
+        redirect_to commencer_path(path: procedure.replaced_by_procedure.path)
+        return
+      elsif procedure&.close?
+        flash.alert = procedure.service.presence ?
+                      t('errors.messages.procedure_archived.with_service_and_phone_email', service_name: procedure.service.nom, service_phone_number: procedure.service.telephone, service_email: procedure.service.email) :
+                      t('errors.messages.procedure_archived.with_organisation_only', organisation_name: procedure.organisation)
       else
         flash.alert = t('errors.messages.procedure_not_found')
       end
@@ -79,13 +137,13 @@ module Users
     end
 
     def store_user_location!(procedure)
-      store_location_for(:user, helpers.procedure_lien(procedure))
+      store_location_for(:user, helpers.procedure_lien(procedure, prefill_token: params[:prefill_token]))
     end
 
     def generate_empty_pdf(revision)
       @dossier = revision.new_dossier
-      s = render_to_string(template: 'dossiers/dossier_vide', formats: [:pdf])
-      send_data(s, :filename => "#{revision.procedure.libelle}.pdf")
+      data = render_to_string(template: 'dossiers/dossier_vide', formats: [:pdf])
+      send_data(data, filename: "#{revision.procedure.libelle}.pdf")
     end
   end
 end

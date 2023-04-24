@@ -9,13 +9,13 @@
   padding: 8px 16px;
   border-radius: 30px;
   border: 1px solid $border-grey;
-  font-family: "Muli";
   font-size: 14px;
   line-height: 20px;
   background-color: #FFFFFF;
   color: $black;
   text-align: center;
   -webkit-appearance: none;
+  background-image: none; // Remove DSFR underline
 
   &:hover:not(:disabled) {
     cursor: pointer;
@@ -140,7 +140,7 @@
   height: 25px;
 }
 
-.state-button {
+.instruction-button {
   display: inline-block;
 }
 
@@ -184,6 +184,11 @@
   top: 5 * $default-spacer;
   cursor: default;
   z-index: 10;
+  list-style: none;
+
+  a {
+    background-image: none; // remove DSFR underline
+  }
 
   &.left-aligned {
     left: 0;
@@ -208,6 +213,11 @@
       color: $dark-grey;
     }
   }
+}
+
+ul.dropdown-items {
+  padding-inline-start: 0;
+  list-style: none;
 }
 
 .dropdown-items {
@@ -236,6 +246,11 @@
       }
     }
 
+    &.form-inside {
+      background-color: $white;
+      margin-top: -2px;
+    }
+
     &.danger {
       &:hover {
         background-color: $medium-red;
@@ -255,16 +270,14 @@
       border-bottom: none;
     }
 
-    a {
-      color: $dark-grey;
-    }
-
     // Make child links fill the whole clickable area
-    > a {
+    > a,
+      .dropdown-items-link {
       display: flex;
       flex-grow: 1;
       margin: -$default-padding;
       padding: $default-padding;
+      text-align: left;
     }
 
     .icon {
@@ -301,13 +314,27 @@
     margin-bottom: 2 * $default-spacer;
   }
 
-  input,
+  input:not(.fr-btn),
   select {
     width: 200px;
     display: inline-block;
+    background-color: $light-grey;
+    border: 1px solid $border-grey;
+  }
+
+  [disabled] {
+    display: none;
+  }
+
+  ul {
+    list-style: none;
   }
 }
 
 .link {
   color: $blue-france-500;
+}
+
+.account-btn::before {
+  content: none !important;
 }

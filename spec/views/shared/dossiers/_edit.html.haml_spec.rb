@@ -1,20 +1,21 @@
 describe 'shared/dossiers/edit.html.haml', type: :view do
   before do
     allow(controller).to receive(:current_user).and_return(dossier.user)
+    allow(view).to receive(:administrateur_signed_in?).and_return(false)
   end
 
   subject { render 'shared/dossiers/edit.html.haml', dossier: dossier, apercu: false }
 
   context 'when there are some champs' do
     let(:dossier) { create(:dossier) }
-    let(:champ_checkbox) { create(:champ_checkbox, dossier: dossier, value: 'on') }
+    let(:champ_checkbox) { create(:champ_checkbox, dossier: dossier, value: 'true') }
     let(:champ_header_section) { create(:champ_header_section, dossier: dossier, value: 'Section') }
     let(:champ_explication) { create(:champ_explication, dossier: dossier, value: 'mazette') }
     let(:champ_dossier_link) { create(:champ_dossier_link, dossier: dossier, value: dossier.id) }
     let(:champ_textarea) { create(:champ_textarea, dossier: dossier, value: 'Some long text in a textarea.') }
     let(:champs) { [champ_checkbox, champ_header_section, champ_explication, champ_dossier_link, champ_textarea] }
 
-    before { dossier.champs << champs }
+    before { dossier.champs_public << champs }
 
     it 'renders labels and editable values of champs' do
       expect(subject).to have_field(champ_checkbox.libelle, checked: true)
@@ -23,19 +24,31 @@ describe 'shared/dossiers/edit.html.haml', type: :view do
       expect(subject).to have_field(champ_dossier_link.libelle, with: champ_dossier_link.value)
       expect(subject).to have_field(champ_textarea.libelle, with: champ_textarea.value)
     end
+
+    context "with standard champs" do
+      let(:champ_email) { create(:champ_email, dossier: dossier) }
+      let(:champ_phone) { create(:champ_phone, dossier: dossier) }
+      let(:champs) { [champ_email, champ_phone] }
+
+      it "renders basic placeholders" do
+        expect(subject).to have_css('input[type="email"][placeholder$="exemple.fr"]')
+        expect(subject).to have_css('input[type="tel"][placeholder^="0612"]')
+      end
+    end
   end
 
   context 'with a single-value list' do
     let(:dossier) { create(:dossier) }
     let(:type_de_champ) { create(:type_de_champ_drop_down_list, mandatory: mandatory, procedure: dossier.procedure) }
-    let(:champ) { create(:champ_drop_down_list, dossier: dossier, type_de_champ: type_de_champ) }
+    let(:champ) { create(:champ_drop_down_list, dossier: dossier, type_de_champ: type_de_champ, value: value) }
     let(:options) { type_de_champ.drop_down_list_options }
     let(:enabled_options) { type_de_champ.drop_down_list_enabled_non_empty_options }
     let(:mandatory) { true }
 
-    before { dossier.champs << champ }
+    before { dossier.champs_public << champ }
 
     context 'when the list is short' do
+      let(:value) { 'val1' }
       it 'renders the list as radio buttons' do
         expect(subject).to have_selector('input[type=radio]', count: enabled_options.count)
       end
@@ -51,6 +64,7 @@ describe 'shared/dossiers/edit.html.haml', type: :view do
     end
 
     context 'when the list is long' do
+      let(:value) { 'alpha' }
       let(:type_de_champ) { create(:type_de_champ_drop_down_list, :long, procedure: dossier.procedure) }
 
       it 'renders the list as a dropdown' do
@@ -66,7 +80,7 @@ describe 'shared/dossiers/edit.html.haml', type: :view do
     let(:options) { type_de_champ.drop_down_list_options }
     let(:enabled_options) { type_de_champ.drop_down_list_enabled_non_empty_options }
 
-    before { dossier.champs << champ }
+    before { dossier.champs_public << champ }
 
     context 'when the list is short' do
       let(:drop_down_list_value) { ['valid', 'invalid', 'not sure yet'].join("\r\n") }
@@ -87,7 +101,32 @@ describe 'shared/dossiers/edit.html.haml', type: :view do
       let(:champ_value) { ['banana', 'grapefruit'].to_json }
 
       it 'renders the list as a multiple-selection dropdown' do
-        expect(subject).to have_selector('[data-react-class="ComboMultipleDropdownList"]')
+        expect(subject).to have_selector('select')
+      end
+    end
+  end
+
+  context 'with a mandatory piece justificative' do
+    let(:dossier) { create(:dossier) }
+    let(:type_de_champ) { create(:type_de_champ_piece_justificative, procedure: dossier.procedure, mandatory: true) }
+    let(:champ) { create(:champ_piece_justificative, dossier: dossier, type_de_champ: type_de_champ) }
+
+    context 'when dossier is en construction' do
+      let(:dossier) { create(:dossier, :en_construction) }
+      before { dossier.champs_public << champ }
+
+      it 'cannot delete a piece justificative' do
+        expect(subject).not_to have_selector("[title='Supprimer le fichier #{champ.piece_justificative_file.attachments[0].filename}']")
+      end
+    end
+
+    context 'when dossier is brouillon' do
+      before do
+        dossier.champs_public << champ
+      end
+
+      it 'can delete a piece justificative' do
+        expect(subject).to have_selector("[title='Supprimer le fichier #{champ.piece_justificative_file.attachments[0].filename}']")
       end
     end
   end

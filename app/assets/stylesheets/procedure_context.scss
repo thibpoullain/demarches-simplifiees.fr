@@ -5,8 +5,6 @@ $procedure-context-breakpoint: $two-columns-breakpoint;
 $procedure-description-line-height: 22px;
 
 .procedure-preview {
-  font-size: 24px;
-
   .paperless-logo {
     width: 100%;
     margin-bottom: 60px;
@@ -17,7 +15,8 @@ $procedure-description-line-height: 22px;
   }
 
   .simple {
-    font-size: 24px;
+    margin-bottom: 0.2rem;
+    font-size: 1.5rem;
     color: $blue-france-500;
     font-weight: bold;
   }
@@ -44,15 +43,13 @@ $procedure-description-line-height: 22px;
     }
   }
 
-  .procedure-auto-archive {
-    cursor: pointer;
-
+  .procedure-configuration {
+    font-size: 20px;
     margin-bottom: 32px;
+  }
 
-    p {
-      padding-top: 8px;
-      font-size: 16px;
-    }
+  .procedure-configuration--auto-archive {
+    cursor: pointer;
 
     summary {
       font-size: 20px;
@@ -64,21 +61,15 @@ $procedure-description-line-height: 22px;
         display: none;
       }
     }
+
+    p {
+      padding-top: 8px;
+      font-size: 16px;
+    }
   }
 
   .procedure-auto-archive-title {
     border-bottom: 1px dotted $blue-france-500;
-  }
-
-  .procedure-description {
-    font-size: 16px;
-
-    p:not(:last-of-type) {
-      // Space the paragraphs by exactly one line height,
-      // so that the text always is truncated in the middle of a line,
-      // regarless of the number of paragraphs.
-      margin-bottom: 3 * $default-spacer;
-    }
   }
 
   .read-more-button {
@@ -96,7 +87,7 @@ $procedure-description-line-height: 22px;
       // If the text exceeds the max-height,
       // truncate it and displays the "Read more" button.
       &.read-more-enabled {
-        overflow: hidden;
+        overflow: auto;
         border-bottom: 1px solid $border-grey;
 
         + .read-more-button {
@@ -137,6 +128,14 @@ $procedure-description-line-height: 22px;
         max-height: 130px;
       }
     }
+  }
+}
+
+.no-procedure-presentation {
+  margin-bottom: 1.6rem;
+
+  p {
+    margin: 0;
   }
 }
 

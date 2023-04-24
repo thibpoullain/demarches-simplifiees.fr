@@ -4,6 +4,16 @@ module CreateAvisConcern
   private
 
   def create_avis_from_params(dossier, instructeur_or_expert, confidentiel = false)
+    if create_avis_params[:emails].empty?
+      avis = Avis.new(create_avis_params)
+      errors = avis.errors
+      errors.add(:emails, :blank)
+
+      flash.alert = errors.full_message(:emails, errors[:emails].first)
+
+      return avis
+    end
+
     confidentiel ||= create_avis_params[:confidentiel]
     # Because of a limitation of the email_field rails helper,
     # the :emails parameter is a 1-element array.
@@ -20,6 +30,7 @@ module CreateAvisConcern
     if (instructeur_or_expert.is_a?(Instructeur)) && !instructeur_or_expert.follows.exists?(dossier: dossier)
       instructeur_or_expert.follow(dossier)
     end
+
     create_results = Avis.create(
       expert_emails.flat_map do |email|
         user = User.create_or_promote_to_expert(email, SecureRandom.hex)
@@ -32,7 +43,8 @@ module CreateAvisConcern
             claimant: instructeur_or_expert,
             dossier: dossier,
             confidentiel: confidentiel,
-            experts_procedure: experts_procedure
+            experts_procedure: experts_procedure,
+            question_label: create_avis_params[:question_label]
           }
         end
       end
@@ -70,6 +82,6 @@ module CreateAvisConcern
   end
 
   def create_avis_params
-    params.require(:avis).permit(:introduction_file, :introduction, :confidentiel, :invite_linked_dossiers, :emails)
+    params.require(:avis).permit(:introduction_file, :introduction, :confidentiel, :invite_linked_dossiers, :emails, :question_label)
   end
 end

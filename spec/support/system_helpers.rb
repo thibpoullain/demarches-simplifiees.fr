@@ -105,7 +105,7 @@ module SystemHelpers
 
   def select_combobox(libelle, fill_with, value, check: true)
     fill_in libelle, with: fill_with
-    find('li[role="option"]', text: value).click
+    find('li[role="option"]', text: value, wait: 5).click
     if check
       check_selected_value(libelle, with: value)
     end
@@ -126,10 +126,12 @@ module SystemHelpers
   end
 
   def log_out
-    click_button(title: 'Mon compte')
-    click_on 'Se déconnecter'
-
-    expect(page).to have_current_path(root_path)
+    within('.fr-header .fr-container .fr-header__tools .fr-btns-group') do
+      click_button(title: 'Mon compte')
+      expect(page).to have_selector('#account.fr-collapse--expanded', visible: true)
+      click_on 'Se déconnecter'
+    end
+    expect(page).to have_current_path(root_path, wait: 30)
   end
 
   # Keep the brower window open after a test success of failure, to
@@ -168,6 +170,12 @@ module SystemHelpers
 
   def form_id_for(libelle)
     find(:xpath, ".//label[contains(text()[normalize-space()], '#{libelle}')]")[:for]
+  end
+
+  def wait_for_autosave(brouillon = true)
+    blur
+    expect(page).to have_css('.debounced-empty') # no more debounce
+    expect(page).to have_css('.autosave-state-idle') # no more in flight promise
   end
 end
 

@@ -10,7 +10,7 @@ module MailTemplateConcern
   end
 
   def subject_for_dossier(dossier)
-    replace_tags(subject, dossier)
+    replace_tags(subject, dossier).presence || replace_tags(self.class::DEFAULT_SUBJECT, dossier)
   end
 
   def body_for_dossier(dossier)
@@ -19,6 +19,10 @@ module MailTemplateConcern
 
   def actions_for_dossier(dossier)
     [MailTemplateConcern::Actions::SHOW, MailTemplateConcern::Actions::ASK_QUESTION]
+  end
+
+  def attachment_for_dossier(dossier)
+    nil
   end
 
   def update_rich_body
@@ -33,7 +37,7 @@ module MailTemplateConcern
   module ClassMethods
     def default_for_procedure(procedure)
       template_name = default_template_name_for_procedure(procedure)
-      rich_body = ActionController::Base.new.render_to_string(template: template_name)
+      rich_body = ActionController::Base.render template: template_name
       trix_rich_body = rich_body.gsub(/(?<!^|[.-])(?<!<\/strong>)\n/, '')
       new(subject: const_get(:DEFAULT_SUBJECT), rich_body: trix_rich_body, procedure: procedure)
     end

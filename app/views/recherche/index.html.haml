@@ -1,14 +1,17 @@
 - content_for(:title, "Recherche : #{@search_terms}")
-- pagination =  paginate @paginated_ids
 
 .container
+
+  - if @dossier_not_in_instructor_group.present?
+    .fr-alert.fr-alert--info.fr-alert--sm.fr-mt-3w
+      = p t('views.instructeurs.search.dossier_not_in_instructor_group', dossier_id: @dossier_not_in_instructor_group.id, procedure_libelle: @dossier_not_in_instructor_group.procedure.libelle, groupe_instructeur_label: @dossier_not_in_instructor_group.groupe_instructeur.label)
+
   .page-title
     Résultat de la recherche :
     = t('pluralize.dossier_trouve', count: @dossiers_count)
 
-  = pagination
-
   - if @projected_dossiers.present?
+    = paginate @paginated_ids
     %table.table.dossiers-table.hoverable
       %thead
         %tr
@@ -29,7 +32,7 @@
 
           %tr{ class: [p.hidden_by_administration_at.present? && "file-hidden-by-user"] }
             - if instructeur_and_expert_dossier
-              %td.folder-col.cell-link
+              %td.text-center.cell-link
                 %span.icon.folder
               %td.number-col
                 .cell-link= p.dossier_id
@@ -45,7 +48,7 @@
 
             - else
 
-              %td.folder-col
+              %td.text-center
                 %a.cell-link{ href: path }
                   %span.icon.folder
 
@@ -64,21 +67,21 @@
 
             - if instructeur_dossier && expert_dossier
               %td.action-col.follow-col
-                .dropdown
-                  .button.dropdown-button
+                = render Dropdown::MenuComponent.new(wrapper: :div, button_options: {class: ['fr-btn--sm']}) do |menu|
+                  - menu.with_button_inner_html do
                     Actions
-                  .dropdown-content.fade-in-down
-                    %ul.dropdown-items
-                      %li
-                        = link_to(instructeur_dossier_path(procedure_id, p.dossier_id)) do
-                          %span.icon.in-progress>
-                          .dropdown-description
-                            Voir le dossier
-                      %li
-                        = link_to(expert_avis_path(procedure_id, @dossier_avis_ids_h[p.dossier_id])) do
-                          %span.icon.in-progress>
-                          .dropdown-description
-                            Donner mon avis
+
+                  - menu.with_item do
+                    = link_to(instructeur_dossier_path(procedure_id, p.dossier_id), role: 'menuitem') do
+                      %span.icon.in-progress>
+                      .dropdown-description
+                        Voir le dossier
+
+                  - menu.with_item do
+                    = link_to(expert_avis_path(procedure_id, @dossier_avis_ids_h[p.dossier_id]), role: 'menuitem') do
+                      %span.icon.in-progress>
+                      .dropdown-description
+                        Donner mon avis
 
             - elsif instructeur_dossier
               - if hidden_by_administration
@@ -94,12 +97,12 @@
                                                                       archived: p.archived,
                                                                       dossier_is_followed: @followed_dossiers_id.include?(p.dossier_id),
                                                                       close_to_expiration: nil,
-                                                                      hidden_by_administration: nil }
+                                                                      hidden_by_administration: nil,
+                                                                      turbo: false }
 
             - else
               %td
-
-          = pagination
+    = paginate @paginated_ids
 
   - else
     %h2 Aucun dossier correspondant à votre recherche n’a été trouvé

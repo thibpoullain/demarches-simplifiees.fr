@@ -1,6 +1,6 @@
 describe API::V1::ProceduresController, type: :controller do
   let!(:admin) { create(:administrateur, :with_api_token) }
-  let!(:token) { admin.renew_api_token }
+  let!(:token) { APIToken.generate(admin)[1] }
 
   it { expect(described_class).to be < APIController }
 
@@ -34,8 +34,8 @@ describe API::V1::ProceduresController, type: :controller do
         it { expect(subject[:label]).to eq(procedure.libelle) }
         it { expect(subject[:description]).to eq(procedure.description) }
         it { expect(subject[:organisation]).to eq(procedure.organisation) }
-        it { expect(subject[:direction]).to eq(procedure.direction) }
         it { expect(subject[:archived_at]).to eq(procedure.closed_at) }
+        it { expect(subject[:direction]).to eq("") }
         it { expect(subject[:total_dossier]).to eq(procedure.total_dossier) }
         it { is_expected.to have_key(:types_de_champ) }
         it { expect(subject[:types_de_champ]).to be_an(Array) }
@@ -43,12 +43,11 @@ describe API::V1::ProceduresController, type: :controller do
         describe 'type_de_champ' do
           subject { super()[:types_de_champ][0] }
 
-          let(:champ) { procedure.types_de_champ.first }
+          let(:champ) { procedure.active_revision.types_de_champ_public.first }
 
           it { expect(subject[:id]).to eq(champ.id) }
           it { expect(subject[:libelle]).to eq(champ.libelle) }
           it { expect(subject[:type_champ]).to eq(champ.type_champ) }
-          it { expect(subject[:order_place]).to eq(champ.order_place) }
           it { expect(subject[:description]).to eq(champ.description) }
         end
 

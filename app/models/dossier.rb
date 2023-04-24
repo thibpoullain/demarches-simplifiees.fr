@@ -5,6 +5,8 @@
 #  id                                                 :integer          not null, primary key
 #  api_entreprise_job_exceptions                      :string           is an Array
 #  archived                                           :boolean          default(FALSE)
+#  archived_at                                        :datetime
+#  archived_by                                        :string
 #  autorisation_donnees                               :boolean
 #  brouillon_close_to_expiration_notice_sent_at       :datetime
 #  conservation_extension                             :interval         default(0 seconds)
@@ -14,6 +16,7 @@
 #  en_construction_at                                 :datetime
 #  en_construction_close_to_expiration_notice_sent_at :datetime
 #  en_instruction_at                                  :datetime
+#  for_procedure_preview                              :boolean          default(FALSE)
 #  groupe_instructeur_updated_at                      :datetime
 #  hidden_at                                          :datetime
 #  hidden_by_administration_at                        :datetime
@@ -24,7 +27,10 @@
 #  last_champ_private_updated_at                      :datetime
 #  last_champ_updated_at                              :datetime
 #  last_commentaire_updated_at                        :datetime
+#  migrated_champ_routage                             :boolean
 #  motivation                                         :text
+#  prefill_token                                      :string
+#  prefilled                                          :boolean
 #  private_search_terms                               :text
 #  processed_at                                       :datetime
 #  search_terms                                       :text
@@ -32,15 +38,19 @@
 #  termine_close_to_expiration_notice_sent_at         :datetime
 #  created_at                                         :datetime
 #  updated_at                                         :datetime
+#  batch_operation_id                                 :bigint
 #  dossier_transfer_id                                :bigint
 #  groupe_instructeur_id                              :bigint
+#  parent_dossier_id                                  :bigint
 #  revision_id                                        :bigint
 #  user_id                                            :integer
 #
 class Dossier < ApplicationRecord
   self.ignored_columns = [:en_construction_conservation_extension]
   include DossierFilteringConcern
+  include DossierPrefillableConcern
   include DossierRebaseConcern
+  include DossierSectionsConcern
 
   enum state: {
     brouillon:       'brouillon',
@@ -64,6 +74,8 @@ class Dossier < ApplicationRecord
   DAYS_AFTER_EXPIRATION = 5
   INTERVAL_EXPIRATION = "#{MONTHS_AFTER_EXPIRATION} month #{DAYS_AFTER_EXPIRATION} days"
 
+  has_secure_token :prefill_token
+
   has_one :etablissement, dependent: :destroy
   has_one :individual, validate: false, dependent: :destroy
   has_one :attestation, dependent: :destroy
@@ -73,8 +85,16 @@ class Dossier < ApplicationRecord
 
   has_one_attached :justificatif_motivation
 
-  has_many :champs, -> { root.public_ordered }, inverse_of: false, dependent: :destroy
-  has_many :champs_private, -> { root.private_ordered }, class_name: 'Champ', inverse_of: false, dependent: :destroy
+  has_many :champs
+  # We have to remove champs in a particular order - champs with a reference to a parent have to be
+  # removed first, otherwise we get a foreign key constraint error.
+  has_many :champs_to_destroy, -> { order(:parent_id) }, class_name: 'Champ', inverse_of: false, dependent: :destroy
+  has_many :champs_public, -> { root.public_ordered }, class_name: 'Champ', inverse_of: false
+  has_many :champs_private, -> { root.private_ordered }, class_name: 'Champ', inverse_of: false
+  has_many :champs_public_all, -> { public_only }, class_name: 'Champ', inverse_of: false
+  has_many :champs_private_all, -> { private_only }, class_name: 'Champ', inverse_of: false
+  has_many :prefilled_champs_public, -> { root.public_only.prefilled }, class_name: 'Champ', inverse_of: false
+
   has_many :commentaires, inverse_of: :dossier, dependent: :destroy
   has_many :invites, dependent: :destroy
   has_many :follows, -> { active }, inverse_of: :dossier
@@ -129,18 +149,26 @@ class Dossier < ApplicationRecord
   belongs_to :groupe_instructeur, optional: true
   belongs_to :revision, class_name: 'ProcedureRevision', optional: false
   belongs_to :user, optional: true
+  belongs_to :parent_dossier, class_name: 'Dossier', optional: true
+  belongs_to :batch_operation, optional: true
+  has_many :dossier_batch_operations, dependent: :destroy
+  has_many :batch_operations, through: :dossier_batch_operations
   has_one :france_connect_information, through: :user
 
-  has_one :attestation_template, through: :revision
   has_one :procedure, through: :revision
-  has_many :types_de_champ, through: :revision
+  has_one :attestation_template, through: :procedure
+  has_many :types_de_champ, through: :revision, source: :types_de_champ_public
   has_many :types_de_champ_private, through: :revision
 
   belongs_to :transfer, class_name: 'DossierTransfer', foreign_key: 'dossier_transfer_id', optional: true, inverse_of: :dossiers
   has_many :transfer_logs, class_name: 'DossierTransferLog', dependent: :destroy
+  has_many :cloned_dossiers, class_name: 'Dossier', foreign_key: 'parent_dossier_id', dependent: :nullify, inverse_of: :parent_dossier
 
   accepts_nested_attributes_for :champs
+  accepts_nested_attributes_for :champs_public
   accepts_nested_attributes_for :champs_private
+  accepts_nested_attributes_for :champs_public_all
+  accepts_nested_attributes_for :champs_private_all
 
   include AASM
 
@@ -161,7 +189,7 @@ class Dossier < ApplicationRecord
     end
 
     event :passer_automatiquement_en_instruction, after: :after_passer_automatiquement_en_instruction do
-      transitions from: :en_construction, to: :en_instruction
+      transitions from: :en_construction, to: :en_instruction, guard: :can_passer_automatiquement_en_instruction?
     end
 
     event :repasser_en_construction, after: :after_repasser_en_construction do
@@ -169,19 +197,19 @@ class Dossier < ApplicationRecord
     end
 
     event :accepter, after: :after_accepter do
-      transitions from: :en_instruction, to: :accepte
+      transitions from: :en_instruction, to: :accepte, guard: :can_terminer?
     end
 
     event :accepter_automatiquement, after: :after_accepter_automatiquement do
-      transitions from: :en_construction, to: :accepte
+      transitions from: :en_construction, to: :accepte, guard: :can_accepter_automatiquement?
     end
 
     event :refuser, after: :after_refuser do
-      transitions from: :en_instruction, to: :refuse
+      transitions from: :en_instruction, to: :refuse, guard: :can_terminer?
     end
 
     event :classer_sans_suite, after: :after_classer_sans_suite do
-      transitions from: :en_instruction, to: :sans_suite
+      transitions from: :en_instruction, to: :sans_suite, guard: :can_terminer?
     end
 
     event :repasser_en_instruction, after: :after_repasser_en_instruction do
@@ -200,23 +228,34 @@ class Dossier < ApplicationRecord
   scope :state_instruction_commencee,          -> { where(state: INSTRUCTION_COMMENCEE) }
   scope :state_termine,                        -> { where(state: TERMINE) }
   scope :state_not_termine,                    -> { where.not(state: TERMINE) }
+  scope :state_accepte,                        -> { where(state: states.fetch(:accepte)) }
+  scope :state_refuse,                         -> { where(state: states.fetch(:refuse)) }
+  scope :state_sans_suite,                     -> { where(state: states.fetch(:sans_suite)) }
 
-  scope :archived,      -> { where(archived: true) }
-  scope :not_archived,  -> { where(archived: false) }
-  scope :hidden_by_user, -> { where.not(hidden_by_user_at: nil) }
-  scope :hidden_by_administration, -> { where.not(hidden_by_administration_at: nil) }
-  scope :visible_by_user, -> { where(hidden_by_user_at: nil) }
+  scope :archived,                  -> { where(archived: true) }
+  scope :not_archived,              -> { where(archived: false) }
+  scope :prefilled,                 -> { where(prefilled: true) }
+  scope :hidden_by_user,            -> { where.not(hidden_by_user_at: nil) }
+  scope :hidden_by_administration,  -> { where.not(hidden_by_administration_at: nil) }
+  scope :visible_by_user,           -> { where(for_procedure_preview: false).or(where(for_procedure_preview: nil)).where(hidden_by_user_at: nil) }
   scope :visible_by_administration, -> {
     state_not_brouillon
       .where(hidden_by_administration_at: nil)
       .merge(visible_by_user.or(state_not_en_construction))
   }
   scope :visible_by_user_or_administration, -> { visible_by_user.or(visible_by_administration) }
+  scope :hidden_for_administration, -> {
+    state_not_brouillon.hidden_by_administration.or(state_en_construction.hidden_by_user)
+  }
+  scope :for_procedure_preview, -> { where(for_procedure_preview: true) }
 
-  scope :order_by_updated_at, -> (order = :desc) { order(updated_at: order) }
-  scope :order_by_created_at, -> (order = :asc) { order(depose_at: order, created_at: order, id: order) }
-  scope :updated_since,       -> (since) { where('dossiers.updated_at >= ?', since) }
-  scope :created_since,       -> (since) { where('dossiers.depose_at >= ?', since) }
+  scope :order_by_updated_at,            -> (order = :desc) { order(updated_at: order) }
+  scope :order_by_created_at,            -> (order = :asc) { order(depose_at: order, created_at: order, id: order) }
+  scope :updated_since,                  -> (since) { where('dossiers.updated_at >= ?', since) }
+  scope :created_since,                  -> (since) { where('dossiers.depose_at >= ?', since) }
+  scope :hidden_by_user_since,           -> (since) { where('dossiers.hidden_by_user_at IS NOT NULL AND dossiers.hidden_by_user_at >= ?', since) }
+  scope :hidden_by_administration_since, -> (since) { where('dossiers.hidden_by_administration_at IS NOT NULL AND dossiers.hidden_by_administration_at >= ?', since) }
+  scope :hidden_since,                   -> (since) { hidden_by_user_since(since).or(hidden_by_administration_since(since)) }
 
   scope :with_type_de_champ, -> (stable_id) {
     joins('INNER JOIN champs ON champs.dossier_id = dossiers.id INNER JOIN types_de_champ ON types_de_champ.id = champs.type_de_champ_id')
@@ -233,12 +272,18 @@ class Dossier < ApplicationRecord
   scope :en_instruction,              -> { not_archived.state_en_instruction }
   scope :termine,                     -> { not_archived.state_termine }
 
+  scope :processed_by_month, -> (all_groupe_instructeurs) {
+    state_termine
+      .where(groupe_instructeurs: all_groupe_instructeurs)
+      .group_by_period(:month, :processed_at, reverse: true)
+  }
+
   scope :processed_in_month, -> (date) do
     date = date.to_datetime
     state_termine
-      .joins(:traitements)
-      .where(traitements: { processed_at: date.beginning_of_month..date.end_of_month })
+      .where(processed_at: date.beginning_of_month..date.end_of_month)
   end
+
   scope :downloadable_sorted, -> {
     state_not_brouillon
       .visible_by_administration
@@ -260,22 +305,27 @@ class Dossier < ApplicationRecord
         etablissement: :champ
       ).order(depose_at: 'asc')
   }
+
+  scope :ordered_for_export, -> {
+    order(depose_at: 'asc')
+  }
   scope :en_cours,                    -> { not_archived.state_en_construction_ou_instruction }
   scope :without_followers,           -> { left_outer_joins(:follows).where(follows: { id: nil }) }
+  scope :with_followers,              -> { left_outer_joins(:follows).where.not(follows: { id: nil }) }
   scope :with_champs, -> {
-    includes(champs: [
+    includes(champs_public: [
       :type_de_champ,
       :geo_areas,
-      piece_justificative_file_attachment: :blob,
-      champs: [:type_de_champ, piece_justificative_file_attachment: :blob]
+      piece_justificative_file_attachments: :blob,
+      champs: [:type_de_champ, piece_justificative_file_attachments: :blob]
     ])
   }
   scope :with_annotations, -> {
     includes(champs_private: [
       :type_de_champ,
       :geo_areas,
-      piece_justificative_file_attachment: :blob,
-      champs: [:type_de_champ, piece_justificative_file_attachment: :blob]
+      piece_justificative_file_attachments: :blob,
+      champs: [:type_de_champ, piece_justificative_file_attachments: :blob]
     ])
   }
   scope :for_api, -> {
@@ -382,7 +432,7 @@ class Dossier < ApplicationRecord
       .where.not(user: users_who_submitted)
   end
 
-  scope :for_api_v2, -> { includes(procedure: [:administrateurs], revision: [:attestation_template], etablissement: [], individual: [], traitement: []) }
+  scope :for_api_v2, -> { includes(:attestation_template, revision: [procedure: [:administrateurs]], etablissement: [], individual: [], traitement: []) }
 
   scope :with_notifications, -> do
     joins(:follows)
@@ -419,54 +469,38 @@ class Dossier < ApplicationRecord
     end
   end
 
+  scope :not_having_batch_operation, -> { where(batch_operation_id: nil) }
   accepts_nested_attributes_for :individual
 
   delegate :siret, :siren, to: :etablissement, allow_nil: true
   delegate :france_connect_information, to: :user, allow_nil: true
 
-  before_save :build_default_champs, if: Proc.new { revision_id_was.nil? }
+  before_save :build_default_champs_for_new_dossier, if: Proc.new { revision_id_was.nil? && parent_dossier_id.nil? }
   before_save :update_search_terms
 
   after_save :send_web_hook
-  after_create_commit :send_draft_notification_email
 
-  validates :user, presence: true, if: -> { deleted_user_email_never_send.nil? }
+  validates :user, presence: true, if: -> { deleted_user_email_never_send.nil? }, unless: -> { prefilled }
   validates :individual, presence: true, if: -> { revision.procedure.for_individual? }
   validates :groupe_instructeur, presence: true, if: -> { !brouillon? }
 
-  EXPORT_BATCH_SIZE = 5000
+  validates_associated :prefilled_champs_public, on: :prefilling
 
-  def self.downloadable_sorted_batch
-    dossiers = downloadable_sorted.to_a
-    (dossiers.size.to_f / EXPORT_BATCH_SIZE).ceil.times do |i|
-      start_index = i * EXPORT_BATCH_SIZE
-      end_index = start_index + EXPORT_BATCH_SIZE - 1
-      load_champs(dossiers[start_index..end_index])
-    end
-    dossiers
+  def types_de_champ_public
+    types_de_champ
   end
 
-  def self.load_champs(dossiers)
-    ::ActiveRecord::Associations::Preloader.new.preload(dossiers, {
-      champs: {
-        type_de_champ: [],
-        etablissement: :champ,
-        piece_justificative_file_attachment: :blob,
-        champs: [
-          type_de_champ: [],
-          piece_justificative_file_attachment: :blob
-        ]
-      },
-      champs_private: {
-        type_de_champ: [],
-        etablissement: :champ,
-        piece_justificative_file_attachment: :blob,
-        champs: [
-          type_de_champ: [],
-          piece_justificative_file_attachment: :blob
-        ]
-      }
-    })
+  def self.downloadable_sorted_batch
+    DossierPreloader.new(includes(
+      :user,
+      :individual,
+      :followers_instructeurs,
+      :traitement,
+      :groupe_instructeur,
+      :etablissement,
+      procedure: [:groupe_instructeurs],
+      avis: [:claimant, :expert]
+    ).ordered_for_export).in_batches
   end
 
   def user_deleted?
@@ -486,14 +520,15 @@ class Dossier < ApplicationRecord
   end
 
   def motivation
-    return nil if !termine?
-    traitement&.motivation || read_attribute(:motivation)
+    if termine?
+      traitement&.motivation || read_attribute(:motivation)
+    end
   end
 
   def update_search_terms
     self.search_terms = [
       user&.email,
-      *champs.flat_map(&:search_terms),
+      *champs_public.flat_map(&:search_terms),
       *etablissement&.search_terms,
       individual&.nom,
       individual&.prenom
@@ -501,12 +536,18 @@ class Dossier < ApplicationRecord
     self.private_search_terms = champs_private.flat_map(&:search_terms).compact.join(' ')
   end
 
-  def build_default_champs
-    revision.build_champs.each do |champ|
-      champs << champ
+  def build_default_champs_for_new_dossier
+    revision.build_champs_public.each do |champ|
+      champs_public << champ
     end
     revision.build_champs_private.each do |champ|
       champs_private << champ
+    end
+    champs_public.filter { _1.repetition? && _1.mandatory? }.each do |champ|
+      champ.add_row(revision)
+    end
+    champs_private.filter(&:repetition?).each do |champ|
+      champ.add_row(revision)
     end
   end
 
@@ -532,18 +573,26 @@ class Dossier < ApplicationRecord
     INSTRUCTION_COMMENCEE.include?(state)
   end
 
-  def reset!
-    etablissement.destroy
-
-    update_columns(autorisation_donnees: false)
-  end
-
   def read_only?
     en_instruction? || accepte? || refuse? || sans_suite? || procedure.discarded? || procedure.close? && brouillon?
   end
 
   def can_transition_to_en_construction?
-    brouillon? && procedure.dossier_can_transition_to_en_construction?
+    brouillon? && procedure.dossier_can_transition_to_en_construction? && !for_procedure_preview?
+  end
+
+  def can_terminer?
+    return false if any_etablissement_as_degraded_mode?
+
+    true
+  end
+
+  def can_accepter_automatiquement?
+    declarative_triggered_at.nil? && procedure.declarative_accepte? && can_terminer?
+  end
+
+  def can_passer_automatiquement_en_instruction?
+    (declarative_triggered_at.nil? && procedure.declarative_en_instruction?) || procedure.auto_archive_on&.then { _1 <= Time.zone.today }
   end
 
   def can_repasser_en_instruction?
@@ -560,6 +609,13 @@ class Dossier < ApplicationRecord
 
   def can_be_deleted_by_administration?(reason)
     termine? || reason == :procedure_removed
+  end
+
+  def any_etablissement_as_degraded_mode?
+    return true if etablissement&.as_degraded_mode?
+    return true if champs_public_all.any? { _1.etablissement&.as_degraded_mode? }
+
+    false
   end
 
   def messagerie_available?
@@ -637,20 +693,22 @@ class Dossier < ApplicationRecord
   end
 
   def show_groupe_instructeur_details?
-    procedure.routee? && groupe_instructeur.present? && (!procedure.feature_enabled?(:procedure_routage_api) || !defaut_groupe_instructeur?)
+    procedure.routing_enabled? && groupe_instructeur.present? && (!procedure.feature_enabled?(:procedure_routage_api) || !defaut_groupe_instructeur?) && !procedure.feature_enabled?(:routing_rules)
   end
 
   def show_groupe_instructeur_selector?
-    procedure.routee? && !procedure.feature_enabled?(:procedure_routage_api)
+    procedure.routing_enabled? && !procedure.feature_enabled?(:procedure_routage_api) && !procedure.feature_enabled?(:routing_rules)
   end
 
   def assign_to_groupe_instructeur(groupe_instructeur, author = nil)
     if (groupe_instructeur.nil? || groupe_instructeur.procedure == procedure) && self.groupe_instructeur != groupe_instructeur
-      if update(groupe_instructeur: groupe_instructeur, groupe_instructeur_updated_at: Time.zone.now)
-        unfollow_stale_instructeurs
+      if update(groupe_instructeur:, groupe_instructeur_updated_at: Time.zone.now)
+        if !brouillon?
+          unfollow_stale_instructeurs
 
-        if author.present?
-          log_dossier_operation(author, :changer_groupe_instructeur, self)
+          if author.present?
+            log_dossier_operation(author, :changer_groupe_instructeur, self)
+          end
         end
 
         true
@@ -660,14 +718,12 @@ class Dossier < ApplicationRecord
     end
   end
 
-  def archiver!(author)
-    update!(archived: true)
-    log_dossier_operation(author, :archiver)
+  def archiver!(instructeur)
+    update!(archived: true, archived_at: Time.zone.now, archived_by: instructeur.email)
   end
 
-  def desarchiver!(author)
-    update!(archived: false)
-    log_dossier_operation(author, :desarchiver)
+  def desarchiver!
+    update!(archived: false, archived_at: nil, archived_by: nil)
   end
 
   def text_summary
@@ -720,6 +776,17 @@ class Dossier < ApplicationRecord
     elsif individual.present?
       "#{individual.nom} #{individual.prenom}"
     end
+  end
+
+  def orphan?
+    prefilled? && user.nil?
+  end
+
+  def owned_by?(a_user)
+    return false if a_user.nil?
+    return false if orphan?
+
+    user == a_user
   end
 
   def log_operations?
@@ -783,8 +850,8 @@ class Dossier < ApplicationRecord
   def expired_keep_track_and_destroy!
     transaction do
       DeletedDossier.create_from_dossier(self, :expired)
-      dossier_operation_logs.destroy_all
       log_automatic_dossier_operation(:supprimer, self)
+      dossier_operation_logs.purge_discarded
       destroy!
     end
     true
@@ -837,16 +904,13 @@ class Dossier < ApplicationRecord
     end
   end
 
-  def attestation_activated?
-    termine? && attestation_template&.activated?
-  end
-
   def after_passer_en_construction
     self.conservation_extension = 0.days
     self.depose_at = self.en_construction_at = self.traitements
       .passer_en_construction
       .processed_at
     save!
+    procedure.compute_dossiers_count
   end
 
   def after_passer_en_instruction(h)
@@ -862,7 +926,7 @@ class Dossier < ApplicationRecord
       .processed_at
     save!
 
-    if !procedure.declarative_accepte? && !disable_notification
+    if !disable_notification
       NotificationMailer.send_en_instruction_notification(self).deliver_later
     end
     log_dossier_operation(instructeur, :passer_en_instruction)
@@ -875,10 +939,14 @@ class Dossier < ApplicationRecord
       .passer_en_instruction
       .processed_at
     save!
+
+    NotificationMailer.send_en_instruction_notification(self).deliver_later
     log_automatic_dossier_operation(:passer_en_instruction)
   end
 
-  def after_repasser_en_construction(instructeur)
+  def after_repasser_en_construction(h)
+    instructeur = h[:instructeur]
+
     create_missing_traitemets
 
     self.en_construction_close_to_expiration_notice_sent_at = nil
@@ -906,6 +974,7 @@ class Dossier < ApplicationRecord
     attestation&.destroy
 
     save!
+    rebase_later
     if !disable_notification
       DossierMailer.notify_revert_to_instruction(self).deliver_later
     end
@@ -1004,26 +1073,25 @@ class Dossier < ApplicationRecord
     log_dossier_operation(instructeur, :classer_sans_suite, self)
   end
 
-  def remove_titres_identite!
-    champs.filter(&:titre_identite?).map(&:piece_justificative_file).each(&:purge_later)
-  end
-
-  def check_mandatory_champs
-    (champs + champs.filter(&:repetition?).flat_map(&:champs))
-      .filter(&:mandatory_and_blank?)
-      .map do |champ|
-        "Le champ #{champ.libelle.truncate(200)} doit être rempli."
-      end
-  end
-
-  def log_modifier_annotations!(instructeur)
-    champs_private.filter(&:value_previously_changed?).each do |champ|
-      log_dossier_operation(instructeur, :modifier_annotation, champ)
+  def process_declarative!
+    if procedure.declarative_accepte? && may_accepter_automatiquement?
+      accepter_automatiquement!
+    elsif procedure.declarative_en_instruction? && may_passer_automatiquement_en_instruction?
+      passer_automatiquement_en_instruction!
     end
   end
 
-  def log_modifier_annotation!(champ, instructeur)
-    log_dossier_operation(instructeur, :modifier_annotation, champ)
+  def remove_titres_identite!
+    champs_public.filter(&:titre_identite?).map(&:piece_justificative_file).each(&:purge_later)
+  end
+
+  def check_mandatory_and_visible_champs
+    (champs_public + champs_public.filter(&:block?).filter(&:visible?).flat_map(&:champs))
+      .filter(&:visible?)
+      .filter(&:mandatory_blank?)
+      .map do |champ|
+        "Le champ #{champ.libelle.truncate(200)} doit être rempli."
+      end
   end
 
   def demander_un_avis!(avis)
@@ -1081,6 +1149,7 @@ class Dossier < ApplicationRecord
         ['Entreprise SIRET siège social', etablissement&.entreprise_siret_siege_social],
         ['Entreprise code effectif entreprise', etablissement&.entreprise_code_effectif_entreprise],
         ['Entreprise date de création', etablissement&.entreprise_date_creation],
+        ['Entreprise état administratif', etablissement&.entreprise_etat_administratif],
         ['Entreprise nom', etablissement&.entreprise_nom],
         ['Entreprise prénom', etablissement&.entreprise_prenom],
         ['Association RNA', etablissement&.association_rna],
@@ -1105,30 +1174,41 @@ class Dossier < ApplicationRecord
       ['Instructeurs', followers_instructeurs.map(&:email).join(' ')]
     ]
 
-    if procedure.routee?
+    if procedure.routing_enabled?
       columns << ['Groupe instructeur', groupe_instructeur.label]
     end
-
-    columns + self.class.champs_for_export(champs + champs_private, types_de_champ)
+    columns + self.class.champs_for_export(champs_public + champs_private, types_de_champ)
   end
 
+  # Get all the champs values for the types de champ in the final list.
+  # Dossier might not have corresponding champ – display nil.
+  # To do so, we build a virtual champ when there is no value so we can call for_export with all indexes
   def self.champs_for_export(champs, types_de_champ)
-    # Index values by stable_id
-    values = champs.reject(&:exclude_from_export?)
-      .index_by(&:stable_id)
-      .transform_values(&:for_export)
-
-    # Get all the champs values for the types de champ in the final list.
-    # Dossier might not have corresponding champ – display nil.
     types_de_champ.flat_map do |type_de_champ|
-      Array.wrap(values[type_de_champ.stable_id] || [nil]).map.with_index do |champ_value, index|
+      champ = champs.find { |champ| champ.stable_id == type_de_champ.stable_id }
+
+      exported_values = if champ.nil? || !champ.visible?
+        # some champs export multiple columns
+        # ex: commune.for_export => [commune, insee, departement]
+        # so we build a fake champ to have the right export
+        type_de_champ.champ.build.for_export
+      else
+        champ.for_export
+      end
+
+      # nil => [nil]
+      # text => [text]
+      # [commune, insee, departement] => [commune, insee, departement]
+      wrapped_exported_values = [exported_values].flatten
+
+      wrapped_exported_values.map.with_index do |champ_value, index|
         [type_de_champ.libelle_for_export(index), champ_value]
       end
     end
   end
 
   def linked_dossiers_for(instructeur_or_expert)
-    dossier_ids = champs.filter(&:dossier_link?).filter_map(&:value)
+    dossier_ids = champs_public.filter(&:dossier_link?).filter_map(&:value)
     instructeur_or_expert.dossiers.where(id: dossier_ids)
   end
 
@@ -1137,7 +1217,7 @@ class Dossier < ApplicationRecord
   end
 
   def geo_data?
-    geo_areas.present?
+    GeoArea.exists?(champ_id: champs_public.ids + champs_private.ids)
   end
 
   def to_feature_collection
@@ -1146,6 +1226,13 @@ class Dossier < ApplicationRecord
       id: id,
       bbox: bounding_box,
       features: geo_areas.map(&:to_feature)
+    }
+  end
+
+  def self.to_feature_collection
+    {
+      type: 'FeatureCollection',
+      features: GeoArea.joins(:champ).where(champ: { dossier: ids }).map(&:to_feature)
     }
   end
 
@@ -1162,7 +1249,7 @@ class Dossier < ApplicationRecord
   def purge_discarded
     transaction do
       DeletedDossier.create_from_dossier(self, hidden_by_reason)
-      dossier_operation_logs.not_deletion.destroy_all
+      dossier_operation_logs.purge_discarded
       destroy
     end
   end
@@ -1173,18 +1260,44 @@ class Dossier < ApplicationRecord
     termine_expired_to_delete.find_each(&:purge_discarded)
   end
 
-  def sections_for(champ)
-    @sections = Hash.new do |hash, parent|
-      case parent
-      when :public
-        hash[parent] = champs.filter(&:header_section?)
-      when :private
-        hash[parent] = champs_private.filter(&:header_section?)
-      else
-        hash[parent] = parent.champs.filter(&:header_section?)
+  def clone
+    dossier_attributes = [:autorisation_donnees, :user_id, :revision_id, :groupe_instructeur_id]
+    relationships = [:individual, :etablissement]
+
+    cloned_dossier = deep_clone(only: dossier_attributes, include: relationships) do |original, kopy|
+      PiecesJustificativesService.clone_attachments(original, kopy)
+
+      if original.is_a?(Dossier)
+        kopy.parent_dossier_id = original.id
+        kopy.state = Dossier.states.fetch(:brouillon)
+        cloned_champs = original.champs
+          .index_by(&:id)
+          .transform_values(&:clone)
+
+        kopy.champs = cloned_champs.values.map do |champ|
+          champ.dossier = kopy
+          champ.parent = cloned_champs[champ.parent_id] if champ.child?
+          champ
+        end
       end
     end
-    @sections[champ.parent || (champ.public? ? :public : :private)]
+
+    transaction { cloned_dossier.save! }
+    cloned_dossier.reload
+  end
+
+  def find_champs_by_stable_ids(stable_ids)
+    return [] if stable_ids.compact.empty?
+
+    champs.joins(:type_de_champ).where(types_de_champ: { stable_id: stable_ids })
+  end
+
+  def skip_user_notification_email?
+    return true if brouillon? && procedure.declarative?
+    return true if for_procedure_preview?
+    return true if user_deleted?
+
+    false
   end
 
   private
@@ -1208,18 +1321,11 @@ class Dossier < ApplicationRecord
   end
 
   def geo_areas
-    champs.flat_map(&:geo_areas) + champs_private.flat_map(&:geo_areas)
+    champs_public.flat_map(&:geo_areas) + champs_private.flat_map(&:geo_areas)
   end
 
   def bounding_box
-    factory = RGeo::Geographic.simple_mercator_factory
-    bounding_box = RGeo::Cartesian::BoundingBox.new(factory)
-
-    geo_areas.filter_map(&:rgeo_geometry).each do |geometry|
-      bounding_box.add(geometry)
-    end
-
-    [bounding_box.max_point, bounding_box.min_point].compact.flat_map(&:coordinates)
+    GeojsonService.bbox(type: 'FeatureCollection', features: geo_areas.map(&:to_feature))
   end
 
   def log_dossier_operation(author, operation, subject = nil)
@@ -1244,17 +1350,13 @@ class Dossier < ApplicationRecord
     end
   end
 
-  def send_draft_notification_email
-    if brouillon? && !procedure.declarative?
-      DossierMailer.notify_new_draft(self).deliver_later
-    end
-  end
-
   def send_web_hook
     if saved_change_to_state? && !brouillon? && procedure.web_hook_url.present?
       WebHookJob.perform_later(
-        procedure,
-        self
+        procedure.id,
+        self.id,
+        self.state,
+        self.updated_at
       )
     end
   end
@@ -1272,7 +1374,6 @@ class Dossier < ApplicationRecord
 
   def self.notify_draft_not_submitted
     brouillon_near_procedure_closing_date
-      .includes(:user)
       .find_each do |dossier|
         DossierMailer.notify_brouillon_not_submitted(dossier).deliver_later
       end
@@ -1287,11 +1388,12 @@ class Dossier < ApplicationRecord
       .pluck('avis.id, experts_procedures.id')
 
     # rubocop:disable Lint/UnusedBlockArgument
-    avis_ids = avis_experts_procedures_ids
+    avis = avis_experts_procedures_ids
       .uniq { |(avis_id, experts_procedures_id)| experts_procedures_id }
       .map { |(avis_id, _)| avis_id }
+      .then { |avis_ids| Avis.find(avis_ids) }
     # rubocop:enable Lint/UnusedBlockArgument
 
-    avis_ids.each { |avis_id| ExpertMailer.send_dossier_decision(avis_id).deliver_later }
+    avis.each { |a| ExpertMailer.send_dossier_decision_v2(a).deliver_later }
   end
 end

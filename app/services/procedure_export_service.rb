@@ -3,37 +3,48 @@ class ProcedureExportService
 
   def initialize(procedure, dossiers)
     @procedure = procedure
-    @dossiers = dossiers.downloadable_sorted_batch
-    @tables = [:dossiers, :etablissements, :avis] + champs_repetables_options
+    @dossiers = dossiers
   end
 
   def to_csv
+    @dossiers = @dossiers.downloadable_sorted_batch
     io = StringIO.new(SpreadsheetArchitect.to_csv(options_for(:dossiers, :csv)))
     create_blob(io, :csv)
   end
 
   def to_xlsx
+    @dossiers = @dossiers.downloadable_sorted_batch
+    tables = [:dossiers, :etablissements, :avis] + champs_repetables_options
+
     # We recursively build multi page spreadsheet
-    io = @tables.reduce(nil) do |package, table|
+    io = tables.reduce(nil) do |package, table|
       SpreadsheetArchitect.to_axlsx_package(options_for(table, :xlsx), package)
     end.to_stream
     create_blob(io, :xlsx)
   end
 
   def to_ods
+    @dossiers = @dossiers.downloadable_sorted_batch
+    tables = [:dossiers, :etablissements, :avis] + champs_repetables_options
+
     # We recursively build multi page spreadsheet
-    io = StringIO.new(@tables.reduce(nil) do |spreadsheet, table|
+    io = StringIO.new(tables.reduce(nil) do |spreadsheet, table|
       SpreadsheetArchitect.to_rodf_spreadsheet(options_for(table, :ods), spreadsheet)
     end.bytes)
     create_blob(io, :ods)
   end
 
   def to_zip
-    attachments = ActiveStorage::DownloadableFile.create_list_from_dossiers(dossiers, true)
+    attachments = ActiveStorage::DownloadableFile.create_list_from_dossiers(dossiers, with_champs_private: true, include_infos_administration: true)
 
     DownloadableFileService.download_and_zip(procedure, attachments, base_filename) do |zip_filepath|
       ArchiveUploader.new(procedure: procedure, filename: filename(:zip), filepath: zip_filepath).blob
     end
+  end
+
+  def to_geo_json
+    io = StringIO.new(dossiers.to_feature_collection.to_json)
+    create_blob(io, :json)
   end
 
   private
@@ -71,12 +82,14 @@ class ProcedureExportService
       'application/vnd.oasis.opendocument.spreadsheet'
     when :zip
       'application/zip'
+    when :json
+      'application/json'
     end
   end
 
   def etablissements
     @etablissements ||= dossiers.flat_map do |dossier|
-      [dossier.champs, dossier.champs_private]
+      [dossier.champs_public, dossier.champs_private]
         .flatten
         .filter { |champ| champ.is_a?(Champs::SiretChamp) }
     end.filter_map(&:etablissement) + dossiers.filter_map(&:etablissement)
@@ -87,20 +100,24 @@ class ProcedureExportService
   end
 
   def champs_repetables_options
-    revision = procedure.active_revision
     champs_by_stable_id = dossiers
-      .flat_map { |dossier| (dossier.champs + dossier.champs_private).filter(&:repetition?) }
+      .flat_map { |dossier| (dossier.champs_public + dossier.champs_private).filter(&:repetition?) }
       .group_by(&:stable_id)
 
-    procedure.types_de_champ_for_procedure_presentation.repetition
-      .map { |type_de_champ_repetition| [type_de_champ_repetition, type_de_champ_repetition.types_de_champ_for_revision(revision).to_a] }
-      .filter { |(_, types_de_champ)| types_de_champ.present? }
-      .map do |(type_de_champ_repetition, types_de_champ)|
-        {
-          sheet_name: type_de_champ_repetition.libelle_for_export,
-          instances: champs_by_stable_id.fetch(type_de_champ_repetition.stable_id, []).flat_map(&:rows_for_export),
-          spreadsheet_columns: Proc.new { |instance| instance.spreadsheet_columns(types_de_champ) }
-        }
+    procedure
+      .types_de_champ_for_procedure_presentation
+      .repetition
+      .filter_map do |type_de_champ_repetition|
+        types_de_champ = procedure.types_de_champ_for_procedure_presentation(type_de_champ_repetition).to_a
+        rows = champs_by_stable_id.fetch(type_de_champ_repetition.stable_id, []).flat_map(&:rows_for_export)
+
+        if types_de_champ.present? && rows.present?
+          {
+            sheet_name: type_de_champ_repetition.libelle_for_export,
+            instances: rows,
+            spreadsheet_columns: Proc.new { |instance| instance.spreadsheet_columns(types_de_champ) }
+          }
+        end
       end
   end
 

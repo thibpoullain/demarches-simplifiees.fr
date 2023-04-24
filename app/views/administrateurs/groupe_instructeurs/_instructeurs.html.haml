@@ -3,17 +3,22 @@
   .card-title Affectation des instructeurs
   = form_for :instructeur, url: { action: :add_instructeur, id: groupe_instructeur.id }, html: { class: 'form' } do |f|
     .instructeur-wrapper
-      - if !procedure.routee?
+      - if !procedure.routing_enabled?
         %p.notice Entrez les adresses email des instructeurs que vous souhaitez affecter à cette démarche
-      = hidden_field_tag :emails, nil
-      = react_component("ComboMultiple",
-        options: available_instructeur_emails, selected: [], disabled: [],
-        group: '.instructeur-wrapper',
-        name: 'emails',
-        label: 'Emails',
-        acceptNewValues: true)
 
-      = f.submit 'Affecter', class: 'button primary send'
+      - if disabled_as_super_admin
+        = f.select :emails, available_instructeur_emails, {}, disabled: disabled_as_super_admin, id: 'instructeur_emails'
+      - else
+        = hidden_field_tag :emails, nil
+        = react_component("ComboMultiple",
+          options: available_instructeur_emails, selected: [], disabled: [],
+          group: '.instructeur-wrapper',
+          id: 'instructeur_emails',
+          name: 'emails',
+          label: 'Emails',
+          acceptNewValues: true)
+
+      = f.submit 'Affecter', class: 'fr-btn', disabled: disabled_as_super_admin
 
   %table.table.mt-2
     %thead
@@ -26,12 +31,12 @@
             %span.icon.person
             #{instructeur.email}
 
-          - confirmation_message = procedure.routee? ? "Êtes-vous sûr de vouloir retirer l’instructeur « #{instructeur.email} » du groupe « #{groupe_instructeur.label} » ?" : "Êtes-vous sûr de vouloir retirer l’instructeur « #{instructeur.email} » de la démarche ?"
-          %td.actions= button_to 'retirer',
+          - confirmation_message = procedure.routing_enabled? ? "Êtes-vous sûr de vouloir retirer l’instructeur « #{instructeur.email} » du groupe « #{groupe_instructeur.label} » ?" : "Êtes-vous sûr de vouloir retirer l’instructeur « #{instructeur.email} » de la démarche ?"
+          %td.actions= button_to 'Retirer',
             { action: :remove_instructeur, id: groupe_instructeur.id },
             { method: :delete,
               data: { confirm: confirmation_message },
               params: { instructeur: { id: instructeur.id }},
-              class: 'button' }
+              class: 'fr-btn fr-btn--secondary' }
 
   = paginate instructeurs

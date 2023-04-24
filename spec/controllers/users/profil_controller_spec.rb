@@ -31,28 +31,12 @@ describe Users::ProfilController, type: :controller do
     end
   end
 
-  describe 'POST #renew_api_token' do
-    let(:administrateur) { create(:administrateur) }
-
-    before { sign_in(administrateur.user) }
-
-    before do
-      allow(administrateur).to receive(:renew_api_token)
-      allow(controller).to receive(:current_administrateur) { administrateur }
-      post :renew_api_token
-    end
-
-    it { expect(administrateur).to have_received(:renew_api_token) }
-    it { expect(response.status).to render_template(:show) }
-    it { expect(flash.notice).to eq('Votre jeton a été regénéré.') }
-  end
-
   describe 'PATCH #update_email' do
     context 'when email is same as user' do
       it 'fails' do
         patch :update_email, params: { user: { email: user.email } }
         expect(response).to have_http_status(302)
-        expect(flash[:alert]).to eq(["La nouvelle adresse email ne peut être identique à l’ancienne"])
+        expect(flash[:alert]).to eq(["Le champ « La nouvelle adresse email » ne peut être identique à l’ancienne. Saisir une autre adresse email"])
       end
     end
 
@@ -99,7 +83,7 @@ describe Users::ProfilController, type: :controller do
       end
 
       it { expect(response).to redirect_to(profil_path) }
-      it { expect(flash.alert).to eq(['Courriel invalide']) }
+      it { expect(flash.alert).to eq(["Le champ « Adresse éléctronique » est invalide. Saisir une adresse éléctronique valide, exemple : john.doe@exemple.fr"]) }
     end
 
     context 'when the user has an instructeur role' do
@@ -133,14 +117,25 @@ describe Users::ProfilController, type: :controller do
     let(:next_owner) { 'loulou@lou.com' }
     let(:created_transfer) { DossierTransfer.first }
 
-    before do
+    subject {
       post :transfer_all_dossiers, params: { next_owner: next_owner }
-    end
+    }
+
+    before { subject }
 
     it "transfer all dossiers" do
       expect(created_transfer.email).to eq(next_owner)
       expect(created_transfer.dossiers).to match_array(dossiers)
       expect(flash.notice).to eq("Le transfert de 3 dossiers à #{next_owner} est en cours")
+    end
+
+    context "next owner has an empty email" do
+      let(:next_owner) { '' }
+
+      it "should not transfer to an empty email" do
+        expect { subject }.not_to change { DossierTransfer.count }
+        expect(flash.alert).to eq(["L'adresse email est invalide"])
+      end
     end
   end
 
@@ -174,6 +169,19 @@ describe Users::ProfilController, type: :controller do
 
       expect(requesting_user.requested_merge_into).to be_nil
       expect(flash.notice).to include('La fusion a été refusé')
+      expect(response).to redirect_to(profil_path)
+    end
+  end
+
+  context 'DELETE #destroy_fci' do
+    let!(:fci) { create(:france_connect_information, user: user) }
+
+    subject { delete :destroy_fci, params: { fci_id: fci.id } }
+
+    it do
+      expect(FranceConnectInformation.where(user: user).count).to eq(1)
+      subject
+      expect(FranceConnectInformation.where(user: user).count).to eq(0)
       expect(response).to redirect_to(profil_path)
     end
   end

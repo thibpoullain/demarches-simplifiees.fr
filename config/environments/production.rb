@@ -4,9 +4,6 @@ require Rails.root.join("app/lib/balancer_delivery_method")
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
-  # Verifies that versions and hashed value of the package contents in the project's package.json
-  config.webpacker.check_yarn_integrity = false
-
   # Code is not reloaded between requests.
   config.cache_classes = true
 
@@ -55,6 +52,7 @@ Rails.application.configure do
 
   # Use the lowest log level to ensure availability of diagnostic information
   # when problems arise.
+
   # if ENV['DEMAT_LOG_LEVEL']
   #  config.log_level = ENV['DEMAT_LOG_LEVEL']
   # else
@@ -98,30 +96,37 @@ Rails.application.configure do
 
   if ENV['MAILTRAP_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :mailtrap
-
-  elsif ENV['SENDINBLUE_ENABLED'] == 'enabled' && ENV['SENDINBLUE_BALANCING'] == 'enabled'
-    ActionMailer::Base.add_delivery_method :balancer, BalancerDeliveryMethod
-    config.action_mailer.balancer_settings = {
-      sendinblue: ENV.fetch('SENDINBLUE_BALANCING_VALUE').to_i,
-      mailjet: 100 - ENV.fetch('SENDINBLUE_BALANCING_VALUE').to_i
-    }
-    config.action_mailer.delivery_method = :balancer
-
-  elsif ENV['SENDINBLUE_ENABLED'] == 'enabled'
-    config.action_mailer.delivery_method = :sendinblue
   elsif ENV['MAILCATCHER_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :mailcatcher
-  elsif ENV['SMTP_ENABLED'] == 'enabled'
+  elsif ENV['CLASSIC_SMTP_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :smtp
     config.action_mailer.smtp_settings = {
-      user_name: Rails.application.secrets.smtp[:username],
-      password: Rails.application.secrets.smtp[:password],
-      address: ENV['SMTP_HOST'],
-      domain: ENV['SMTP_DOMAIN'],
-      port: ENV['SMTP_PORT']
+      address:              ENV.fetch("SMTP_HOST"),
+      port:                 ENV.fetch("SMTP_PORT"),
+      domain:               ENV.fetch("SMTP_DOMAIN"),
+      user_name:            Rails.application.secrets.smtp[:username],
+      password:             Rails.application.secrets.smtp[:password],
+      authentication:       ENV.fetch("SMTP_AUTHENTICATION"),
+      enable_starttls_auto: ENV.fetch("SMTP_TLS").present?
+    }
+  elsif ENV['SENDMAIL_ENABLED'] == 'enabled'
+    config.action_mailer.delivery_method = :sendmail
+    config.action_mailer.sendmail_settings = {
+      location: ENV.fetch("SENDMAIL_LOCATION"),
+      arguments: ENV.fetch("SENDMAIL_ARGUMENTS")
     }
   else
-    config.action_mailer.delivery_method = :mailjet
+    sendinblue_weigth = ENV.fetch('SENDINBLUE_BALANCING_VALUE') { 0 }.to_i
+    dolist_weigth = ENV.fetch('DOLIST_BALANCING_VALUE') { 0 }.to_i
+    dolist_api_weight = ENV.fetch('DOLIST_API_BALANCING_VALUE') { 0 }.to_i
+    ActionMailer::Base.add_delivery_method :balancer, BalancerDeliveryMethod
+    config.action_mailer.balancer_settings = {
+      sendinblue: sendinblue_weigth,
+      dolist_smtp: dolist_weigth,
+      dolist_api: dolist_api_weight,
+      mailjet: 100 - (sendinblue_weigth + dolist_weigth + dolist_api_weight)
+    }
+    config.action_mailer.delivery_method = :balancer
   end
 
   # Configure default root URL for generating URLs to routes

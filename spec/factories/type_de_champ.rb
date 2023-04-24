@@ -3,7 +3,6 @@ FactoryBot.define do
     sequence(:libelle) { |n| "Libelle du champ #{n}" }
     sequence(:description) { |n| "description du champ #{n}" }
     type_champ { TypeDeChamp.type_champs.fetch(:text) }
-    order_place { 1 }
     mandatory { false }
     add_attribute(:private) { false }
 
@@ -11,28 +10,21 @@ FactoryBot.define do
       procedure { nil }
       position { nil }
       parent { nil }
+      no_coordinate { false }
     end
 
     after(:build) do |type_de_champ, evaluator|
-      if evaluator.procedure
-        type_de_champ.revision = evaluator.procedure.active_revision
+      if !evaluator.no_coordinate
+        revision = evaluator.procedure&.active_revision || build(:procedure_revision)
+        evaluator.procedure&.save
 
-        build(:procedure_revision_type_de_champ,
-          position: evaluator.position,
-          revision: evaluator.procedure.active_revision,
-          type_de_champ: type_de_champ)
+        revision.revision_types_de_champ << build(:procedure_revision_type_de_champ,
+          position: evaluator.position || 0,
+          revision: revision,
+          type_de_champ: type_de_champ,
+          parent: evaluator.parent)
 
-        if type_de_champ.private?
-          type_de_champ.revision.types_de_champ_private << type_de_champ
-        else
-          type_de_champ.revision.types_de_champ << type_de_champ
-        end
-      elsif evaluator.parent
-        type_de_champ.revision = evaluator.parent.revision
-        type_de_champ.order_place = evaluator.position || evaluator.parent.types_de_champ.size
-        evaluator.parent.types_de_champ << type_de_champ
-      else
-        type_de_champ.order_place = evaluator.position
+        revision.save
       end
     end
 
@@ -86,7 +78,7 @@ FactoryBot.define do
       type_champ { TypeDeChamp.type_champs.fetch(:datetime) }
     end
     factory :type_de_champ_drop_down_list do
-      libelle { 'Choix parmi une liste' }
+      libelle { 'Choix unique' }
       type_champ { TypeDeChamp.type_champs.fetch(:drop_down_list) }
       drop_down_list_value { "val1\r\nval2\r\n--separateur--\r\nval3" }
       trait :long do
@@ -94,6 +86,9 @@ FactoryBot.define do
       end
       trait :without_selectable_values do
         drop_down_list_value { "\r\n--separateur--\r\n--separateur 2--\r\n \r\n" }
+      end
+      trait :with_other do
+        drop_down_other { true }
       end
     end
     factory :type_de_champ_multiple_drop_down_list do
@@ -118,9 +113,6 @@ FactoryBot.define do
     end
     factory :type_de_champ_communes do
       type_champ { TypeDeChamp.type_champs.fetch(:communes) }
-    end
-    factory :type_de_champ_engagement do
-      type_champ { TypeDeChamp.type_champs.fetch(:engagement) }
     end
     factory :type_de_champ_header_section do
       type_champ { TypeDeChamp.type_champs.fetch(:header_section) }
@@ -151,6 +143,9 @@ FactoryBot.define do
     factory :type_de_champ_siret do
       type_champ { TypeDeChamp.type_champs.fetch(:siret) }
     end
+    factory :type_de_champ_rna do
+      type_champ { TypeDeChamp.type_champs.fetch(:rna) }
+    end
     factory :type_de_champ_iban do
       type_champ { TypeDeChamp.type_champs.fetch(:iban) }
     end
@@ -178,6 +173,9 @@ FactoryBot.define do
     factory :type_de_champ_carte do
       type_champ { TypeDeChamp.type_champs.fetch(:carte) }
     end
+    factory :type_de_champ_epci do
+      type_champ { TypeDeChamp.type_champs.fetch(:epci) }
+    end
     factory :type_de_champ_repetition do
       type_champ { TypeDeChamp.type_champs.fetch(:repetition) }
 
@@ -186,16 +184,39 @@ FactoryBot.define do
       end
 
       after(:build) do |type_de_champ_repetition, evaluator|
-        evaluator.types_de_champ.each do |type_de_champ|
-          type_de_champ.revision = type_de_champ_repetition.revision
-          type_de_champ.order_place = type_de_champ_repetition.types_de_champ.size
-          type_de_champ_repetition.types_de_champ << type_de_champ
+        evaluator.procedure&.save!
+        revision = evaluator.procedure&.active_revision || build(:procedure_revision)
+        parent = revision.revision_types_de_champ.find { |rtdc| rtdc.type_de_champ == type_de_champ_repetition }
+        types_de_champ = revision.revision_types_de_champ.filter { |rtdc| rtdc.parent == parent }
+        position = types_de_champ.size
+
+        evaluator.types_de_champ.each.with_index(position) do |type_de_champ, position|
+          revision.revision_types_de_champ << build(:procedure_revision_type_de_champ,
+            revision: revision,
+            type_de_champ: type_de_champ,
+            parent: parent,
+            position: position)
         end
+
+        revision.save
       end
 
       trait :with_types_de_champ do
-        after(:build) do |type_de_champ, _evaluator|
-          build(:type_de_champ, libelle: 'sub type de champ', parent: type_de_champ)
+        after(:build) do |type_de_champ_repetition, evaluator|
+          revision = evaluator.procedure.active_revision
+          parent = revision.revision_types_de_champ.find { |rtdc| rtdc.type_de_champ == type_de_champ_repetition }
+
+          build(:type_de_champ, procedure: evaluator.procedure, libelle: 'sub type de champ', parent: parent, position: 0)
+          build(:type_de_champ, type_champ: TypeDeChamp.type_champs.fetch(:integer_number), procedure: evaluator.procedure, libelle: 'sub type de champ2', parent: parent, position: 1)
+        end
+      end
+
+      trait :with_region_types_de_champ do
+        after(:build) do |type_de_champ_repetition, evaluator|
+          revision = evaluator.procedure.active_revision
+          parent = revision.revision_types_de_champ.find { |rtdc| rtdc.type_de_champ == type_de_champ_repetition }
+
+          build(:type_de_champ, type_champ: TypeDeChamp.type_champs.fetch(:regions), procedure: evaluator.procedure, libelle: 'region sub_champ', parent: parent, position: 10)
         end
       end
     end

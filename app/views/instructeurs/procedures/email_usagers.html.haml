@@ -1,18 +1,20 @@
 - content_for(:title, "Contacter les usagers pour #{@procedure.libelle}")
 
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to(@procedure.libelle, instructeur_procedure_path(@procedure)),
-                    'Contacter les usagers (brouillon)'] }
+  locals: { steps: [[@procedure.libelle.truncate_words(10), instructeur_procedure_path(@procedure)],
+                    [t('.contact_users')]] }
 .messagerie.container
   - if @email_usagers_dossiers.present?
-    %p.notice.mb-2.mt-4 Vous allez envoyer un message à #{pluralize(@dossiers_count, 'personne')} dont les dossiers sont en brouillon, dans les groupes instructeurs : #{@groupe_instructeurs.join(', ')}.
+    %p.notice.mb-2.mt-4
+      = t('.notice', dossiers_count: pluralize(@dossiers_count, 'personne'), groupe_instructeurs: @groupe_instructeurs.join(', '))
+
     = render partial: 'shared/dossiers/messages/form', locals: { commentaire: @commentaire, form_url: create_multiple_commentaire_instructeur_procedure_path(@procedure), disable_piece_jointe: true }
 
     - if @bulk_messages.present?
       %section.list-avis.mt-8
         %h1.tab-title
           Messages envoyés précedemment
-          %span.count= @bulk_messages.count
+          %span.fr-badge= @bulk_messages.count
 
         %ul
           - @bulk_messages.each do |message|
@@ -24,7 +26,7 @@
                 %p= message.body
                 .answer.flex.align-start
                   - if message.piece_jointe.present?
-                    = render partial: 'shared/attachment/show', locals: { attachment: message.piece_jointe.attachment }
+                    = render Attachment::ShowComponent.new(attachment: message.piece_jointe.attachment)
   - else
     .page-title.center
       %h2 Il n'y a aucun dossier en brouillon dans vos groupes instructeurs

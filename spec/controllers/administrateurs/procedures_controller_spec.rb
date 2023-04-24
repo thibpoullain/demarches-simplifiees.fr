@@ -6,24 +6,44 @@ describe Administrateurs::ProceduresController, type: :controller do
   let(:libelle) { 'Démarche de test' }
   let(:description) { 'Description de test' }
   let(:organisation) { 'Organisation de test' }
-  let(:direction) { 'Direction de test' }
   let(:ministere) { create(:zone) }
   let(:cadre_juridique) { 'cadre juridique' }
   let(:duree_conservation_dossiers_dans_ds) { 3 }
   let(:monavis_embed) { nil }
   let(:lien_site_web) { 'http://mon-site.gouv.fr' }
+  let(:zone) { create(:zone) }
+  let(:zone_ids) { [zone.id] }
+  let(:tags) { "[\"planete\",\"environnement\"]" }
 
   describe '#apercu' do
     render_views
 
     let(:procedure) { create(:procedure, :with_all_champs) }
 
+    subject { get :apercu, params: { id: procedure.id } }
+
     before do
       sign_in(admin.user)
-      get :apercu, params: { id: procedure.id }
     end
 
-    it { expect(response).to have_http_status(:ok) }
+    it do
+      subject
+      expect(response).to have_http_status(:ok)
+      expect(procedure.dossiers.visible_by_user).to be_empty
+      expect(procedure.dossiers.for_procedure_preview).not_to be_empty
+    end
+
+    context 'when the draft is invalid' do
+      before do
+        allow_any_instance_of(ProcedureRevision).to receive(:invalid?).and_return(true)
+      end
+
+      it do
+        subject
+        expect(response).to redirect_to(champs_admin_procedure_path(procedure))
+        expect(flash[:alert]).to be_present
+      end
+    end
   end
 
   let(:procedure_params) {
@@ -32,12 +52,13 @@ describe Administrateurs::ProceduresController, type: :controller do
       libelle: libelle,
       description: description,
       organisation: organisation,
-      direction: direction,
       ministere: ministere,
       cadre_juridique: cadre_juridique,
       duree_conservation_dossiers_dans_ds: duree_conservation_dossiers_dans_ds,
       monavis_embed: monavis_embed,
-      lien_site_web: lien_site_web
+      zone_ids: zone_ids,
+      lien_site_web: lien_site_web,
+      tags: tags
     }
   }
 
@@ -66,12 +87,161 @@ describe Administrateurs::ProceduresController, type: :controller do
     it { expect(subject.status).to eq(200) }
   end
 
-  describe 'GET #new_from_existing' do
+  describe 'GET #all' do
+    let!(:draft_procedure)     { create(:procedure) }
+    let!(:published_procedure) { create(:procedure_with_dossiers, :published, dossiers_count: 2) }
+    let!(:closed_procedure)    { create(:procedure, :closed) }
+    subject { get :all }
+
+    it { expect(subject.status).to eq(200) }
+
+    context 'for export' do
+      subject { get :all, format: :xlsx }
+
+      it 'exports result in xlsx' do
+        allow(ProcedureDetail).to receive(:to_xlsx)
+        subject
+        expect(ProcedureDetail).to have_received(:to_xlsx)
+      end
+    end
+
+    it 'display published or closed procedures' do
+      subject
+      expect(assigns(:procedures).any? { |p| p.id == published_procedure.id }).to be_truthy
+      expect(assigns(:procedures).any? { |p| p.id == closed_procedure.id }).to be_truthy
+    end
+
+    it 'doesn’t display draft procedures' do
+      subject
+      expect(assigns(:procedures).any? { |p| p.id == draft_procedure.id }).to be_falsey
+    end
+
+    context "for specific zones" do
+      let(:zone1) { create(:zone) }
+      let(:zone2) { create(:zone) }
+      let!(:procedure1) { create(:procedure, :published, zones: [zone1]) }
+      let!(:procedure2) { create(:procedure, :published, zones: [zone1, zone2]) }
+
+      subject { get :all, params: { zone_ids: [zone2.id] } }
+
+      it 'display only procedures for specified zones' do
+        subject
+        expect(assigns(:procedures).any? { |p| p.id == procedure2.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure1.id }).to be_falsey
+      end
+
+      context "without zones" do
+        let!(:procedure) { create(:procedure, :published, zones: []) }
+        subject { get :all }
+
+        it 'displays procedures without zones' do
+          subject
+          expect(assigns(:procedures).any? { |p| p.id == procedure.id }).to be_truthy
+        end
+      end
+    end
+
+    context 'for specific status' do
+      let!(:procedure1) { create(:procedure, :published) }
+      let!(:procedure2) { create(:procedure, :closed) }
+
+      it 'display only published procedures' do
+        get :all, params: { statuses: ['publiee'] }
+        expect(assigns(:procedures).any? { |p| p.id == procedure1.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure2.id }).to be_falsey
+      end
+
+      it 'display only closed procedures' do
+        get :all, params: { statuses: ['close'] }
+        expect(assigns(:procedures).any? { |p| p.id == procedure2.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure1.id }).to be_falsey
+      end
+    end
+
+    context 'after specific date' do
+      let(:after) { Date.new(2022, 06, 30) }
+      let!(:procedure1) { create(:procedure, :published, published_at: after + 1.day) }
+      let!(:procedure2) { create(:procedure, :published, published_at: after + 2.days) }
+      let!(:procedure3) { create(:procedure, :published, published_at: after - 1.day) }
+
+      it 'display only procedures published after specific date' do
+        get :all, params: { from_publication_date: after }
+        expect(assigns(:procedures).any? { |p| p.id == procedure1.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure2.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure3.id }).to be_falsey
+      end
+    end
+
+    context 'with specific tag' do
+      let!(:tags_procedure) { create(:procedure, :published, tags: ['environnement', 'diplomatie']) }
+
+      it 'returns procedure who contains at least one tag included in params' do
+        get :all, params: { tags: ['environnement'] }
+        expect(assigns(:procedures).any? { |p| p.id == tags_procedure.id }).to be_truthy
+      end
+
+      it 'returns procedures who contains all tags included in params' do
+        get :all, params: { tags: ['environnement', 'diplomatie'] }
+        expect(assigns(:procedures).any? { |p| p.id == tags_procedure.id }).to be_truthy
+      end
+
+      it 'does not returns the procedure' do
+        get :all, params: { tags: ['environnement', 'diplomatie', 'football'] }
+        expect(assigns(:procedures).any? { |p| p.id == tags_procedure.id }).to be_falsey
+      end
+    end
+
+    context 'with libelle search' do
+      let!(:procedure1) { create(:procedure, :published, libelle: 'Demande de subvention') }
+      let!(:procedure2) { create(:procedure, :published, libelle: "Fonds d'aide public « Prime Entrepreneurs des Quartiers »") }
+      let!(:procedure3) { create(:procedure, :published, libelle: "Hackaton pour entrepreneurs en résidence") }
+
+      it 'returns procedures with specific terms in libelle' do
+        get :all, params: { libelle: 'entrepreneur' }
+        expect(assigns(:procedures).any? { |p| p.id == procedure2.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure3.id }).to be_truthy
+        expect(assigns(:procedures).any? { |p| p.id == procedure1.id }).to be_falsey
+      end
+    end
+  end
+
+  describe 'GET #administrateurs' do
+    let!(:draft_procedure)     { create(:procedure, administrateur: admin3) }
+    let!(:published_procedure) { create(:procedure_with_dossiers, :published, dossiers_count: 2, administrateur: admin1) }
+    let!(:antoher_published_procedure) { create(:procedure_with_dossiers, :published, dossiers_count: 2, administrateur: admin4) }
+    let!(:closed_procedure) { create(:procedure, :closed, administrateur: admin2) }
+    let(:admin1) { create(:administrateur, email: 'jesuis.surmene@education.gouv.fr') }
+    let(:admin2) { create(:administrateur, email: 'jesuis.alecoute@social.gouv.fr') }
+    let(:admin3) { create(:administrateur, email: 'gerard.lambert@interieur.gouv.fr') }
+    let(:admin4) { create(:administrateur, email: 'jack.lang@culture.gouv.fr') }
+
+    it 'displays admins of the procedures' do
+      get :administrateurs
+      expect(assigns(:admins)).to include(admin1)
+      expect(assigns(:admins)).to include(admin2)
+      expect(assigns(:admins)).to include(admin4)
+      expect(assigns(:admins)).not_to include(admin3)
+    end
+
+    context 'with email search' do
+      it 'returns procedures with specific terms in libelle' do
+        get :administrateurs, params: { email: 'jesuis' }
+        expect(assigns(:admins)).to include(admin1)
+        expect(assigns(:admins)).to include(admin2)
+        expect(assigns(:admins)).not_to include(admin3)
+        expect(assigns(:admins)).not_to include(admin4)
+      end
+    end
+  end
+
+  describe 'POST #search' do
     before do
       stub_const("Administrateurs::ProceduresController::SIGNIFICANT_DOSSIERS_THRESHOLD", 2)
     end
 
-    subject { get :new_from_existing }
+    let(:query) { 'Procedure' }
+
+    subject { post :search, params: { query: query }, format: :turbo_stream }
     let(:grouped_procedures) { subject; assigns(:grouped_procedures) }
     let(:response_procedures) { grouped_procedures.map { |_o, procedures| procedures }.flatten }
 
@@ -106,6 +276,18 @@ describe Administrateurs::ProceduresController, type: :controller do
         expect(grouped_procedures.length).to eq 2
         expect(grouped_procedures.find { |o, _p| o == 'DDT des Vosges' }.last).to contain_exactly(procedure_with_service_1)
         expect(grouped_procedures.find { |o, _p| o == 'DDT du Loiret'  }.last).to contain_exactly(procedure_with_service_2, procedure_without_service)
+      end
+    end
+
+    describe 'searching' do
+      let!(:matching_procedure) { create(:procedure_with_dossiers, :published, dossiers_count: 2, libelle: 'éléctriCITE') }
+      let!(:unmatching_procedure) { create(:procedure_with_dossiers, :published, dossiers_count: 2, libelle: 'temoin') }
+
+      let(:query) { 'ELECTRIcité' }
+
+      it 'is case insentivite and unaccented' do
+        expect(response_procedures).to include(matching_procedure)
+        expect(response_procedures).not_to include(unmatching_procedure)
       end
     end
   end
@@ -144,6 +326,14 @@ describe Administrateurs::ProceduresController, type: :controller do
     end
   end
 
+  describe 'GET #zones' do
+    let(:procedure) { create(:procedure, administrateur: admin) }
+    let(:procedure_id) { procedure.id }
+
+    subject { get :zones, params: { id: procedure_id } }
+    it { is_expected.to have_http_status(:success) }
+  end
+
   describe 'POST #create' do
     context 'when all attributs are filled' do
       describe 'new procedure in database' do
@@ -163,13 +353,32 @@ describe Administrateurs::ProceduresController, type: :controller do
           it { expect(subject.libelle).to eq(libelle) }
           it { expect(subject.description).to eq(description) }
           it { expect(subject.organisation).to eq(organisation) }
-          it { expect(subject.direction).to eq(direction) }
           it { expect(subject.administrateurs).to eq([admin]) }
           it { expect(subject.duree_conservation_dossiers_dans_ds).to eq(duree_conservation_dossiers_dans_ds) }
+          it { expect(subject.tags).to eq(["planete", "environnement"]) }
         end
 
         it { is_expected.to redirect_to(champs_admin_procedure_path(Procedure.last)) }
         it { expect(flash[:notice]).to be_present }
+      end
+
+      describe "procedure is saved with custom retention period" do
+        let(:duree_conservation_dossiers_dans_ds) { 17 }
+
+        before do
+          stub_const("Procedure::NEW_MAX_DUREE_CONSERVATION", 18)
+        end
+
+        subject { post :create, params: { procedure: procedure_params } }
+
+        it { expect { subject }.to change { Procedure.count }.by(1) }
+
+        it "must save retention period and max retention period" do
+          subject
+          last_procedure = Procedure.last
+          expect(last_procedure.duree_conservation_dossiers_dans_ds).to eq(duree_conservation_dossiers_dans_ds)
+          expect(last_procedure.max_duree_conservation_dossiers_dans_ds).to eq(Procedure::NEW_MAX_DUREE_CONSERVATION)
+        end
       end
 
       context 'when procedure is correctly saved' do
@@ -211,7 +420,7 @@ describe Administrateurs::ProceduresController, type: :controller do
   end
 
   describe 'PUT #update' do
-    let!(:procedure) { create(:procedure, :with_type_de_champ, administrateur: admin) }
+    let!(:procedure) { create(:procedure, :with_type_de_champ, administrateur: admin, procedure_expires_when_termine_enabled: false) }
 
     context 'when administrateur is not connected' do
       before do
@@ -225,7 +434,7 @@ describe Administrateurs::ProceduresController, type: :controller do
 
     context 'when administrateur is connected' do
       def update_procedure
-        put :update, params: { id: procedure.id, procedure: procedure_params }
+        put :update, params: { id: procedure.id, procedure: procedure_params.merge(procedure_expires_when_termine_enabled: true) }
         procedure.reload
       end
 
@@ -233,8 +442,8 @@ describe Administrateurs::ProceduresController, type: :controller do
         let(:libelle) { 'Blable' }
         let(:description) { 'blabla' }
         let(:organisation) { 'plop' }
-        let(:direction) { 'plap' }
         let(:duree_conservation_dossiers_dans_ds) { 7 }
+        let(:procedure_expires_when_termine_enabled) { true }
 
         before { update_procedure }
 
@@ -244,11 +453,11 @@ describe Administrateurs::ProceduresController, type: :controller do
           it { expect(subject.libelle).to eq(libelle) }
           it { expect(subject.description).to eq(description) }
           it { expect(subject.organisation).to eq(organisation) }
-          it { expect(subject.direction).to eq(direction) }
           it { expect(subject.duree_conservation_dossiers_dans_ds).to eq(duree_conservation_dossiers_dans_ds) }
+          it { expect(subject.procedure_expires_when_termine_enabled).to eq(true) }
         end
 
-        it { is_expected.to redirect_to(edit_admin_procedure_path id: procedure.id) }
+        it { is_expected.to redirect_to(admin_procedure_path id: procedure.id) }
         it { expect(flash[:notice]).to be_present }
       end
 
@@ -285,8 +494,6 @@ describe Administrateurs::ProceduresController, type: :controller do
           it { expect(subject.libelle).to eq procedure_params[:libelle] }
           it { expect(subject.description).to eq procedure_params[:description] }
           it { expect(subject.organisation).to eq procedure_params[:organisation] }
-          it { expect(subject.direction).to eq procedure_params[:direction] }
-
           it { expect(subject.for_individual).not_to eq procedure_params[:for_individual] }
         end
       end
@@ -312,11 +519,11 @@ describe Administrateurs::ProceduresController, type: :controller do
       before { subject }
 
       it 'creates a new procedure and redirect to it' do
-        expect(response).to redirect_to edit_admin_procedure_path(id: Procedure.last.id)
+        expect(response).to redirect_to admin_procedure_path(id: Procedure.last.id)
         expect(Procedure.last.cloned_from_library).to be_falsey
         expect(Procedure.last.notice.attached?).to be_truthy
         expect(Procedure.last.deliberation.attached?).to be_truthy
-        expect(flash[:notice]).to have_content 'Démarche clonée'
+        expect(flash[:notice]).to have_content 'Démarche clonée, pensez a vérifier la Présentation et choisir le service a laquelle cette procédure est associé.'
       end
 
       context 'when the procedure is cloned from the library' do
@@ -336,8 +543,8 @@ describe Administrateurs::ProceduresController, type: :controller do
       end
 
       it 'creates a new procedure and redirect to it' do
-        expect(response).to redirect_to edit_admin_procedure_path(id: Procedure.last.id)
-        expect(flash[:notice]).to have_content 'Démarche clonée'
+        expect(response).to redirect_to admin_procedure_path(id: Procedure.last.id)
+        expect(flash[:notice]).to have_content 'Démarche clonée, pensez a vérifier la Présentation et choisir le service a laquelle cette procédure est associé.'
       end
     end
   end
@@ -345,7 +552,7 @@ describe Administrateurs::ProceduresController, type: :controller do
   describe 'PUT #archive' do
     let(:procedure) { create(:procedure, :published, administrateur: admin, lien_site_web: lien_site_web) }
 
-    context 'when the admin is an owner of the procedure' do
+    context 'when the admin is an owner of the procedure without procedure replacement' do
       before do
         put :archive, params: { procedure_id: procedure.id }
         procedure.reload
@@ -355,6 +562,28 @@ describe Administrateurs::ProceduresController, type: :controller do
         expect(procedure.close?).to be_truthy
         expect(response).to redirect_to :admin_procedures
         expect(flash[:notice]).to have_content 'Démarche close'
+      end
+
+      it 'does not have any replacement procedure' do
+        expect(procedure.replaced_by_procedure).to be_nil
+      end
+    end
+
+    context 'when the admin is an owner of the procedure with procedure replacement' do
+      let(:new_procedure) { create(:procedure, :published, administrateur: admin, lien_site_web: lien_site_web) }
+      before do
+        put :archive, params: { procedure_id: procedure.id, new_procedure: new_procedure }
+        procedure.reload
+      end
+
+      it 'archives the procedure' do
+        expect(procedure.close?).to be_truthy
+        expect(response).to redirect_to :admin_procedures
+        expect(flash[:notice]).to have_content 'Démarche close'
+      end
+
+      it 'does have a replacement procedure' do
+        expect(procedure.replaced_by_procedure).to eq(new_procedure)
       end
     end
 
@@ -648,12 +877,11 @@ describe Administrateurs::ProceduresController, type: :controller do
 
       context 'procedure revision is invalid' do
         let(:path) { 'new_path' }
-        let(:empty_repetition) { build(:type_de_champ_repetition, types_de_champ: []) }
         let(:procedure) do
           create(:procedure,
                  administrateur: admin,
                  lien_site_web: lien_site_web,
-                 types_de_champ: [empty_repetition])
+                 types_de_champ_public: [{ type: :repetition, children: [] }])
         end
 
         it { expect { put :publish, params: { procedure_id: procedure.id, path: path, lien_site_web: lien_site_web } }.to raise_error(ActiveRecord::RecordInvalid) }
@@ -753,6 +981,41 @@ describe Administrateurs::ProceduresController, type: :controller do
 
     context 'when admin accept to invite experts on this procedure (true by default)' do
       it { expect(procedure.allow_expert_review).to be_truthy }
+    end
+  end
+
+  describe 'PUT #allow_expert_messaging' do
+    let!(:procedure) { create :procedure, :with_service, administrateur: admin }
+
+    context 'when admin refuse to let experts discuss with users on this procedure' do
+      before do
+        procedure.update!(allow_expert_messaging: false)
+        procedure.reload
+      end
+
+      it { expect(procedure.allow_expert_messaging).to be_falsy }
+    end
+
+    context 'when admin accept to let experts discuss with users (true by default)' do
+      it { expect(procedure.allow_expert_messaging).to be_truthy }
+    end
+  end
+
+  describe 'PUT #restore' do
+    let(:procedure) { create :procedure_with_dossiers, :with_service, :published, administrateur: admin }
+
+    before do
+      procedure.discard_and_keep_track!(admin)
+    end
+
+    context 'when the admin wants to restore a procedure' do
+      before do
+        put :restore, params: { id: procedure.id }
+        procedure.reload
+      end
+
+      it { expect(procedure.discarded?).to be_falsy }
+      it { expect(procedure.dossiers.first.hidden_by_administration_at).to be_nil }
     end
   end
 end

@@ -1,24 +1,23 @@
 .sub-header
   .container
-    = status_badge(dossier.state)
+    %h1
+      = dossier.procedure.libelle
+      = status_badge(dossier.state, 'super')
+    %h2
+      = t('views.users.dossiers.show.header.dossier_number', dossier_id: dossier.id)
+      - if dossier.depose_at.present?
+        = t('views.users.dossiers.show.header.submit_date', date_du_dossier: I18n.l(dossier.depose_at))
 
-    .title-container
-      %span.icon.folder
-      %h1= dossier.procedure.libelle
-      %h2
-        = t('views.users.dossiers.show.header.dossier_number', dossier_id: dossier.id)
-        - if dossier.depose_at.present?
-          = t('views.users.dossiers.show.header.submit_date', date_du_dossier: I18n.l(dossier.depose_at))
-
-      = render(partial: 'users/dossiers/expiration_banner', locals: {dossier: dossier})
+    = render(partial: 'users/dossiers/expiration_banner', locals: {dossier: dossier})
 
     - if dossier.show_procedure_state_warning?
       = render(partial: 'users/dossiers/procedure_removed_banner', locals: { dossier: dossier })
     - elsif current_user.owns?(dossier)
       .header-actions
-        = render partial: 'invites/dropdown', locals: { dossier: dossier }
+        = render partial: 'invites/dropdown', locals: { dossier: dossier, morphing: false }
         - if dossier.can_be_updated_by_user? && !current_page?(modifier_dossier_path(dossier))
-          = link_to t('views.users.dossiers.show.header.edit_dossier'), modifier_dossier_path(dossier), class: 'button accepted edit-form', 'title'=> "Vous pouvez modifier votre dossier tant qu'il n'est passé en instruction"
+          = link_to t('views.users.dossiers.show.header.edit_dossier'), modifier_dossier_path(dossier), class: 'fr-btn fr-btn-sm',
+            title: { label: t('views.users.dossiers.show.header.edit_dossier_title') }
         = render(partial: 'users/dossiers/show/print_dossier', locals: { dossier: dossier })
 
     %nav.tabs

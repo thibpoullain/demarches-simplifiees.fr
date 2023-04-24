@@ -11,7 +11,7 @@
 
       .procedure-actions
         - if @can_download_dossiers
-          = render partial: "download_dossiers", locals: { procedure: @procedure, exports: @exports }
+          = render Dossiers::ExportComponent.new(procedure: @procedure, exports: @exports, export_url: method(:download_export_instructeur_procedure_path))
 
     .container.flex= render partial: "tabs", locals: { procedure: @procedure,
         statut: @statut,
@@ -27,7 +27,7 @@
 
   .container
     %h1.titre-dossiers Dossiers supprimés
-    %details.explication-onglet
+    %details
       %summary Les dossiers ont été supprimés. Vous ne pouvez plus les récupérer depuis Démarches Simplifiées.
       Ceci s'explique pour les raisons suivantes :
       %ul
@@ -45,7 +45,7 @@
         %tbody
           - @deleted_dossiers.each do |deleted_dossier|
             %tr
-              %td.folder-col
+              %td.text-center
                 %span.icon.folder
               %td.number-col
                 = deleted_dossier.dossier_id
@@ -56,4 +56,3 @@
       = paginate @deleted_dossiers
     - else
       Aucun dossier supprimé
-

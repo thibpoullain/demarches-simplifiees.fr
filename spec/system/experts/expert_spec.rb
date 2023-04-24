@@ -8,8 +8,11 @@ describe 'Inviting an expert:' do
     let(:procedure) { create(:procedure, :published, :with_piece_justificative, instructeurs: [instructeur]) }
     let(:experts_procedure) { create(:experts_procedure, expert: expert, procedure: procedure) }
     let(:dossier) { create(:dossier, :en_construction, :with_dossier_link, procedure: procedure) }
-    let(:champ) { dossier.champs.first }
+    let(:champ) { dossier.champs_public.first }
     let(:avis) { create(:avis, dossier: dossier, claimant: instructeur, experts_procedure: experts_procedure, confidentiel: true) }
+    let(:avis_with_question) { create(:avis, dossier: dossier, claimant: instructeur, experts_procedure: experts_procedure, confidentiel: true, question_label: 'Question ?') }
+    let(:dossier_accepte) { create(:dossier, :accepte, procedure: procedure) }
+    let(:avis_on_dossier_accepte) { create(:avis, dossier: dossier_accepte, claimant: instructeur, experts_procedure: experts_procedure, confidentiel: true) }
 
     context 'when I don’t already have an account' do
       let(:password) { 'This is an expert password' }
@@ -57,11 +60,15 @@ describe 'Inviting an expert:' do
 
     scenario 'I can give an answer' do
       avis # create avis
+      avis_on_dossier_accepte # create avis
       login_as expert.user, scope: :user
 
       visit expert_all_avis_path
       expect(page).to have_text('1 avis à donner')
       expect(page).to have_text('0 avis donnés')
+
+      expect(page).to have_selector('.badge', text: 1)
+      expect(page).to have_selector('.notifications')
 
       click_on '1 avis à donner'
       click_on avis.dossier.user.email
@@ -77,8 +84,46 @@ describe 'Inviting an expert:' do
       expect(page).to have_content('Ma réponse d’expert : c’est un oui.')
       expect(page).to have_content('RIB.pdf')
 
-      within('.breadcrumbs') { click_on 'Avis' }
+      within('.fr-breadcrumb__list') { click_on 'Avis' }
       expect(page).to have_text('0 avis à donner')
+      expect(page).to have_text('1 avis donné')
+
+      expect(page).not_to have_selector('.badge', text: 1)
+      expect(page).not_to have_selector('.notifications')
+    end
+
+    scenario 'I can give a yes/no answer to a question' do
+      avis_with_question # create avis
+      login_as expert.user, scope: :user
+
+      visit expert_all_avis_path
+      expect(page).to have_text('1 avis à donner')
+      expect(page).to have_text('0 avis donnés')
+
+      click_on '1 avis à donner'
+      click_on avis.dossier.user.email
+      within('.tabs') { click_on 'Avis' }
+      expect(page).to have_text("Demandeur : #{avis.claimant.email}")
+      expect(page).to have_text('Question ?')
+      expect(page).to have_text('Cet avis est confidentiel')
+
+      # check validation
+      click_on 'Envoyer votre avis'
+      expect(page).to have_content("Le champ « Réponse oui/non » n'est pas inclus(e) dans la liste")
+
+      choose 'non'
+      fill_in 'avis_answer', with: 'Ma réponse d’expert.'
+      click_on 'Envoyer votre avis'
+
+      expect(page).to have_content('Votre réponse est enregistrée')
+      expect(page).to have_content('Ma réponse d’expert.')
+      expect(page).to have_content('non')
+
+      click_on 'Voir les avis'
+      expect(page).to have_text('Vous')
+      expect(page).to have_text('non')
+
+      within('.fr-breadcrumb__list') { click_on 'Avis' }
       expect(page).to have_text('1 avis donné')
     end
 
@@ -116,7 +161,6 @@ describe 'Inviting an expert:' do
         click_on '1 avis à donner'
         click_on avis.dossier.user.email
 
-        find(:css, '[aria-controls=print-pj-menu]').click
         click_on 'Télécharger le dossier et toutes ses pièces jointes'
         # For some reason, clicking the download link does not trigger the download in the headless browser ;
         # So we need to go to the download link directly
@@ -158,6 +202,7 @@ describe 'Inviting an expert:' do
       click_on avis_1.dossier.user.email
       within('.tabs') { click_on 'Avis' }
       expect(page).to have_text("Demandeur : #{avis_1.claimant.email}")
+      click_on 'Voir les avis'
       expect(page).to have_text("Vous")
       expect(page).to have_text(avis_2.expert.email.to_s)
     end
@@ -173,6 +218,7 @@ describe 'Inviting an expert:' do
       click_on avis_2.dossier.user.email
       within('.tabs') { click_on 'Avis' }
       expect(page).to have_text("Demandeur : #{avis_2.claimant.email}")
+      click_on 'Voir les avis'
       expect(page).to have_text("Vous")
       expect(page).not_to have_text(avis_1.expert.email.to_s)
     end

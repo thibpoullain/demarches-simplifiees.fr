@@ -1,7 +1,7 @@
 # Preview all emails at http://localhost:3000/rails/mailers/dossier_mailer
 class DossierMailerPreview < ActionMailer::Preview
   def notify_new_draft
-    DossierMailer.notify_new_draft(draft)
+    DossierMailer.with(dossier: draft).notify_new_draft
   end
 
   def notify_new_answer
@@ -32,6 +32,10 @@ class DossierMailerPreview < ActionMailer::Preview
     DossierMailer.notify_near_deletion_to_user([dossier_accepte], usager_email)
   end
 
+  def notify_termine_near_deletion_to_user_multiple
+    DossierMailer.notify_near_deletion_to_user([dossier_accepte, dossier_accepte], usager_email)
+  end
+
   def notify_termine_near_deletion_to_administration
     DossierMailer.notify_near_deletion_to_administration([dossier_accepte, dossier_accepte], administration_email)
   end
@@ -43,10 +47,6 @@ class DossierMailerPreview < ActionMailer::Preview
   def notify_brouillons_deletion
     dossier_hashes = [dossier, dossier].map(&:hash_for_deletion_mail)
     DossierMailer.notify_brouillon_deletion(dossier_hashes, usager_email)
-  end
-
-  def notify_instructeur_deletion_to_user
-    DossierMailer.notify_instructeur_deletion_to_user(deleted_dossier, usager_email)
   end
 
   def notify_deletion_to_administration

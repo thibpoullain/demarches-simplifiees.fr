@@ -1,7 +1,25 @@
 class SerializerService
   def self.dossier(dossier)
-    data = execute_query('serializeDossier', { number: dossier.id })
-    data && data['dossier']
+    Sentry.with_scope do |scope|
+      scope.set_tags(dossier_id: dossier.id)
+
+      data = execute_query('serializeDossier', { number: dossier.id })
+      data && data['dossier']
+    end
+  end
+
+  def self.dossiers(procedure)
+    Sentry.with_scope do |scope|
+      scope.set_tags(procedure: procedure.id)
+
+      data = execute_query('serializeDossiers', { number: procedure.id })
+      data && data['demarche']['dossiers']
+    end
+  end
+
+  def self.demarches_publiques(after: nil)
+    data = execute_query('serializeDemarchesPubliques', { after: after })
+    data && data['demarchesPubliques']
   end
 
   def self.avis(avis)
@@ -10,12 +28,16 @@ class SerializerService
   end
 
   def self.champ(champ)
-    if champ.private?
-      data = execute_query('serializeAnnotation', { number: champ.dossier_id, id: champ.to_typed_id })
-      data && data['dossier']['annotations'].first
-    else
-      data = execute_query('serializeChamp', { number: champ.dossier_id, id: champ.to_typed_id })
-      data && data['dossier']['champs'].first
+    Sentry.with_scope do |scope|
+      scope.set_tags(champ_id: champ.id)
+
+      if champ.private?
+        data = execute_query('serializeAnnotation', { number: champ.dossier_id, id: champ.to_typed_id })
+        data && data['dossier']['annotations'].first
+      else
+        data = execute_query('serializeChamp', { number: champ.dossier_id, id: champ.to_typed_id })
+        data && data['dossier']['champs'].first
+      end
     end
   end
 
@@ -31,6 +53,32 @@ class SerializerService
   end
 
   QUERY = <<-'GRAPHQL'
+    query serializeDossiers($number: Int!, $after: String) {
+      demarche(number: $number) {
+        dossiers(after: $after) {
+          nodes {
+            ...DossierFragment
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    }
+
+    query serializeDemarchesPubliques($after: String) {
+      demarchesPubliques(after: $after) {
+        nodes {
+          ...DemarcheDescriptorFragment
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+
     query serializeDossier($number: Int!) {
       dossier(number: $number) {
         ...DossierFragment
@@ -74,6 +122,7 @@ class SerializerService
       datePassageEnConstruction
       datePassageEnInstruction
       dateTraitement
+      dateDepot
       dateSuppressionParUsager
       dateSuppressionParAdministration
       instructeurs {
@@ -103,8 +152,11 @@ class SerializerService
       motivationAttachment {
         ...FileFragment
       }
-      revision {
-        id
+      demarche {
+        number
+        revision {
+          id
+        }
       }
     }
 
@@ -151,11 +203,35 @@ class SerializerService
           ...AddressFragment
         }
       }
+      ... on CommuneChamp {
+        commune {
+          name
+          code
+        }
+        departement {
+          name
+          code
+        }
+      }
+      ... on DepartementChamp {
+        departement {
+          name
+          code
+        }
+      }
+      ... on RegionChamp {
+        region {
+          name
+          code
+        }
+      }
     }
 
     fragment RepetitionChampFragment on RepetitionChamp {
-      champs {
-        ...ChampFragment
+      rows {
+        champs {
+          ...ChampFragment
+        }
       }
     }
 
@@ -236,6 +312,52 @@ class SerializerService
       checksum
       byteSize: byteSizeBigInt
       contentType
+    }
+
+    fragment ChampDescriptorFragment on ChampDescriptor {
+      __typename
+      label
+      description
+      required
+      ... on DropDownListChampDescriptor {
+        options
+        otherOption
+      }
+      ... on MultipleDropDownListChampDescriptor {
+        options
+      }
+      ... on LinkedDropDownListChampDescriptor {
+        options
+      }
+    }
+
+    fragment DemarcheDescriptorFragment on DemarcheDescriptor {
+      number
+      title
+      description
+      tags
+      zones
+      datePublication
+      service { nom organisme typeOrganisme }
+      demarcheUrl
+      dpoUrl
+      noticeUrl
+      siteWebUrl
+      cadreJuridiqueUrl
+      logo { ...FileFragment }
+      notice { ...FileFragment }
+      deliberation { ...FileFragment }
+      dossiersCount
+      revision {
+        champDescriptors {
+          ...ChampDescriptorFragment
+          ... on RepetitionChampDescriptor {
+            champDescriptors {
+              ...ChampDescriptorFragment
+            }
+          }
+        }
+      }
     }
   GRAPHQL
 end

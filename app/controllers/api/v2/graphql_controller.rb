@@ -1,16 +1,10 @@
 class API::V2::GraphqlController < API::V2::BaseController
-  include GraphqlOperationLogConcern
-
   def execute
-    variables = ensure_hash(params[:variables])
-
-    result = API::V2::Schema.execute(params[:query],
-      variables: variables,
-      context: context,
-      operation_name: params[:operationName])
+    result = API::V2::Schema.execute(query:, variables:, context:, operation_name:)
+    @query_info = result.context.query_info
 
     render json: result
-  rescue GraphQL::ParseError => exception
+  rescue GraphQL::ParseError, JSON::ParserError => exception
     handle_parse_error(exception)
   rescue => exception
     if Rails.env.production?
@@ -23,11 +17,15 @@ class API::V2::GraphqlController < API::V2::BaseController
   private
 
   def append_info_to_payload(payload)
+    # if on the graphql playground, authenticate via devise
+    # if authenticate by a v2 or v3 token
+    # @current_user is set by `api_v2_base_controller.authenticate_administrateur_from_token`
+    # else it is set on `context.authorized_demarche`
+    @current_user ||= Current.user
+
     super
 
-    payload.merge!({
-      graphql_operation: operation_log(params[:query], params[:operationName], params[:variables]&.to_unsafe_h)
-    })
+    payload.merge!(@query_info.presence || {})
   end
 
   def process_action(*args)
@@ -41,6 +39,22 @@ class API::V2::GraphqlController < API::V2::BaseController
     }, status: 400
   end
 
+  def query
+    if params[:queryId].present?
+      API::V2::StoredQuery.get(params[:queryId])
+    else
+      params[:query]
+    end
+  end
+
+  def variables
+    ensure_hash(params[:variables])
+  end
+
+  def operation_name
+    params[:operationName]
+  end
+
   # Handle form data, JSON body, or a blank value
   def ensure_hash(ambiguous_param)
     case ambiguous_param
@@ -50,8 +64,10 @@ class API::V2::GraphqlController < API::V2::BaseController
       else
         {}
       end
-    when Hash, ActionController::Parameters
+    when Hash
       ambiguous_param
+    when ActionController::Parameters
+      ambiguous_param.to_unsafe_h
     when nil
       {}
     else
@@ -81,15 +97,15 @@ class API::V2::GraphqlController < API::V2::BaseController
   end
 
   def handle_error_in_production(exception)
-    id = SecureRandom.uuid
-    Sentry.capture_exception(exception, extra: { exception_id: id })
+    extra = { exception_id: SecureRandom.uuid }
+    Sentry.capture_exception(exception, extra:)
 
     render json: {
       errors: [
         {
           message: "Internal Server Error",
           extensions: {
-            exception: { id: id }
+            exception: { id: extra[:exception_id] }
           }
         }
       ],

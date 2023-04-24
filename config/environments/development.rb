@@ -1,10 +1,12 @@
 require "active_support/core_ext/integer/time"
+require Rails.root.join("app/lib/balancer_delivery_method")
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
 
-  # Verifies that versions and hashed value of the package contents in the project's package.json
-  config.webpacker.check_yarn_integrity = true
+  # Web console
+  # Allow private & loopback ranges
+  config.web_console.permissions = ['10.0.0.0/8', '127.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '192.0.0.0/24', '::1']
 
   # In the development environment your application's code is reloaded any time
   # it changes. This slows down response time but is perfect for development
@@ -97,7 +99,12 @@ Rails.application.configure do
   config.assets.raise_runtime_errors = true
 
   # Action Mailer settings
-  config.action_mailer.delivery_method = :letter_opener
+  ActionMailer::Base.add_delivery_method :balancer, BalancerDeliveryMethod
+  config.action_mailer.balancer_settings = {
+    helo: ENV['HELO_ENABLED'] == 'enabled' ? 100 : 0,
+    letter_opener: ENV['HELO_ENABLED'] == 'enabled' ? 0 : 100
+  }
+  config.action_mailer.delivery_method = :balancer
 
   config.action_mailer.default_url_options = { host: ENV.fetch("APP_HOST") }
   config.action_mailer.asset_host = "http://" + ENV.fetch("APP_HOST")

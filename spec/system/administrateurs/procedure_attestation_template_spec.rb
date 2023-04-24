@@ -5,7 +5,7 @@ describe 'As an administrateur, I want to manage the procedure’s attestation',
 
   let(:administrateur) { create(:administrateur) }
   let(:procedure) do
-    create(:procedure, :with_service, :with_instructeur,
+    create(:procedure, :with_service, :with_instructeur, :with_zone,
       aasm_state: :brouillon,
       administrateurs: [administrateur],
       libelle: 'libellé de la procédure',
@@ -15,7 +15,7 @@ describe 'As an administrateur, I want to manage the procedure’s attestation',
 
   def find_attestation_card(with_nested_selector: nil)
     full_selector = [
-      ".card-admin[href=\"#{edit_admin_procedure_attestation_template_path(procedure)}\"]",
+      "a[href=\"#{edit_admin_procedure_attestation_template_path(procedure)}\"]",
       with_nested_selector
     ].compact.join(" ")
     page.find(full_selector)
@@ -29,11 +29,12 @@ describe 'As an administrateur, I want to manage the procedure’s attestation',
 
       # now process to enable attestation
       find_attestation_card.click
-      fill_in "Titre de l'attestation", with: 'BOOM'
-      fill_in "Corps du document", with: 'BOOM'
+      fill_in "Titre de l’attestation", with: 'BOOM'
+      fill_in "Contenu de l’attestation", with: 'BOOM'
       find('.toggle-switch-control').click
       click_on 'Enregistrer'
-      page.find(".alert-success", text: "L'attestation a bien été sauvegardée")
+
+      page.find(".alert-success", text: "Le modèle de l’attestation a bien été enregistré")
 
       # check attestation
       visit admin_procedure_path(procedure)
@@ -49,7 +50,7 @@ describe 'As an administrateur, I want to manage the procedure’s attestation',
       find_attestation_card.click
       find('.toggle-switch-control').click
       click_on 'Enregistrer'
-      page.find(".alert-success", text: "L'attestation a bien été modifiée")
+      page.find(".alert-success", text: "Le modèle de l’attestation a bien été modifié")
 
       # check attestation is now disabled
       visit admin_procedure_path(procedure)

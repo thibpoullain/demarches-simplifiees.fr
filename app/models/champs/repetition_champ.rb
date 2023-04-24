@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean          default(FALSE)
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,23 +17,27 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::RepetitionChamp < Champ
-  accepts_nested_attributes_for :champs, allow_destroy: true
+  accepts_nested_attributes_for :champs
   delegate :libelle_for_export, to: :type_de_champ
 
   def rows
-    champs.group_by(&:row).values
+    champs.group_by(&:row_id).values
   end
 
-  def add_row
+  def add_row(revision)
+    added_champs = []
     transaction do
-      row = (blank? ? -1 : champs.last.row) + 1
-      type_de_champ.types_de_champ.each do |type_de_champ|
-        self.champs << type_de_champ.champ.build(row: row)
+      row_id = ULID.generate
+      revision.children_of(type_de_champ).each do |type_de_champ|
+        added_champs << type_de_champ.build_champ(row_id:)
       end
+      self.champs << added_champs
     end
+    added_champs
   end
 
   def blank?

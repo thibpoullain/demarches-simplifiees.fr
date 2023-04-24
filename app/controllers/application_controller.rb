@@ -1,13 +1,12 @@
 class ApplicationController < ActionController::Base
   include TrustedDeviceConcern
-  include Pundit
+  include Pundit::Authorization
   include Devise::StoreLocationExtension
   include ApplicationController::LongLivedAuthenticityToken
   include ApplicationController::ErrorHandling
 
   MAINTENANCE_MESSAGE = 'Le site est actuellement en maintenance. Il sera à nouveau disponible dans un court instant.'
 
-  before_action :set_current_roles
   before_action :set_sentry_user
   before_action :redirect_if_untrusted
   before_action :reject, if: -> { ENV.fetch("MAINTENANCE_MODE", 'false') == 'true' }
@@ -23,6 +22,10 @@ class ApplicationController < ActionController::Base
 
   helper_method :multiple_devise_profile_connect?, :instructeur_signed_in?, :current_instructeur, :current_expert, :expert_signed_in?,
     :administrateur_signed_in?, :current_administrateur, :current_account, :localization_enabled?, :set_locale
+
+  before_action do
+    Current.request_id = request.uuid
+  end
 
   def staging_authenticate
     if StagingAuthService.enabled? && !authenticate_with_http_basic { |username, password| StagingAuthService.authenticate(username, password) }
@@ -124,6 +127,12 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def authenticate_instructeur_or_expert!
+    if !instructeur_signed_in? && !expert_signed_in?
+      redirect_to new_user_session_path
+    end
+  end
+
   def authenticate_administrateur!
     if !administrateur_signed_in?
       redirect_to new_user_session_path
@@ -140,11 +149,6 @@ class ApplicationController < ActionController::Base
 
   private
 
-  def set_current_roles
-    Current.administrateur = current_administrateur
-    Current.instructeur = current_instructeur
-  end
-
   def set_active_storage_host
     ActiveStorage::Current.host = request.base_url
   end
@@ -159,7 +163,6 @@ class ApplicationController < ActionController::Base
     gon.sentry = sentry_config
 
     if administrateur_signed_in?
-      gon.sendinblue = sendinblue_config
       gon.crisp = crisp_config
     end
   end
@@ -181,6 +184,13 @@ class ApplicationController < ActionController::Base
     Sentry.set_user(sentry_user)
   end
 
+  def set_sentry_dossier(dossier)
+    Sentry.configure_scope do |scope|
+      scope.set_tags(procedure: dossier.procedure.id)
+      scope.set_tags(dossier: dossier.id)
+    end
+  end
+
   # private method called by rails fwk
   # see https://github.com/roidrage/lograge
   def append_info_to_payload(payload)
@@ -189,7 +199,9 @@ class ApplicationController < ActionController::Base
     payload.merge!({
       user_agent: request.user_agent,
       user_id: current_user&.id,
-      user_roles: current_user_roles
+      user_roles: current_user_roles,
+      client_ip: request.headers['X-Forwarded-For'],
+      request_id: request.headers['X-Request-ID']
     }.compact)
 
     if browser.known?
@@ -258,7 +270,13 @@ class ApplicationController < ActionController::Base
   end
 
   def sentry_user
-    { id: user_signed_in? ? "User##{current_user.id}" : 'Guest' }
+    if user_signed_in?
+      { id: "User##{current_user.id}" }
+    elsif administrateur_signed_in?
+      { id: "Administrateur##{current_administrateur.id}" }
+    else
+      { id: 'Guest' }
+    end
   end
 
   def sentry_config
@@ -285,26 +303,6 @@ class ApplicationController < ActionController::Base
     }
   end
 
-  def sendinblue_config
-    sendinblue = Rails.application.secrets.sendinblue
-
-    {
-      key: sendinblue[:client_key],
-      enabled: sendinblue[:enabled],
-      administrateur: {
-        email: current_user&.email,
-        payload: {
-          DS_SIGN_IN_COUNT: current_user&.sign_in_count,
-          DS_CREATED_AT: current_administrateur&.created_at,
-          DS_ACTIVE: current_user&.active?,
-          DS_ID: current_administrateur&.id,
-          DS_GESTIONNAIRE_ID: current_instructeur&.id,
-          DS_ROLES: current_user_roles
-        }
-      }
-    }
-  end
-
   def crisp_config
     crisp = Rails.application.secrets.crisp
 
@@ -322,9 +320,9 @@ class ApplicationController < ActionController::Base
         DS_SIGN_IN_COUNT: current_user&.sign_in_count,
         DS_CREATED_AT: current_administrateur&.created_at,
         DS_ID: current_administrateur&.id,
-        DS_NB_DEMARCHES_BROUILLONS: nb_demarches_by_state['brouillon'],
-        DS_NB_DEMARCHES_ACTIVES: nb_demarches_by_state['publiee'],
-        DS_NB_DEMARCHES_ARCHIVES: nb_demarches_by_state['close']
+        DS_NB_DEMARCHES_BROUILLONS: nb_demarches_by_state['brouillon'] || 0,
+        DS_NB_DEMARCHES_ACTIVES: nb_demarches_by_state['publiee'] || 0,
+        DS_NB_DEMARCHES_ARCHIVES: nb_demarches_by_state['close'] || 0
       }
     }
   end
@@ -339,6 +337,8 @@ class ApplicationController < ActionController::Base
       extract_locale_from_user ||
       extract_locale_from_accept_language_header ||
       I18n.default_locale
+
+    gon.locale = locale
 
     I18n.with_locale(locale, &action)
   end
@@ -363,5 +363,25 @@ class ApplicationController < ActionController::Base
 
   def set_customizable_view_path
     prepend_view_path "app/custom_views"
+  end
+
+  # Extract a value from params based on the "path"
+  #
+  # params: { dossiers: { champs_public_attributes: { 1234 => { value: "hello" } } } }
+  #
+  # Usage: read_param_value("dossiers[champs_public_attributes][1234]", "value")
+  def read_param_value(path, name)
+    parts = path.split(/\[|\]\[|\]/) + [name]
+    parts.reduce(params) do |value, part|
+      if part.to_i != 0
+        value[part.to_i] || value[part]
+      else
+        value[part]
+      end
+    end
+  end
+
+  def cast_bool(value)
+    ActiveRecord::Type::Boolean.new.deserialize(value)
   end
 end

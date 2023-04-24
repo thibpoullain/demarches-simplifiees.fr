@@ -1,14 +1,14 @@
-.dropdown.invite-user-action
-  %button.button.dropdown-button{ 'aria-expanded' => 'false', 'aria-controls' => 'invite-content' }
+- invites = dossier.invites.load
+= render Dropdown::MenuComponent.new(wrapper: :span, wrapper_options: {class: 'invite-user-action'}, button_options: { class: ['fr-btn--secondary'] }, menu_options: { id: 'invite-content' }) do |menu|
+  - menu.with_button_inner_html do
     %span.icon.person
-    - if dossier.invites.count > 0
+    - if invites.present?
       = t('views.invites.dropdown.view_invited_people')
-      %span.badge= dossier.invites.count
+      %span.badge= invites.size
     - else
       - if dossier.read_only?
         = t('views.invites.dropdown.invite_to_view')
       - else
         = t('views.invites.dropdown.invite_to_edit')
-
-  #invite-content.dropdown-content.fade-in-down
-    = render partial: "invites/form", locals: { dossier: dossier }
+  - menu.with_form do
+    = render partial: "invites/form", locals: { dossier: dossier, invites: invites, morphing: morphing  }

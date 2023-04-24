@@ -22,8 +22,9 @@ module Instructeurs
       else
         groupe_instructeur.add(instructeur)
         flash[:notice] = "L’instructeur « #{instructeur_email} » a été affecté au groupe."
+
         GroupeInstructeurMailer
-          .add_instructeurs(groupe_instructeur, [instructeur], current_user.email)
+          .notify_added_instructeurs(groupe_instructeur, [instructeur], current_user.email)
           .deliver_later
       end
 
@@ -38,7 +39,7 @@ module Instructeurs
         if groupe_instructeur.remove(instructeur)
           flash[:notice] = "L’instructeur « #{instructeur.email} » a été retiré du groupe."
           GroupeInstructeurMailer
-            .remove_instructeur(groupe_instructeur, instructeur, current_user.email)
+            .notify_removed_instructeur(groupe_instructeur, instructeur, current_user.email)
             .deliver_later
         else
           flash[:alert] = "L’instructeur « #{instructeur.email} » n’est pas dans le groupe."
@@ -77,7 +78,6 @@ module Instructeurs
         .where(procedure: procedure)
         .page(params[:page])
         .per(ITEMS_PER_PAGE)
-        .order(:label)
     end
 
     def paginated_instructeurs

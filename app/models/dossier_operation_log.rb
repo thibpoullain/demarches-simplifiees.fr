@@ -4,6 +4,7 @@
 #
 #  id                  :bigint           not null, primary key
 #  automatic_operation :boolean          default(FALSE), not null
+#  data                :jsonb
 #  digest              :text
 #  executed_at         :datetime
 #  keep_until          :datetime
@@ -12,7 +13,6 @@
 #  updated_at          :datetime         not null
 #  bill_signature_id   :bigint
 #  dossier_id          :bigint
-#  instructeur_id      :bigint
 #
 class DossierOperationLog < ApplicationRecord
   enum operation: {
@@ -26,9 +26,7 @@ class DossierOperationLog < ApplicationRecord
     supprimer: 'supprimer',
     restaurer: 'restaurer',
     modifier_annotation: 'modifier_annotation',
-    demander_un_avis: 'demander_un_avis',
-    archiver: 'archiver',
-    desarchiver: 'desarchiver'
+    demander_un_avis: 'demander_un_avis'
   }
 
   has_one_attached :serialized
@@ -37,9 +35,28 @@ class DossierOperationLog < ApplicationRecord
   belongs_to :bill_signature, optional: true
 
   scope :not_deletion, -> { where.not(operation: operations.fetch(:supprimer)) }
+  scope :with_data, -> { where.not(data: nil) }
   scope :brouillon_expired, -> { where(dossier: Dossier.brouillon_expired).not_deletion }
   scope :en_construction_expired, -> { where(dossier: Dossier.en_construction_expired).not_deletion }
   scope :termine_expired, -> { where(dossier: Dossier.termine_expired).not_deletion }
+
+  def move_to_cold_storage!
+    if data.present?
+      serialized.attach(
+        io: StringIO.new(data.to_json),
+        filename: "operation-#{digest}.json",
+        content_type: 'application/json',
+        # we don't want to run virus scanner on this file
+        metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE }
+      )
+      update!(data: nil)
+    end
+  end
+
+  def self.purge_discarded
+    not_deletion.destroy_all
+    with_data.each(&:move_to_cold_storage!)
+  end
 
   def self.create_and_serialize(params)
     dossier = params.fetch(:dossier)
@@ -59,24 +76,17 @@ class DossierOperationLog < ApplicationRecord
       executed_at: Time.zone.now,
       automatic_operation: !!params[:automatic_operation])
 
-    serialized = {
+    data = {
       operation: operation_log.operation,
       dossier_id: operation_log.dossier_id,
       author: self.serialize_author(params[:author]),
       subject: self.serialize_subject(params[:subject], operation_log.operation),
       automatic_operation: operation_log.automatic_operation?,
       executed_at: operation_log.executed_at.iso8601
-    }.compact.to_json
+    }.compact
 
-    operation_log.digest = Digest::SHA256.hexdigest(serialized)
-
-    operation_log.serialized.attach(
-      io: StringIO.new(serialized),
-      filename: "operation-#{operation_log.digest}.json",
-      content_type: 'application/json',
-      # we don't want to run virus scanner on this file
-      metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE }
-    )
+    operation_log.data = data
+    operation_log.digest = Digest::SHA256.hexdigest(data.to_json)
 
     operation_log.save!
   end

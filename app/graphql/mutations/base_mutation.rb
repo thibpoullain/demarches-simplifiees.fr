@@ -2,6 +2,31 @@ module Mutations
   class BaseMutation < GraphQL::Schema::RelayClassicMutation
     private
 
+    delegate :current_administrateur, to: :context
+
+    def ready?(**args)
+      if context.write_access?
+        authorized_before_load?(**args)
+      else
+        return false, { errors: ['Le jeton utilisé est configuré seulement en lecture'] }
+      end
+    end
+
+    def authorized_before_load?(**args)
+      true
+    end
+
+    def partition_instructeurs_by(instructeurs)
+      instructeurs
+        .partition { _1.id.present? }
+        .then do |by_id, by_email|
+          [
+            by_id.map { Instructeur.id_from_typed_id(_1.id) },
+            by_email.map { EmailSanitizableConcern::EmailSanitizer.sanitize(_1.email) }
+          ]
+        end
+    end
+
     def validate_blob(blob_id)
       begin
         blob = ActiveStorage::Blob.find_signed(blob_id)

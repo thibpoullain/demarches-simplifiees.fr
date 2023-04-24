@@ -1,90 +1,110 @@
 fr:
   links:
     provider:
-      logo:
-        src: "footer/logo-dinum.png"
-        alt: "Logo DINUM"
-        height: 161
-        width: 138
-      name: "DINUM"
-      provided_by: "la DINUM"
-      title: "Direction Interministérielle au Numérique"
-      url: "https://numerique.gouv.fr"
-    footer:
-      accessibilite:
-        label: "Accessibilité : non conforme"
-        title: "Accessibilité : non conforme"
-        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_accessibilite.pdf"
-      aide:
-        label: "Aide"
-        title: "Foire aux Questions"
-        url: "https://faq.demarches-simplifiees.fr"
-      api_doc:
-        label: "Documentation de l'API"
-        title: "Documentation de l'API"
-        url: "https://doc.demarches-simplifiees.fr/pour-aller-plus-loin/graphql"
-      betagouv:
-        label: "Beta.gouv.fr"
-        title: "Le site de Beta.gouv.fr"
-        url: "https://beta.gouv.fr"
-      cgu:
-        usager:
-          label: "CGU Usager"
-          title: "Conditions Générales d'Utilisation - Usager"
-          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf"
-        agent:
-          label: "CGU Agent"
-          title: "Conditions Générales d'Utilisation - Agent"
-          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf"
-      confidentialite:
-        label: "Déclaration de confidentialité"
-        title: "Déclaration de confidentialité"
-        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_Politique_de_confidentialite.pdf"
-      contact:
-        label: "Contact"
-        title: "Contact"
-      contact_technique:
-        label: "Contact technique"
-        title: "Contact technique"
-      doc:
-        label: "Documentation"
-        title: "Documentation"
-        url: "https://doc.demarches-simplifiees.fr"
-      doc_nouveautes:
-        label: "Nouveautés"
-        title: "Nouveautés"
-        url: "https://doc.demarches-simplifiees.fr/nouveautes"
+      provided_by: 'la DINUM'
+      title: 'Direction Interministérielle au Numérique'
+      url: 'https://numerique.gouv.fr'
+    common:
       faq:
-        label: "FAQ"
-        title: "Foire aux Questions"
-        url: "https://faq.demarches-simplifiees.fr"
-      faq_admin:
-        label: "FAQ"
-        title: "Foire aux Questions"
-        url: "https:///faq.demarches-simplifiees.fr/collection/1-administrateur-creation-dun-formulaire"
+        label: 'FAQ'
+        title: 'Foire aux Questions'
+        url: 'https://faq.demarches-simplifiees.fr'
+        autosave_url: 'https://faq.demarches-simplifiees.fr/article/77-enregistrer-mon-formulaire-pour-le-reprendre-plus-tard?preview=5ec28ca1042863474d1aee00'
+        comment_trouver_ma_demarche_url: 'https://faq.demarches-simplifiees.fr/article/59-comment-trouver-ma-demarche'
+        confirmer_compte_chaque_connexion_url: 'https://faq.demarches-simplifiees.fr/article/34-je-dois-confirmer-mon-compte-a-chaque-connexion'
+        contacter_service_en_charge_url: 'https://faq.demarches-simplifiees.fr/article/12-contacter-le-service-en-charge-de-ma-demarche'
+        email_non_recu_url: 'https://faq.demarches-simplifiees.fr/article/79-je-ne-recois-pas-demail'
+        erreur_siret_url: 'https://faq.demarches-simplifiees.fr/article/4-erreur-siret'
+        ou_en_est_mon_dossier_url: 'https://faq.demarches-simplifiees.fr/article/11-je-veux-savoir-ou-en-est-linstruction-de-ma-demarche'
+    footer:
+      top_labels:
+        communication: Communication
+        legals: Informations légales
+        resources: Ressources
+        diagnostic: Diagnostic
+      description_1: Démarches simplifiées est un service propulsé par
+      link_1_label: la direction interministérielle du numérique (DINUM)
+      link_1_url: 'https://www.numerique.gouv.fr/dinum/'
+      link_2_label: Le code source
+      description_2: est disponible en licence libre.
+      copy_html: 'Sauf mention contraire, tous les contenus de ce site sont sous %{link}'
+      license: 'licence etalab 2.0'
+      accessibilite:
+        label: 'Accessibilité : partiellement conforme'
+        title: 'Consulter notre déclaration d’accessibilité'
+        url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_accessibilite.pdf'
+      aide:
+        label: 'Aide'
+        title: 'Foire aux Questions'
+        url: 'https://faq.demarches-simplifiees.fr'
+      api_doc:
+        label: 'Documentation de l’API'
+        title: 'Documentation graphql de l’API'
+        url: 'https://doc.demarches-simplifiees.fr/pour-aller-plus-loin/graphql'
+      betagouv:
+        label: 'Beta.gouv.fr'
+        title: 'Le site de beta.gouv.fr — Premier Ministre'
+        url: 'https://beta.gouv.fr'
+      cgu:
+        label: 'CGU'
+        title: 'Conditions Générales d’Utilisation'
+        url: 'https://doc.demarches-simplifiees.fr/cgu'
+        usager:
+          label: 'CGU Usager'
+          title: "Conditions Générales d'Utilisation - Usager"
+          url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf'
+        agent:
+          label: 'CGU Agent'
+          title: "Conditions Générales d'Utilisation - Agent"
+          url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf'
+      confidentialite:
+        label: 'Déclaration de confidentialité'
+        title: 'Déclaration de confidentialité'
+        url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_Politique_de_confidentialite.pdf'
+      code:
+        label: 'Code source'
+        title: 'Le code ouvert de demarches-simplifiees'
+        url: 'https://github.com/demarches-simplifiees/demarches-simplifiees.fr'
+      contact_technique:
+        label: 'Contact technique'
+        title: 'Contacter notre équipe technique'
+      doc:
+        label: 'Documentation'
+        title: 'Documentation utilisateur'
+        url: 'https://doc.demarches-simplifiees.fr'
       mentions_legales:
-        label: "Mentions légales"
-        title: "Mentions légales"
-        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_Mentions-legales.pdf"
+        label: 'Mentions légales'
+        title: 'Consulter nos Mentions légales'
+        url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_Mentions-legales.pdf'
       newsletter:
-        label: "Newsletter"
-        title: "Notre newsletter"
-        url: "https://my.sendinblue.com/users/subscribe/js_id/3s2q1/id/1"
+        label: 'Newsletter'
+        title: 'Notre newsletter'
+        url: 'https://my.sendinblue.com/users/subscribe/js_id/3s2q1/id/1'
       releases:
-        label: "Nouveautés"
-        title: "Nos nouveautés"
-        url: "https://github.com/betagouv/demarches-simplifiees.fr/releases"
+        label: 'Nouveautés'
+        title: 'Les dernière mises à jour de la plateforme'
+        url: 'https://github.com/demarches-simplifiees/demarches-simplifiees.fr/releases'
+      security:
+        label: 'Sécurité'
+        title: 'Vous avez identifié une faille, comment nous en informer'
+        url: 'https://github.com/betagouv/demarches-simplifiees.fr/blob/main/SECURITY.md'
       stats:
-        label: "Statistiques"
-        title: "Statistiques"
+        label: 'Statistiques'
+        title: 'Statistiques d’usage'
       status_page:
-        label: "Disponibilité"
-        title: "Disponibilité"
-        url: "https://status.demarches-simplifiees.fr"
+        label: 'Disponibilité'
+        title: 'Disponibilité du site demarches-simplifiees'
+        url: 'https://status.demarches-simplifiees.fr'
       suivi:
-        label: "Suivi d'audience et vie privée"
-        title: "Suivi d'audience et vie privée"
-      webinaire:
-        label: "Inscription ateliers en ligne"
-        title: "Inscription ateliers en ligne"
-        url: "https://app.livestorm.co/demarches-simplifiees"
+        label: 'Suivi d’audience et vie privée'
+        title: 'Consulter notre politique de respect de la vie privée'
+      solidarite_numerique:
+        label: 'Besoin d’aide avec vos démarches en ligne ?'
+        title: 'Avez-vous besoin d’aide concernant vos démarchez informatisées, essayez solidarite-numerique.fr'
+        url: 'https://www.solidarite-numerique.fr/cartographie/'
+      cookies:
+        label: Gestion des cookies
+        title: Gestion des cookies
+      contact:
+        label: Contactez-nous
+        title: Contactez-nous

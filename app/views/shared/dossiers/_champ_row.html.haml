@@ -1,4 +1,4 @@
-- champs.reject(&:exclude_from_view?).each do |c|
+- champs.reject(&:exclude_from_view?).filter(&:visible?).each do |c|
   - if c.type_champ == TypeDeChamp.type_champs.fetch(:repetition)
     %tr
       %td.libelle.repetition{ colspan: 3 }
@@ -10,12 +10,11 @@
   - else
     %tr
       - if c.type_champ == TypeDeChamp.type_champs.fetch(:header_section)
-        %th.header-section{ colspan: 3 }
-          = c.libelle
+        %th.header-section{ colspan: 3, class: c.dossier.auto_numbering_section_headers_for?(c) ? "header-section-counter" : nil }= c.libelle
       - else
         %td.libelle{ class: repetition ? 'padded' : '' }
           = "#{c.libelle} :"
-        %td.rich-text
+        %td.rich-text{ class: c.type_champ }
           %div{ class: highlight_if_unseen_class(demande_seen_at, c.updated_at) }
             - case c.type_champ
             - when TypeDeChamp.type_champs.fetch(:carte)
@@ -54,6 +53,10 @@
               = render partial: "shared/champs/communes/show", locals: { champ: c }
             - when TypeDeChamp.type_champs.fetch(:regions)
               = render partial: "shared/champs/regions/show", locals: { champ: c }
+            - when TypeDeChamp.type_champs.fetch(:rna)
+              = render partial: "shared/champs/rna/show", locals: { champ: c, profile: profile }
+            - when TypeDeChamp.type_champs.fetch(:epci)
+              = render partial: "shared/champs/epci/show", locals: { champ: c }
             - when TypeDeChamp.type_champs.fetch(:date)
               = c.to_s
             - when TypeDeChamp.type_champs.fetch(:datetime)

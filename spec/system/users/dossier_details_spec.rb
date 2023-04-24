@@ -16,6 +16,11 @@ describe 'Dossier details:' do
     expect(page).to have_text(dossier.commentaires.last.body)
   end
 
+  scenario 'the user can download a deposit receipt' do
+    visit dossier_path(dossier)
+    expect(page).to have_link("Obtenir une attestation de dépôt de dossier", href: %r{dossiers/#{dossier.id}/papertrail.pdf})
+  end
+
   describe "the user can see the mean time they are expected to wait" do
     let(:other_dossier) { create(:dossier, :accepte, :with_individual, procedure: procedure, depose_at: 10.days.ago, en_instruction_at: 9.days.ago, processed_at: Time.zone.now) }
 
@@ -43,8 +48,10 @@ describe 'Dossier details:' do
     expect(page).to have_current_path(dossier_path(dossier))
   end
 
-  it_behaves_like 'the user can edit the submitted demande'
-  it_behaves_like 'the user can send messages to the instructeur'
+  context 'with js', js: true do
+    it_behaves_like 'the user can edit the submitted demande'
+    it_behaves_like 'the user can send messages to the instructeur'
+  end
 
   private
 

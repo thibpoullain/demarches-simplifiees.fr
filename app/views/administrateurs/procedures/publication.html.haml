@@ -1,9 +1,15 @@
 
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to('Démarches', admin_procedures_path),
-                    link_to(@procedure.libelle, admin_procedure_path(@procedure)),
-                    'Publication'] }
+  locals: { steps: [['Démarches', admin_procedures_back_path(@procedure)],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Publication']] }
 .container
+  - if @procedure.draft_revision.types_de_champ_public.dubious.present?
+    .card.warning.mb-3
+      .card-title Attention, certains champs ne peuvent être demandé par l'administration. Voici les champs qui nous semblent suspect :
+      %ul
+        - @procedure.draft_revision.types_de_champ_public.dubious.each do |dubious_champs|
+          %li.dubious-champs= "#{dubious_champs.libelle} (#{dubious_champs.description})"
   .lien-demarche
     %h1
       - if @procedure.brouillon?
@@ -38,7 +44,7 @@
               Profitez de la phase de test pour tester la saisie de dossiers, ainsi que toutes les fonctionnalités associées (instruction, emails automatiques, attestations, etc.).
             %p
               Vous pouvez effectuer toutes les modifications que vous souhaitez sur votre démarche pendant cette phase de test.
-            %p.mb-4.bold
+            %p.mb-4.font-weight-bold
               Les dossiers qui seront remplis pendant la phase de test seront automatiquement supprimés lors de la modification ou la publication de votre démarche.
             %p.center
               %iframe{ :src =>"https://player.vimeo.com/video/334463514?color=0069CC",:width =>"640",:height =>"360",:frameborder => "0" }
@@ -68,13 +74,14 @@
 
         - else
           .alert.alert-info
-            Pour pouvoir tester cette démarche, vous devez d’abord lui affecter
+            Pour pouvoir tester cette démarche, vous devez d’abord lui affecter :
+            %ul
+            - if @procedure.missing_zones?
+              %li= link_to("une ou plusieurs zones", zones_admin_procedure_path(id: @procedure.id))
             - if @procedure.missing_instructeurs?
-              = link_to("des instructeurs", admin_procedure_groupe_instructeur_path(@procedure, @procedure.defaut_groupe_instructeur))
-            - if @procedure.missing_instructeurs? && @procedure.service.nil?
-              et
+              %li= link_to("des instructeurs", admin_procedure_groupe_instructeur_path(@procedure, @procedure.defaut_groupe_instructeur))
             - if @procedure.service.nil?
-              = link_to("un service", admin_services_path(procedure_id: @procedure))
+              %li= link_to("un service", admin_services_path(procedure_id: @procedure))
             \.
       - else
         - if @procedure.missing_steps.include?(:service)

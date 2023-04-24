@@ -13,7 +13,7 @@ class Expert < ApplicationRecord
   has_many :procedures, through: :experts_procedures
   has_many :avis, through: :experts_procedures
   has_many :dossiers, through: :avis
-  has_many :commentaires
+  has_many :commentaires, inverse_of: :expert, dependent: :nullify
 
   default_scope { eager_load(:user) }
 
@@ -30,7 +30,7 @@ class Expert < ApplicationRecord
       @avis_summary
     else
       query = <<~EOF
-        COUNT(*) FILTER (where answer IS NULL AND dossiers.hidden_by_administration_at IS NULL) AS unanswered,
+        COUNT(*) FILTER (where answer IS NULL AND dossiers.hidden_by_administration_at IS NULL AND dossiers.state not in ('accepte', 'refuse', 'sans_suite')) AS unanswered,
         COUNT(*) AS total
       EOF
       result = avis.select(query)[0]

@@ -1,6 +1,6 @@
 describe API::V1::DossiersController do
   let(:admin) { create(:administrateur) }
-  let(:token) { admin.renew_api_token }
+  let(:token) { APIToken.generate(admin)[1] }
   let(:procedure) { create(:procedure, :with_type_de_champ, :with_type_de_champ_private, administrateur: admin) }
   let(:wrong_procedure) { create(:procedure) }
 
@@ -120,6 +120,10 @@ describe API::V1::DossiersController do
   end
 
   describe 'GET show' do
+    before do
+      allow(APIGeoService).to receive(:departement_name).with('01').and_return('Ain')
+    end
+
     let(:retour) { get :show, params: { token: token, procedure_id: procedure_id, id: dossier_id } }
     subject { retour }
 
@@ -254,6 +258,18 @@ describe API::V1::DossiersController do
             end
           end
 
+          describe 'departement' do
+            let(:procedure) { create(:procedure, :with_departement, administrateur: admin) }
+            let(:dossier) { create(:dossier, :en_construction, :with_populated_champs, procedure: procedure) }
+
+            subject { super() }
+
+            it 'should have rows' do
+              expect(subject.size).to eq(1)
+              expect(subject.first[:value]).to eq("01 – Ain")
+            end
+          end
+
           describe 'repetition' do
             let(:procedure) { create(:procedure, :with_repetition, administrateur: admin) }
             let(:dossier) { create(:dossier, :en_construction, :with_populated_champs, procedure: procedure) }
@@ -264,8 +280,8 @@ describe API::V1::DossiersController do
               expect(subject.size).to eq(2)
               expect(subject[0][:id]).to eq(1)
               expect(subject[0][:champs].size).to eq(2)
-              expect(subject[0][:champs].map { |c| c[:value] }).to eq(['text', '42'])
-              expect(subject[0][:champs].map { |c| c[:type_de_champ][:type_champ] }).to eq(['text', 'number'])
+              expect(subject[0][:champs].map { |c| c[:value] }).to eq(['text', 42])
+              expect(subject[0][:champs].map { |c| c[:type_de_champ][:type_champ] }).to eq(['text', 'integer_number'])
             end
           end
         end
@@ -314,6 +330,14 @@ describe API::V1::DossiersController do
           it { expect(subject.first[:body]).to eq 'plop' }
           it { expect(subject.first[:created_at]).to eq '2016-03-14T13:00:00.000Z' }
           it { expect(subject.first[:email]).to eq 'plop@plip.com' }
+        end
+
+        describe 'avis' do
+          let!(:avis) { create(:avis, dossier: dossier) }
+
+          subject { super()[:avis] }
+
+          it { expect(subject[0][:introduction]).to eq(avis.introduction) }
         end
 
         describe 'etablissement' do

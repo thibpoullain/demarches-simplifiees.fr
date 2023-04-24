@@ -1,21 +1,31 @@
 describe 'As an administrateur I can edit types de champ', js: true do
   let(:administrateur) { procedure.administrateurs.first }
-  let(:procedure) { create(:procedure) }
+  let(:estimated_duration_visible) { true }
+  let(:procedure) { create(:procedure, estimated_duration_visible:) }
 
   before do
     login_as administrateur.user, scope: :user
     visit champs_admin_procedure_path(procedure)
   end
 
-  it "Add a new champ" do
+  scenario "adding a new champ" do
     add_champ
 
-    fill_in 'champ-0-libelle', with: 'libellé de champ'
-    blur
+    fill_in 'Libellé du champ', with: 'libellé de champ'
     expect(page).to have_content('Formulaire enregistré')
   end
 
-  it "Add multiple champs" do
+  scenario "adding a piece justificative template" do
+    add_champ
+    select('Pièce justificative', from: 'Type de champ')
+
+    find('.attachment input[type=file]').attach_file(Rails.root + 'spec/fixtures/files/file.pdf')
+
+    # Expect the files to be uploaded immediately
+    expect(page).to have_text('file.pdf')
+  end
+
+  scenario "adding multiple champs" do
     # Champs are created when clicking the 'Add field' button
     add_champs(count: 3)
 
@@ -25,21 +35,25 @@ describe 'As an administrateur I can edit types de champ', js: true do
     expect(page).to have_selector('.type-de-champ', count: 3)
 
     # Multiple champs can be edited
-    fill_in 'champ-0-libelle', with: 'libellé de champ 0'
-    fill_in 'champ-1-libelle', with: 'libellé de champ 1'
-    blur
+    within '.type-de-champ:nth-child(1)' do
+      fill_in 'Libellé du champ', with: 'libellé de champ 0'
+    end
+    within '.type-de-champ:nth-child(2)' do
+      fill_in 'Libellé du champ', with: 'libellé de champ 1'
+    end
     expect(page).to have_content('Formulaire enregistré')
 
     # Champs can be deleted
-    within '.type-de-champ[data-index="2"]' do
+    within '.type-de-champ:nth-child(3)' do
       page.accept_alert do
         click_on 'Supprimer'
       end
     end
-    expect(page).not_to have_selector('#champ-2-libelle')
+    expect(page).to have_content('Supprimer', count: 2)
 
-    fill_in 'champ-1-libelle', with: 'edited libellé de champ 1'
-    blur
+    within '.type-de-champ:nth-child(2)' do
+      fill_in 'Libellé du champ', with: 'edited libellé de champ 1'
+    end
     expect(page).to have_content('Formulaire enregistré')
     expect(page).to have_content('Supprimer', count: 2)
 
@@ -47,12 +61,12 @@ describe 'As an administrateur I can edit types de champ', js: true do
     expect(page).to have_content('Supprimer', count: 2)
   end
 
-  it "Remove champs" do
+  scenario "removing champs" do
     add_champ(remove_flash_message: true)
 
-    fill_in 'champ-0-libelle', with: 'libellé de champ'
-    blur
+    fill_in 'Libellé du champ', with: 'libellé de champ'
     expect(page).to have_content('Formulaire enregistré')
+
     page.refresh
 
     page.accept_alert do
@@ -65,35 +79,31 @@ describe 'As an administrateur I can edit types de champ', js: true do
     expect(page).to have_content('Supprimer', count: 0)
   end
 
-  it "Only add valid champs" do
+  scenario "adding an invalid champ" do
     add_champ(remove_flash_message: true)
 
-    fill_in 'champ-0-libelle', with: ''
-    fill_in 'champ-0-description', with: 'description du champ'
-    blur
+    fill_in 'Libellé du champ', with: ''
+    fill_in 'Description du champ (optionnel)', with: 'description du champ'
     expect(page).not_to have_content('Formulaire enregistré')
 
-    fill_in 'champ-0-libelle', with: 'libellé de champ'
-    blur
+    fill_in 'Libellé du champ', with: 'libellé de champ'
     expect(page).to have_content('Formulaire enregistré')
   end
 
-  it "Add repetition champ" do
+  scenario "adding a repetition champ" do
     add_champ(remove_flash_message: true)
 
-    select('Bloc répétable', from: 'champ-0-type_champ')
-    fill_in 'champ-0-libelle', with: 'libellé de champ'
-    blur
+    select('Bloc répétable', from: 'Type de champ')
+    fill_in 'Libellé du champ', with: 'libellé de champ'
 
     expect(page).to have_content('Formulaire enregistré')
     page.refresh
 
-    within '.type-de-champ .repetition' do
+    within '.type-de-champ .editor-block' do
       click_on 'Ajouter un champ'
-    end
 
-    fill_in 'repetition-0-champ-0-libelle', with: 'libellé de champ 1'
-    blur
+      fill_in 'Libellé du champ', with: 'libellé de champ 1'
+    end
 
     expect(page).to have_content('Formulaire enregistré')
     expect(page).to have_content('Supprimer', count: 2)
@@ -102,21 +112,23 @@ describe 'As an administrateur I can edit types de champ', js: true do
       click_on 'Ajouter un champ'
     end
 
-    select('Bloc répétable', from: 'champ-0-type_champ')
-    fill_in 'champ-0-libelle', with: 'libellé de champ 2'
-    blur
+    within '.type-de-champ:nth-child(2)' do
+      select('Bloc répétable', from: 'Type de champ')
+      fill_in 'Libellé du champ', with: 'libellé de champ 2'
+    end
 
     expect(page).to have_content('Supprimer', count: 3)
   end
 
-  it "Add carte champ" do
-    add_champ
+  scenario "adding a carte champ" do
+    add_champ(remove_flash_message: true)
 
-    select('Carte', from: 'champ-0-type_champ')
-    fill_in 'champ-0-libelle', with: 'Libellé de champ carte', fill_options: { clear: :backspace }
+    select('Carte', from: 'Type de champ')
+    fill_in 'Libellé du champ', with: 'Libellé de champ carte', fill_options: { clear: :backspace }
     check 'Cadastres'
 
-    wait_until { procedure.draft_types_de_champ.first.cadastres == true }
+    wait_until { procedure.active_revision.types_de_champ_public.first.layer_enabled?(:cadastres) }
+    wait_until { procedure.active_revision.types_de_champ_public.first.libelle == 'Libellé de champ carte' }
     expect(page).to have_content('Formulaire enregistré')
 
     preview_window = window_opened_by { click_on 'Prévisualiser le formulaire' }
@@ -128,18 +140,56 @@ describe 'As an administrateur I can edit types de champ', js: true do
     end
   end
 
-  it "Add dropdown champ" do
-    add_champ
+  scenario "adding a dropdown champ" do
+    add_champ(remove_flash_message: true)
 
-    select('Choix parmi une liste', from: 'champ-0-type_champ')
-    fill_in 'champ-0-libelle', with: 'Libellé de champ menu déroulant', fill_options: { clear: :backspace }
-    fill_in 'champ-0-drop_down_list_value', with: 'Un menu', fill_options: { clear: :backspace }
+    select('Choix simple', from: 'Type de champ')
+    fill_in 'Libellé du champ', with: 'Libellé de champ menu déroulant', fill_options: { clear: :backspace }
+    fill_in 'Options de la liste', with: 'Un menu', fill_options: { clear: :backspace }
+    check "Proposer une option « autre » avec un texte libre"
 
-    wait_until { procedure.draft_types_de_champ.first.drop_down_list_options == ['', 'Un menu'] }
+    wait_until { procedure.active_revision.types_de_champ_public.first.drop_down_list_options == ['', 'Un menu'] }
+    wait_until { procedure.active_revision.types_de_champ_public.first.drop_down_other == "1" }
     expect(page).to have_content('Formulaire enregistré')
 
     page.refresh
 
     expect(page).to have_content('Un menu')
+  end
+
+  context "estimated duration visible" do
+    scenario "displaying the estimated fill duration" do
+      # It doesn't display anything when there are no champs
+      expect(page).not_to have_content('Durée de remplissage estimée')
+
+      # It displays the estimate when adding a new champ
+      add_champ
+      select('Pièce justificative', from: 'Type de champ')
+      expect(page).to have_content('Durée de remplissage estimée : 2 min')
+
+      # It updates the estimate when updating the champ
+      check 'Champ obligatoire'
+      expect(page).to have_content('Durée de remplissage estimée : 3 min')
+
+      # It updates the estimate when removing the champ
+      page.accept_alert do
+        click_on 'Supprimer'
+      end
+      expect(page).not_to have_content('Durée de remplissage estimée')
+    end
+  end
+
+  context "estimated duration not visible" do
+    let(:estimated_duration_visible) { false }
+
+    scenario "hide the estimated fill duration" do
+      # It doesn't display anything when there are no champs
+      expect(page).not_to have_content('Durée de remplissage estimée')
+
+      # It displays the estimate when adding a new champ
+      add_champ
+      select('Pièce justificative', from: 'Type de champ')
+      expect(page).not_to have_content('Durée de remplissage estimée')
+    end
   end
 end

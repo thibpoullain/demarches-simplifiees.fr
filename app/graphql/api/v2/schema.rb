@@ -1,6 +1,9 @@
 class API::V2::Schema < GraphQL::Schema
   default_max_page_size 100
-  max_complexity 300
+  default_page_size 100
+  # Disable max_complexity for now because of what looks like a bug in graphql gem.
+  # After some internal changes complexity for our avarage query went from < 300 to 25 000.
+  max_complexity nil
   max_depth 15
 
   query Types::QueryType
@@ -9,19 +12,31 @@ class API::V2::Schema < GraphQL::Schema
   context_class API::V2::Context
 
   def self.id_from_object(object, type_definition, ctx)
-    object.to_typed_id
+    if type_definition == Types::DemarcheDescriptorType
+      (object.is_a?(Procedure) ? object : object.procedure).to_typed_id
+    elsif type_definition == Types::DeletedDossierType
+      object.is_a?(DeletedDossier) ? object.to_typed_id : GraphQL::Schema::UniqueWithinType.encode('DeletedDossier', object.id)
+    elsif object.is_a?(Hash)
+      object[:id]
+    else
+      object.to_typed_id
+    end
   end
 
-  def self.object_from_id(id, query_ctx)
+  def self.object_from_id(id, ctx)
     ApplicationRecord.record_from_typed_id(id)
   rescue => e
     raise GraphQL::ExecutionError.new(e.message, extensions: { code: :not_found })
   end
 
-  def self.resolve_type(type, obj, ctx)
-    case obj
+  def self.resolve_type(type_definition, object, ctx)
+    case object
     when Procedure
-      Types::DemarcheType
+      if type_definition == Types::DemarcheDescriptorType
+        type_definition
+      else
+        Types::DemarcheType
+      end
     when Dossier
       Types::DossierType
     when Commentaire
@@ -35,7 +50,7 @@ class API::V2::Schema < GraphQL::Schema
     when GroupeInstructeur
       Types::GroupeInstructeurType
     else
-      raise GraphQL::ExecutionError.new("Unexpected object: #{obj}")
+      raise GraphQL::ExecutionError.new("Unexpected object: #{object}")
     end
   end
 
@@ -47,11 +62,15 @@ class API::V2::Schema < GraphQL::Schema
     Types::Champs::DateChampType,
     Types::Champs::DatetimeChampType,
     Types::Champs::DecimalNumberChampType,
+    Types::Champs::DepartementChampType,
     Types::Champs::DossierLinkChampType,
+    Types::Champs::EpciChampType,
     Types::Champs::IntegerNumberChampType,
     Types::Champs::LinkedDropDownListChampType,
     Types::Champs::MultipleDropDownListChampType,
+    Types::Champs::PaysChampType,
     Types::Champs::PieceJustificativeChampType,
+    Types::Champs::RegionChampType,
     Types::Champs::RepetitionChampType,
     Types::Champs::SiretChampType,
     Types::Champs::TextChampType,
@@ -59,16 +78,64 @@ class API::V2::Schema < GraphQL::Schema
     Types::GeoAreas::ParcelleCadastraleType,
     Types::GeoAreas::SelectionUtilisateurType,
     Types::PersonneMoraleType,
-    Types::PersonnePhysiqueType
+    Types::PersonneMoraleIncompleteType,
+    Types::PersonnePhysiqueType,
+    Types::Champs::Descriptor::AddressChampDescriptorType,
+    Types::Champs::Descriptor::AnnuaireEducationChampDescriptorType,
+    Types::Champs::Descriptor::CarteChampDescriptorType,
+    Types::Champs::Descriptor::CheckboxChampDescriptorType,
+    Types::Champs::Descriptor::CiviliteChampDescriptorType,
+    Types::Champs::Descriptor::CnafChampDescriptorType,
+    Types::Champs::Descriptor::CommuneChampDescriptorType,
+    Types::Champs::Descriptor::DateChampDescriptorType,
+    Types::Champs::Descriptor::DatetimeChampDescriptorType,
+    Types::Champs::Descriptor::DecimalNumberChampDescriptorType,
+    Types::Champs::Descriptor::DepartementChampDescriptorType,
+    Types::Champs::Descriptor::DgfipChampDescriptorType,
+    Types::Champs::Descriptor::DossierLinkChampDescriptorType,
+    Types::Champs::Descriptor::DropDownListChampDescriptorType,
+    Types::Champs::Descriptor::EmailChampDescriptorType,
+    Types::Champs::Descriptor::EpciChampDescriptorType,
+    Types::Champs::Descriptor::ExplicationChampDescriptorType,
+    Types::Champs::Descriptor::HeaderSectionChampDescriptorType,
+    Types::Champs::Descriptor::IbanChampDescriptorType,
+    Types::Champs::Descriptor::IntegerNumberChampDescriptorType,
+    Types::Champs::Descriptor::LinkedDropDownListChampDescriptorType,
+    Types::Champs::Descriptor::MesriChampDescriptorType,
+    Types::Champs::Descriptor::MultipleDropDownListChampDescriptorType,
+    Types::Champs::Descriptor::NumberChampDescriptorType,
+    Types::Champs::Descriptor::PaysChampDescriptorType,
+    Types::Champs::Descriptor::PhoneChampDescriptorType,
+    Types::Champs::Descriptor::PieceJustificativeChampDescriptorType,
+    Types::Champs::Descriptor::PoleEmploiChampDescriptorType,
+    Types::Champs::Descriptor::RegionChampDescriptorType,
+    Types::Champs::Descriptor::RepetitionChampDescriptorType,
+    Types::Champs::Descriptor::RNAChampDescriptorType,
+    Types::Champs::Descriptor::SiretChampDescriptorType,
+    Types::Champs::Descriptor::TextareaChampDescriptorType,
+    Types::Champs::Descriptor::TextChampDescriptorType,
+    Types::Champs::Descriptor::TitreIdentiteChampDescriptorType,
+    Types::Champs::Descriptor::YesNoChampDescriptorType
 
   def self.unauthorized_object(error)
     # Add a top-level error to the response instead of returning nil:
     raise GraphQL::ExecutionError.new("An object of type #{error.type.graphql_name} was hidden due to permissions", extensions: { code: :unauthorized })
   end
 
-  use GraphQL::Execution::Interpreter
-  use GraphQL::Analysis::AST
-  use GraphQL::Schema::Timeout, max_seconds: 10
+  def self.type_error(error, ctx)
+    # Capture type errors in Sentry. Thouse errors are our responsability and usually linked to
+    # instances of "bad data".
+    Sentry.capture_exception(error, extra: ctx.query_info)
+    super
+  end
+
+  class Timeout < GraphQL::Schema::Timeout
+    def handle_timeout(error, query)
+      Sentry.capture_exception(error, extra: query.context.query_info)
+    end
+  end
+
+  use Timeout, max_seconds: 10
   use GraphQL::Batch
   use GraphQL::Backtrace
 
@@ -87,8 +154,5 @@ class API::V2::Schema < GraphQL::Schema
 
     query_analyzer(LogQueryComplexity)
     query_analyzer(LogQueryDepth)
-  else
-    query_analyzer(GraphQL::Analysis::AST::MaxQueryComplexity)
-    query_analyzer(GraphQL::Analysis::AST::MaxQueryDepth)
   end
 end

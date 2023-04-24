@@ -341,6 +341,26 @@ describe Instructeurs::ProceduresController, type: :controller do
 
           it { expect(assigns(:filtered_sorted_paginated_ids)).to match_array([termine_dossier, termine_dossier_on_gi_2].map(&:id)) }
         end
+
+        context 'with batch operations' do
+          let!(:batch_operation) { create(:batch_operation, operation: :archiver, dossiers: [termine_dossier], instructeur: instructeur) }
+          let!(:termine_dossier_2) { create(:dossier, :accepte, procedure: procedure) }
+          let!(:batch_operation_2) { create(:batch_operation, operation: :archiver, dossiers: [termine_dossier_2], instructeur: instructeur) }
+
+          before { subject }
+
+          it { expect(assigns(:batch_operations)).to match_array([batch_operation, batch_operation_2]) }
+        end
+
+        context 'with a dossier in a groupe instructeur where current instructeur is not ' do
+          let(:instructeur_2) { create(:instructeur) }
+          let!(:termine_dossier) { create(:dossier, :accepte, procedure: procedure, groupe_instructeur: gi_3) }
+          let!(:batch_operation) { create(:batch_operation, operation: :archiver, dossiers: [termine_dossier], instructeur: instructeur_2) }
+
+          before { subject }
+
+          it { expect(assigns(:batch_operations)).to eq([]) }
+        end
       end
 
       context 'with an archived dossier' do
@@ -468,9 +488,10 @@ describe Instructeurs::ProceduresController, type: :controller do
   describe '#download_export' do
     let(:instructeur) { create(:instructeur) }
     let!(:procedure) { create(:procedure) }
-    let!(:gi_0) { procedure.defaut_groupe_instructeur }
+    let!(:assign_to) { create(:assign_to, instructeur: instructeur, groupe_instructeur: build(:groupe_instructeur, procedure: procedure), manager: manager) }
+    let!(:gi_0) { assign_to.groupe_instructeur }
     let!(:gi_1) { create(:groupe_instructeur, label: 'gi_1', procedure: procedure, instructeurs: [instructeur]) }
-
+    let(:manager) { false }
     before { sign_in(instructeur.user) }
 
     subject do
@@ -498,7 +519,7 @@ describe Instructeurs::ProceduresController, type: :controller do
     end
 
     context 'when the export is ready' do
-      let(:export) { create(:export, groupe_instructeurs: [gi_1]) }
+      let(:export) { create(:export, groupe_instructeurs: [gi_1, gi_0], job_status: 'generated') }
 
       before do
         export.file.attach(io: StringIO.new('export'), filename: 'file.csv')
@@ -511,7 +532,7 @@ describe Instructeurs::ProceduresController, type: :controller do
     end
 
     context 'when another export is ready' do
-      let(:export) { create(:export, groupe_instructeurs: [gi_0, gi_1]) }
+      let(:export) { create(:export, groupe_instructeurs: [gi_0]) }
 
       before do
         export.file.attach(io: StringIO.new('export'), filename: 'file.csv')
@@ -523,26 +544,32 @@ describe Instructeurs::ProceduresController, type: :controller do
       end
     end
 
-    context 'when the js format is used' do
+    context 'when the turbo_stream format is used' do
       before do
         post :download_export,
           params: { export_format: :csv, procedure_id: procedure.id },
-          format: :js
+          format: :turbo_stream
       end
 
       it 'responds in the correct format' do
-        expect(response.media_type).to eq('text/javascript')
+        expect(response.media_type).to eq('text/vnd.turbo-stream.html')
         expect(response).to have_http_status(:ok)
       end
+    end
+
+    context 'when logged in through super admin' do
+      let(:manager) { true }
+      it { is_expected.to have_http_status(:forbidden) }
     end
   end
 
   describe '#create_multiple_commentaire' do
     let(:instructeur) { create(:instructeur) }
-    let!(:gi_p1_1) { GroupeInstructeur.create(label: '1', procedure: procedure) }
-    let!(:gi_p1_2) { GroupeInstructeur.create(label: '2', procedure: procedure) }
+    let!(:gi_p1_1) { create(:groupe_instructeur, label: '1', procedure: procedure) }
+    let!(:gi_p1_2) { create(:groupe_instructeur, label: '2', procedure: procedure) }
     let(:body) { "avant\napres" }
-    let!(:dossier) { create(:dossier, state: "brouillon", procedure: procedure, groupe_instructeur: procedure.groupe_instructeurs.first) }
+    let(:bulk_message) { BulkMessage.first }
+    let!(:dossier) { create(:dossier, state: "brouillon", procedure: procedure, groupe_instructeur: gi_p1_1) }
     let!(:dossier_2) { create(:dossier, state: "brouillon", procedure: procedure, groupe_instructeur: gi_p1_1) }
     let!(:dossier_3) { create(:dossier, state: "brouillon", procedure: procedure, groupe_instructeur: gi_p1_2) }
     let!(:procedure) { create(:procedure, :published, instructeurs: [instructeur]) }
@@ -559,16 +586,16 @@ describe Instructeurs::ProceduresController, type: :controller do
     end
 
     it "creates a commentaire for 2 dossiers" do
-      expect(Commentaire.all.count).to eq(2)
+      expect(Commentaire.count).to eq(2)
       expect(dossier.commentaires.first.body).to eq("avant\napres")
       expect(dossier_2.commentaires.first.body).to eq("avant\napres")
       expect(dossier_3.commentaires).to eq([])
     end
 
     it "creates a Bulk Message for 2 groupes instructeurs" do
-      expect(BulkMessage.all.count).to eq(1)
-      expect(BulkMessage.all.first.body).to eq("avant\napres")
-      expect(BulkMessage.all.first.groupe_instructeurs.sort).to match([procedure.groupe_instructeurs.first, gi_p1_1])
+      expect(BulkMessage.count).to eq(1)
+      expect(bulk_message.body).to eq("avant\napres")
+      expect(bulk_message.groupe_instructeurs).to match([gi_p1_1])
     end
 
     it "creates a flash notice" do

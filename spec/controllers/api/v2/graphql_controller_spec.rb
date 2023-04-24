@@ -1,6 +1,9 @@
 describe API::V2::GraphqlController do
   let(:admin) { create(:administrateur) }
-  let(:token) { admin.renew_api_token }
+  let(:generated_token) { APIToken.generate(admin) }
+  let(:api_token) { generated_token.first }
+  let(:token) { generated_token.second }
+  let(:legacy_token) { APIToken.send(:unpack, token)[:plain_token] }
   let(:procedure) { create(:procedure, :published, :for_individual, :with_service, administrateurs: [admin]) }
   let(:dossier)  { create(:dossier, :en_construction, :with_individual, procedure: procedure) }
   let(:dossier1) { create(:dossier, :en_construction, :with_individual, procedure: procedure, en_construction_at: 1.day.ago) }
@@ -35,9 +38,7 @@ describe API::V2::GraphqlController do
     blob
   end
 
-  before do
-    instructeur.assign_to_procedure(procedure)
-  end
+  before { instructeur.assign_to_procedure(procedure) }
 
   let(:query) do
     "{
@@ -65,7 +66,7 @@ describe API::V2::GraphqlController do
         publishedRevision {
           id
           champDescriptors {
-            type
+            __typename
           }
         }
         service {
@@ -74,16 +75,26 @@ describe API::V2::GraphqlController do
           organisme
         }
         champDescriptors {
+          __typename
           id
-          type
           label
           description
           required
-          champDescriptors {
-            id
-            type
+          ... on RepetitionChampDescriptor {
+            champDescriptors {
+              __typename
+              id
+            }
           }
-          options
+          ... on DropDownListChampDescriptor {
+            options
+          }
+          ... on MultipleDropDownListChampDescriptor {
+            options
+          }
+          ... on LinkedDropDownListChampDescriptor {
+            options
+          }
         }
         dossiers {
           nodes {
@@ -93,11 +104,28 @@ describe API::V2::GraphqlController do
       }
     }"
   end
+  let(:variables) { {} }
+  let(:operation_name) { nil }
+  let(:query_id) { nil }
   let(:body) { JSON.parse(subject.body, symbolize_names: true) }
   let(:gql_data) { body[:data] }
   let(:gql_errors) { body[:errors] }
 
-  subject { post :execute, params: { query: query } }
+  subject { post :execute, params: { query: query, variables: variables, operationName: operation_name, queryId: query_id }.compact, as: :json }
+
+  context "when authenticated with legacy token" do
+    let(:authorization_header) { ActionController::HttpAuthentication::Token.encode_credentials(legacy_token) }
+
+    before do
+      request.env['HTTP_AUTHORIZATION'] = authorization_header
+      admin.api_tokens.first.update(version: 1)
+    end
+
+    it "returns the demarche" do
+      expect(gql_errors).to eq(nil)
+      expect(gql_data[:demarche][:id]).to eq(procedure.to_typed_id)
+    end
+  end
 
   context "when authenticated" do
     let(:authorization_header) { ActionController::HttpAuthentication::Token.encode_credentials(token) }
@@ -106,13 +134,82 @@ describe API::V2::GraphqlController do
       request.env['HTTP_AUTHORIZATION'] = authorization_header
     end
 
+    describe "token authentication" do
+      it {
+        expect(gql_errors).to eq(nil)
+        expect(gql_data).not_to be_nil
+      }
+
+      context "when the token is invalid" do
+        before do
+          request.env['HTTP_AUTHORIZATION'] = ActionController::HttpAuthentication::Token.encode_credentials('invalid')
+        end
+
+        it {
+          expect(gql_errors.first[:message]).to eq("An object of type Demarche was hidden due to permissions")
+        }
+      end
+
+      context "when the token does not belong to an admin of the procedure" do
+        let(:another_administrateur) { create(:administrateur) }
+        let(:token_v3) { APIToken.generate(another_administrateur)[1] }
+        let(:plain_token) { APIToken.send(:unpack, token_v3)[:plain_token] }
+        before do
+          request.env['HTTP_AUTHORIZATION'] = ActionController::HttpAuthentication::Token.encode_credentials(token)
+        end
+
+        context 'v3' do
+          let(:token) { token_v3 }
+          it {
+            expect(gql_errors.first[:message]).to eq("An object of type Demarche was hidden due to permissions")
+          }
+        end
+        context 'v2' do
+          let(:token) { APIToken.send(:message_verifier).generate([another_administrateur.id, plain_token]) }
+          it {
+            expect(gql_errors.first[:message]).to eq("An object of type Demarche was hidden due to permissions")
+          }
+        end
+        context 'v1' do
+          let(:token) { plain_token }
+          it {
+            expect(gql_errors.first[:message]).to eq("An object of type Demarche was hidden due to permissions")
+          }
+        end
+      end
+
+      context "when the token is revoked" do
+        before do
+          admin.api_tokens.destroy_all
+        end
+
+        it {
+          expect(token).not_to be_nil
+          expect(gql_errors.first[:message]).to eq("An object of type Demarche was hidden due to permissions")
+        }
+      end
+
+      context 'when procedure is not selected' do
+        let(:other_procedure) { create(:procedure, administrateurs: [admin]) }
+        before { api_token.update(allowed_procedure_ids: [other_procedure.id]) }
+
+        it {
+          expect(gql_errors.first[:message]).to eq("An object of type Demarche was hidden due to permissions")
+        }
+      end
+    end
+
     describe "demarche" do
       describe "query a demarche" do
         let(:procedure) { create(:procedure, :published, :for_individual, :with_service, :with_all_champs, :with_all_annotations, administrateurs: [admin]) }
 
+        def format_type_champ(type_champ)
+          "#{type_champ.gsub('regions', 'region').gsub('departements', 'departement').gsub('communes', 'commune').camelcase}ChampDescriptor"
+        end
+
         it "returns the demarche" do
           expect(gql_errors).to eq(nil)
-          expect(gql_data).to eq(demarche: {
+          expect(gql_data).to include(demarche: {
             id: procedure.to_typed_id,
             number: procedure.id,
             title: procedure.libelle,
@@ -127,34 +224,30 @@ describe API::V2::GraphqlController do
                 label: "défaut"
               }
             ],
-            revisions: procedure.revisions.map { |revision| { id: revision.to_typed_id } },
+            revisions: procedure.revisions.map { { id: _1.to_typed_id } },
             draftRevision: { id: procedure.draft_revision.to_typed_id },
             publishedRevision: {
               id: procedure.published_revision.to_typed_id,
-              champDescriptors: procedure.published_types_de_champ.map do |tdc|
-                {
-                  type: tdc.type_champ
-                }
-              end
+              champDescriptors: procedure.published_revision.types_de_champ_public.map { { __typename: format_type_champ(_1.type_champ) } }
             },
             service: {
               nom: procedure.service.nom,
               typeOrganisme: procedure.service.type_organisme,
               organisme: procedure.service.organisme
             },
-            champDescriptors: procedure.types_de_champ.map do |tdc|
+            champDescriptors: procedure.active_revision.types_de_champ_public.map do |tdc|
               {
                 id: tdc.to_typed_id,
                 label: tdc.libelle,
-                type: tdc.type_champ,
+                __typename: format_type_champ(tdc.type_champ),
                 description: tdc.description,
                 required: tdc.mandatory?,
-                champDescriptors: tdc.repetition? ? tdc.reload.types_de_champ.map { |tdc| { id: tdc.to_typed_id, type: tdc.type_champ } } : nil,
+                champDescriptors: tdc.repetition? ? procedure.active_revision.children_of(tdc.reload).map { { id: _1.to_typed_id, __typename: format_type_champ(_1.type_champ) } } : nil,
                 options: tdc.drop_down_list? ? tdc.drop_down_list_options.reject(&:empty?) : nil
-              }
+              }.compact
             end,
             dossiers: {
-              nodes: dossiers.map { |dossier| { id: dossier.to_typed_id } }
+              nodes: dossiers.map { { id: _1.to_typed_id } }
             }
           })
         end
@@ -450,7 +543,7 @@ describe API::V2::GraphqlController do
               }
             end,
             avis: [],
-            champs: dossier.champs.map do |champ|
+            champs: dossier.champs_public.map do |champ|
               {
                 id: champ.to_typed_id,
                 label: champ.libelle,
@@ -458,7 +551,7 @@ describe API::V2::GraphqlController do
               }
             end
           })
-          expect(gql_data[:dossier][:champs][0][:id]).to eq(dossier.champs[0].type_de_champ.to_typed_id)
+          expect(gql_data[:dossier][:champs][0][:id]).to eq(dossier.champs_public[0].type_de_champ.to_typed_id)
         end
       end
 
@@ -584,15 +677,23 @@ describe API::V2::GraphqlController do
             })
           end
         end
+
+        context "error in degraded mode" do
+          before do
+            dossier.etablissement.update!(adresse: nil, siege_social: nil)
+          end
+
+          it "should return an error" do
+            expect(gql_errors).to eq([{ message: "Cannot return null for non-nullable field PersonneMorale.siegeSocial" }])
+          end
+        end
       end
 
       context "champs" do
-        let(:procedure) { create(:procedure, :published, :for_individual, administrateurs: [admin], types_de_champ: [type_de_champ_date, type_de_champ_datetime]) }
+        let(:procedure) { create(:procedure, :published, :for_individual, administrateurs: [admin], types_de_champ_public: [{ type: :date }, { type: :datetime }]) }
         let(:dossier) { create(:dossier, :en_construction, procedure: procedure) }
-        let(:type_de_champ_date) { build(:type_de_champ_date) }
-        let(:type_de_champ_datetime) { build(:type_de_champ_datetime) }
-        let(:champ_date) { dossier.champs.first }
-        let(:champ_datetime) { dossier.champs.second }
+        let(:champ_date) { dossier.champs_public.first }
+        let(:champ_datetime) { dossier.champs_public.second }
 
         before do
           champ_date.update(value: '2019-07-10')
@@ -712,11 +813,11 @@ describe API::V2::GraphqlController do
       end
     end
 
-    describe "champ" do
+    describe "champ piece_justificative" do
       let(:champ) { create(:champ_piece_justificative, dossier: dossier) }
       let(:byte_size) { 2712286911 }
 
-      context "byteSize" do
+      context "with deprecated file field" do
         let(:query) do
           "{
             dossier(number: #{dossier.id}) {
@@ -735,9 +836,28 @@ describe API::V2::GraphqlController do
         }
       end
 
+      context "byteSize" do
+        let(:query) do
+          "{
+            dossier(number: #{dossier.id}) {
+              champs(id: \"#{champ.to_typed_id}\") {
+                ... on PieceJustificativeChamp {
+                  files { byteSize }
+                }
+              }
+            }
+          }"
+        end
+
+        it {
+          expect(gql_errors).to be_nil
+          expect(gql_data).to eq(dossier: { champs: [{ files: [{ byteSize: 4 }] }] })
+        }
+      end
+
       context "when the file is really big" do
         before do
-          champ.piece_justificative_file.blob.update(byte_size: byte_size)
+          champ.piece_justificative_file.first.blob.update(byte_size: byte_size)
         end
 
         context "byteSize" do
@@ -746,7 +866,7 @@ describe API::V2::GraphqlController do
               dossier(number: #{dossier.id}) {
                 champs(id: \"#{champ.to_typed_id}\") {
                   ... on PieceJustificativeChamp {
-                    file { byteSize }
+                    files { byteSize }
                   }
                 }
               }
@@ -764,7 +884,7 @@ describe API::V2::GraphqlController do
               dossier(number: #{dossier.id}) {
                 champs(id: \"#{champ.to_typed_id}\") {
                   ... on PieceJustificativeChamp {
-                    file { byteSizeBigInt }
+                    files { byteSizeBigInt }
                   }
                 }
               }
@@ -773,7 +893,7 @@ describe API::V2::GraphqlController do
 
           it {
             expect(gql_errors).to be_nil
-            expect(gql_data).to eq(dossier: { champs: [{ file: { byteSizeBigInt: '2712286911' } }] })
+            expect(gql_data).to eq(dossier: { champs: [{ files: [{ byteSizeBigInt: '2712286911' }] }] })
           }
         end
       end
@@ -811,21 +931,34 @@ describe API::V2::GraphqlController do
 
     describe "mutations" do
       describe 'dossierEnvoyerMessage' do
-        context 'success' do
-          let(:query) do
-            "mutation {
-              dossierEnvoyerMessage(input: {
-                dossierId: \"#{dossier.to_typed_id}\",
-                instructeurId: \"#{instructeur.to_typed_id}\",
-                body: \"Bonjour\",
-                attachment: \"#{blob.signed_id}\"
-              }) {
-                message {
-                  body
-                }
+        let(:query) do
+          "mutation($input: DossierEnvoyerMessageInput!) {
+            dossierEnvoyerMessage(input: $input) {
+              message {
+                body
               }
-            }"
-          end
+              errors {
+                message
+              }
+            }
+          }"
+        end
+        let(:variables) { { input: input } }
+        let(:input) do
+          {
+            dossierId: dossier_id,
+            instructeurId: instructeur_id,
+            body: input_body,
+            attachment: attachment
+          }
+        end
+        let(:dossier_id) { dossier.to_typed_id }
+        let(:instructeur_id) { instructeur.to_typed_id }
+        let(:input_body) { "Bonjour" }
+        let(:attachment) { nil }
+
+        context 'success' do
+          let(:attachment) { blob.signed_id }
 
           it "should post a message" do
             expect(gql_errors).to eq(nil)
@@ -833,76 +966,53 @@ describe API::V2::GraphqlController do
             expect(gql_data).to eq(dossierEnvoyerMessage: {
               message: {
                 body: "Bonjour"
-              }
+              },
+              errors: nil
             })
           end
         end
 
         context 'schema error' do
-          let(:query) do
-            "mutation {
-              dossierEnvoyerMessage(input: {
-                dossierId: \"#{dossier.to_typed_id}\",
-                instructeurId: \"#{instructeur.to_typed_id}\"
-              }) {
-                message {
-                  body
-                }
-              }
-            }"
+          let(:input) do
+            {
+              dossierId: dossier_id,
+              instructeurId: instructeur_id
+            }
           end
 
           it "should fail" do
             expect(gql_data).to eq(nil)
             expect(gql_errors).not_to eq(nil)
+            expect(body[:errors].first[:message]).to eq("Variable $input of type DossierEnvoyerMessageInput! was provided invalid value for body (Expected value to not be null)")
+            expect(body[:errors].first.key?(:backtrace)).to be_falsey
+          end
+        end
+
+        context 'variables error' do
+          let(:variables) { "{" }
+
+          it "should fail" do
+            expect(gql_data).to eq(nil)
+            expect(gql_errors).not_to eq(nil)
+            expect(body[:errors].first[:message]).to eq("809: unexpected token at '{'")
+            expect(body[:errors].first.key?(:backtrace)).to be_falsey
           end
         end
 
         context 'validation error' do
-          let(:query) do
-            "mutation {
-              dossierEnvoyerMessage(input: {
-                dossierId: \"#{dossier.to_typed_id}\",
-                instructeurId: \"#{instructeur.to_typed_id}\",
-                body: \"\"
-              }) {
-                message {
-                  body
-                }
-                errors {
-                  message
-                }
-              }
-            }"
-          end
+          let(:input_body) { "" }
 
           it "should fail" do
             expect(gql_errors).to eq(nil)
             expect(gql_data).to eq(dossierEnvoyerMessage: {
-              errors: [{ message: "Votre message ne peut être vide" }],
+              errors: [{ message: "Le champ « Votre message » ne peut être vide" }],
               message: nil
             })
           end
         end
 
         context 'upload error' do
-          let(:query) do
-            "mutation {
-              dossierEnvoyerMessage(input: {
-                dossierId: \"#{dossier.to_typed_id}\",
-                instructeurId: \"#{instructeur.to_typed_id}\",
-                body: \"Hello world\",
-                attachment: \"fake\"
-              }) {
-                message {
-                  body
-                }
-                errors {
-                  message
-                }
-              }
-            }"
-          end
+          let(:attachment) { 'fake' }
 
           it "should fail" do
             expect(gql_errors).to eq(nil)
@@ -951,8 +1061,8 @@ describe API::V2::GraphqlController do
               errors: nil
             })
 
-            perform_enqueued_jobs
-            expect(ActionMailer::Base.deliveries.size).to eq(4)
+            perform_enqueued_jobs except: [APIEntreprise::ServiceJob]
+            expect(ActionMailer::Base.deliveries.size).to eq(1)
           end
         end
 
@@ -994,8 +1104,94 @@ describe API::V2::GraphqlController do
               errors: nil
             })
 
-            perform_enqueued_jobs
-            expect(ActionMailer::Base.deliveries.size).to eq(3)
+            perform_enqueued_jobs except: [APIEntreprise::ServiceJob]
+            expect(ActionMailer::Base.deliveries.size).to eq(0)
+          end
+        end
+      end
+
+      describe 'dossierRepasserEnInstruction' do
+        let(:dossiers) { [dossier2, dossier1, dossier] }
+        let(:dossier) { create(:dossier, :refuse, :with_individual, procedure: procedure) }
+        let(:instructeur_id) { instructeur.to_typed_id }
+        let(:disable_notification) { false }
+        let(:query) do
+          "mutation {
+            dossierRepasserEnInstruction(input: {
+              dossierId: \"#{dossier.to_typed_id}\",
+              instructeurId: \"#{instructeur_id}\",
+              disableNotification: #{disable_notification}
+            }) {
+              dossier {
+                id
+                state
+                motivation
+              }
+              errors {
+                message
+              }
+            }
+          }"
+        end
+
+        context 'success' do
+          it "should repasser en instruction dossier" do
+            expect(gql_errors).to eq(nil)
+
+            expect(gql_data).to eq(dossierRepasserEnInstruction: {
+              dossier: {
+                id: dossier.to_typed_id,
+                state: "en_instruction",
+                motivation: nil
+              },
+              errors: nil
+            })
+
+            perform_enqueued_jobs except: [APIEntreprise::ServiceJob]
+            expect(ActionMailer::Base.deliveries.size).to eq(1)
+          end
+        end
+      end
+
+      describe 'dossierRepasserEnConstruction' do
+        let(:dossiers) { [dossier2, dossier1, dossier] }
+        let(:dossier) { create(:dossier, :en_instruction, :with_individual, procedure: procedure) }
+        let(:instructeur_id) { instructeur.to_typed_id }
+        let(:disable_notification) { false }
+        let(:query) do
+          "mutation {
+            dossierRepasserEnConstruction(input: {
+              dossierId: \"#{dossier.to_typed_id}\",
+              instructeurId: \"#{instructeur_id}\",
+              disableNotification: #{disable_notification}
+            }) {
+              dossier {
+                id
+                state
+                motivation
+              }
+              errors {
+                message
+              }
+            }
+          }"
+        end
+
+        context 'success' do
+          it "should passer en instruction dossier" do
+            expect(gql_errors).to eq(nil)
+
+            expect(gql_data).to eq(dossierRepasserEnConstruction: {
+              dossier: {
+                id: dossier.to_typed_id,
+                state: "en_construction",
+                motivation: nil
+              },
+              errors: nil
+            })
+
+            perform_enqueued_jobs except: [APIEntreprise::ServiceJob]
+            expect(ActionMailer::Base.deliveries.size).to eq(0)
           end
         end
       end
@@ -1343,7 +1539,7 @@ describe API::V2::GraphqlController do
             "mutation {
               dossierModifierAnnotationText(input: {
                 dossierId: \"#{dossier.to_typed_id}\",
-                annotationId: \"#{dossier.champs_private.first.to_typed_id}\",
+                annotationId: \"#{dossier.champs_private.find { |c| c.type == 'Champs::TextChamp' }.to_typed_id}\",
                 instructeurId: \"#{instructeur.to_typed_id}\",
                 value: \"hello\"
               }) {

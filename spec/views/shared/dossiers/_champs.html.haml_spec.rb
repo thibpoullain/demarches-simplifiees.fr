@@ -12,16 +12,17 @@ describe 'shared/dossiers/champs.html.haml', type: :view do
 
   context "there are some champs" do
     let(:dossier) { create(:dossier) }
-    let(:champ1) { create(:champ_checkbox, dossier: dossier, value: "on") }
+    let(:champ1) { create(:champ_checkbox, dossier: dossier, value: 'true') }
     let(:champ2) { create(:champ_header_section, dossier: dossier, value: "Section") }
     let(:champ3) { create(:champ_explication, dossier: dossier, value: "mazette") }
     let(:champ4) { create(:champ_dossier_link, dossier: dossier, value: dossier.id) }
     let(:champ5) { create(:champ_textarea, dossier: dossier, value: "Some long text in a textarea.") }
-    let(:champs) { [champ1, champ2, champ3, champ4, champ5] }
+    let(:champ6) { create(:champ_rna, value: "W173847273") }
+    let(:champs) { [champ1, champ2, champ3, champ4, champ5, champ6] }
 
     it "renders titles and values of champs" do
       expect(subject).to include(champ1.libelle)
-      expect(subject).to include(champ1.value)
+      expect(subject).to include('Oui')
 
       expect(subject).to have_css(".header-section")
       expect(subject).to include(champ2.libelle)
@@ -29,7 +30,9 @@ describe 'shared/dossiers/champs.html.haml', type: :view do
       expect(subject).to include(dossier.text_summary)
 
       expect(subject).to include(champ5.libelle)
-      expect(subject).to include(champ5.libelle)
+      expect(subject).to include(champ5.value)
+      expect(subject).to include(champ6.libelle)
+      expect(subject).to include(champ6.value)
     end
 
     it "doesn't render explication champs" do
@@ -56,29 +59,18 @@ describe 'shared/dossiers/champs.html.haml', type: :view do
         :routee,
         routing_criteria_name: 'departement')
     end
-    let(:dossier) { create(:dossier, procedure: procedure) }
+    let(:dossier) { create(:dossier, :en_construction, procedure: procedure) }
     let(:champs) { [] }
 
-    it "does not render the routing criteria name and its value" do
-      expect(subject).not_to include(procedure.routing_criteria_name)
-      expect(subject).not_to include(dossier.procedure.defaut_groupe_instructeur.label)
-    end
-
-    context "with selected groupe instructeur" do
-      before do
-        dossier.groupe_instructeur = dossier.procedure.defaut_groupe_instructeur
-      end
-
-      it "renders the routing criteria name and its value" do
-        expect(subject).to include(procedure.routing_criteria_name)
-        expect(subject).to include(dossier.groupe_instructeur.label)
-      end
+    it "renders the routing criteria name and its value" do
+      expect(subject).to include(procedure.routing_criteria_name)
+      expect(subject).to include(dossier.groupe_instructeur.label)
     end
 
     context "with seen_at" do
       let(:dossier) { create(:dossier) }
       let(:nouveau_groupe_instructeur) { create(:groupe_instructeur, procedure: dossier.procedure) }
-      let(:champ1) { create(:champ_checkbox, dossier: dossier, value: "on") }
+      let(:champ1) { create(:champ_checkbox, dossier: dossier, value: 'true') }
       let(:champs) { [champ1] }
 
       context "with a demande_seen_at after groupe_instructeur_updated_at" do
@@ -121,7 +113,7 @@ describe 'shared/dossiers/champs.html.haml', type: :view do
 
   context "with seen_at" do
     let(:dossier) { create(:dossier) }
-    let(:champ1) { create(:champ_checkbox, dossier: dossier, value: "on") }
+    let(:champ1) { create(:champ_checkbox, dossier: dossier, value: 'true') }
     let(:champs) { [champ1] }
 
     context "with a demande_seen_at after champ updated_at" do

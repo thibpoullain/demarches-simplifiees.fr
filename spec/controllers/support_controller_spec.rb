@@ -130,7 +130,7 @@ describe SupportController, type: :controller do
         let(:params) { { subject: 'bonjour', text: 'un message', InvisibleCaptcha.honeypots.sample => 'boom' } }
         it 'does not create a conversation on HelpScout' do
           expect { subject }.not_to change(Commentaire, :count)
-          expect(flash[:alert]).to eq(I18n.t('invisible_captcha.custom_message'))
+          expect(flash[:alert]).to eq(I18n.t('invisible_captcha.sentence_for_humans'))
         end
       end
     end
@@ -158,6 +158,31 @@ describe SupportController, type: :controller do
           expect(response.status).to eq(200)
           expect(response.body).to include(tag)
         end
+      end
+    end
+  end
+
+  context 'contact admin' do
+    subject do
+      post :create, params: params
+    end
+
+    let(:params) { { admin: "true", email: "email@pro.fr", subject: 'bonjour', text: 'un message' } }
+
+    describe "when form is filled" do
+      it "creates a conversation on HelpScout" do
+        expect_any_instance_of(Helpscout::FormAdapter).to receive(:send_form).and_return(true)
+        subject
+        expect(flash[:notice]).to match('Votre message a été envoyé.')
+      end
+    end
+
+    describe "when invisible captcha is filled" do
+      let(:params) { super().merge(InvisibleCaptcha.honeypots.sample => 'boom') }
+
+      it 'does not create a conversation on HelpScout' do
+        subject
+        expect(flash[:alert]).to eq(I18n.t('invisible_captcha.sentence_for_humans'))
       end
     end
   end

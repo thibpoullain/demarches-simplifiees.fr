@@ -19,10 +19,7 @@ doc/*.svg
 uploads/*
 .byebug_history
 .env
-Procfile.dev
 storage/
-/public/packs
-/public/packs-test
 /node_modules
 /yarn-error.log
 yarn-debug.log*
@@ -30,7 +27,7 @@ yarn-debug.log*
 /.vscode
 /.idea
 /public/assets
-/docs
+/spec/support/spec_config.local.rb
 
 # Local Netlify folder
 .netlify
@@ -47,3 +44,15 @@ yarn-debug.log*
 
 # Les fichiers versés dans le SFTP de test ne sont pas à commiter
 /sftp_fake/upload
+
+# Webpacker
+public/packs
+public/packs-test
+# Vite Ruby
+public/vite
+public/vite-dev
+public/vite-test
+
+
+app/graphql/schema.json
+public/graphql/schema

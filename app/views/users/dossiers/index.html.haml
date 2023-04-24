@@ -1,7 +1,7 @@
 - if @search_terms.present?
-  - content_for(:title, "Recherche : #{@search_terms}")
+  - content_for(:title, t(".title_search", scope: :metas, terms: @search_terms))
 - else
-  - content_for(:title, "Dossiers")
+  - content_for(:title, t(".title", scope: :metas))
 
 - content_for :footer do
   = render partial: "users/dossiers/index_footer"
@@ -14,7 +14,7 @@
 
     - else
       %h1.page-title= t('views.users.dossiers.index.dossiers')
-      %nav.tabs
+      %nav.tabs{ role: 'navigation', 'aria-label': t('views.users.dossiers.secondary_menu') }
         %ul
           - if @user_dossiers.present?
             = tab_item(t('pluralize.en_cours', count: @user_dossiers.count),
@@ -22,6 +22,7 @@
               active: @statut == 'en-cours',
               badge: number_with_html_delimiter(@user_dossiers.count))
           - if @dossiers_traites.present?
+            // TODO: when renaming this tab in "Terminé", update notify_near_deletion_to_user email wording accordingly.
             = tab_item(t('pluralize.traites', count: @dossiers_traites.count),
               dossiers_path(statut: 'traites'),
               active: @statut == 'traites',

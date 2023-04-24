@@ -1,4 +1,8 @@
 module EtablissementHelper
+  def pretty_siret(siret)
+    "#{siret[0..2]} #{siret[3..5]} #{siret[6..8]} #{siret[9..]}"
+  end
+
   def pretty_currency(capital_social, unit: '€')
     number_to_currency(capital_social, locale: :fr, unit: unit, precision: 0)
   end
@@ -38,5 +42,14 @@ module EtablissementHelper
 
   def pretty_date_exercice(date)
     date.sub(/(?<year>\d{4})(?<month>\d{2})/, '\k<year>') if date.present?
+  end
+
+  def humanized_entreprise_etat_administratif(etablissement)
+    case etablissement.entreprise_etat_administratif&.to_sym
+    when :actif
+      "en activité"
+    when :fermé
+      "fermé"
+    end
   end
 end

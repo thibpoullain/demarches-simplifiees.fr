@@ -66,8 +66,7 @@ class SupportController < ApplicationController
       piece_jointe: params[:piece_jointe],
       body: "[#{params[:subject]}]<br><br>#{params[:text]}"
     }
-    commentaire = CommentaireService.build(current_user, dossier, attributes)
-    commentaire.save!
+    CommentaireService.create!(current_user, dossier, attributes)
   end
 
   def tags
@@ -96,6 +95,6 @@ class SupportController < ApplicationController
   end
 
   def redirect_to_root
-    redirect_to root_path, alert: t('invisible_captcha.custom_message')
+    redirect_to root_path, alert: t('invisible_captcha.sentence_for_humans')
   end
 end

@@ -1,8 +1,8 @@
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to('Démarches', admin_procedures_path),
-                    link_to(@procedure.libelle, admin_procedure_path(@procedure)),
-                    link_to('Groupes d’instructeurs', admin_procedure_groupe_instructeurs_path(@procedure)),
-                    @groupe_instructeur.label] }
+  locals: { steps: [['Démarches', admin_procedures_path],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Groupes d’instructeurs', admin_procedure_groupe_instructeurs_path(@procedure)],
+                    [@groupe_instructeur.label]] }
 
 .container.groupe-instructeur
 
@@ -10,7 +10,6 @@
     .card-title Réaffectation des dossiers du groupe « #{@groupe_instructeur.label} »
     %p
       Le groupe « #{@groupe_instructeur.label} » contient des dossiers. Afin de procéder à sa suppression, vous devez réaffecter ses dossiers à un autre groupe instructeur.
-
     %table.table.mt-2
       %thead
         %tr

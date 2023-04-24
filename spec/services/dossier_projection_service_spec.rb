@@ -13,15 +13,15 @@ describe DossierProjectionService do
         [
           {
             "table" => "type_de_champ",
-            "column" => procedure.types_de_champ[0].stable_id.to_s
+            "column" => procedure.active_revision.types_de_champ_public[0].stable_id.to_s
           }
         ]
       end
 
       before do
-        dossier_1.champs.first.update(value: 'champ_1')
-        dossier_2.champs.first.update(value: 'champ_2')
-        dossier_3.champs.first.destroy
+        dossier_1.champs_public.first.update(value: 'champ_1')
+        dossier_2.champs_public.first.update(value: 'champ_2')
+        dossier_3.champs_public.first.destroy
       end
 
       let(:result) { subject }
@@ -44,6 +44,34 @@ describe DossierProjectionService do
         expect(result[0].columns[0]).to be nil
         expect(result[1].columns[0]).to eq('champ_1')
         expect(result[2].columns[0]).to eq('champ_2')
+      end
+    end
+
+    context 'with commune champ' do
+      let!(:procedure) { create(:procedure, types_de_champ_public: [{ type: :communes }]) }
+      let!(:dossier) { create(:dossier, procedure:) }
+
+      let(:dossiers_ids) { [dossier.id] }
+      let(:fields) do
+        [
+          {
+            "table" => "type_de_champ",
+            "column" => procedure.active_revision.types_de_champ_public[0].stable_id.to_s
+          }
+        ]
+      end
+
+      before do
+        dossier.champs_public.first.update(code_postal: '63290')
+        dossier.champs_public.first.update(value: '63102')
+      end
+
+      let(:result) { subject }
+
+      it 'returns champ value' do
+        expect(result.length).to eq(1)
+        expect(result[0].dossier_id).to eq(dossier.id)
+        expect(result[0].columns[0]).to eq('Châteldon (63290)')
       end
     end
 
@@ -153,9 +181,9 @@ describe DossierProjectionService do
       context 'for type_de_champ table' do
         let(:table) { 'type_de_champ' }
         let(:dossier) { create(:dossier) }
-        let(:column) { dossier.procedure.types_de_champ.first.stable_id.to_s }
+        let(:column) { dossier.procedure.active_revision.types_de_champ_public.first.stable_id.to_s }
 
-        before { dossier.champs.first.update(value: 'kale') }
+        before { dossier.champs_public.first.update(value: 'kale') }
 
         it { is_expected.to eq('kale') }
       end
@@ -163,7 +191,7 @@ describe DossierProjectionService do
       context 'for type_de_champ_private table' do
         let(:table) { 'type_de_champ_private' }
         let(:dossier) { create(:dossier) }
-        let(:column) { dossier.procedure.types_de_champ_private.first.stable_id.to_s }
+        let(:column) { dossier.procedure.active_revision.types_de_champ_private.first.stable_id.to_s }
 
         before { dossier.champs_private.first.update(value: 'quinoa') }
 
@@ -174,9 +202,9 @@ describe DossierProjectionService do
         let(:table) { 'type_de_champ' }
         let(:procedure) { create(:procedure, :with_yes_no) }
         let(:dossier) { create(:dossier, procedure: procedure) }
-        let(:column) { dossier.procedure.types_de_champ.first.stable_id.to_s }
+        let(:column) { dossier.procedure.active_revision.types_de_champ_public.first.stable_id.to_s }
 
-        before { dossier.champs.first.update(value: 'true') }
+        before { dossier.champs_public.first.update(value: 'true') }
 
         it { is_expected.to eq('Oui') }
       end
@@ -185,18 +213,18 @@ describe DossierProjectionService do
         let(:table) { 'type_de_champ' }
         let(:procedure) { create(:procedure, :with_address) }
         let(:dossier) { create(:dossier, procedure: procedure) }
-        let(:column) { dossier.procedure.types_de_champ.first.stable_id.to_s }
+        let(:column) { dossier.procedure.active_revision.types_de_champ_public.first.stable_id.to_s }
 
-        before { dossier.champs.first.update(data: { 'label' => '18 a la bonne rue', 'departement' => 'd' }) }
+        before { dossier.champs_public.first.update(data: { 'label' => '18 a la bonne rue', 'departement' => 'd' }) }
 
         it { is_expected.to eq('18 a la bonne rue') }
       end
 
       context 'for type_de_champ table: type_de_champ pays which needs external_id field' do
         let(:table) { 'type_de_champ' }
-        let(:procedure) { create(:procedure, types_de_champ: [build(:type_de_champ_pays)]) }
+        let(:procedure) { create(:procedure, types_de_champ_public: [{ type: :pays }]) }
         let(:dossier) { create(:dossier, procedure: procedure) }
-        let(:column) { dossier.procedure.types_de_champ.first.stable_id.to_s }
+        let(:column) { dossier.procedure.active_revision.types_de_champ_public.first.stable_id.to_s }
         let!(:previous_locale) { I18n.locale }
 
         before { I18n.locale = :fr }
@@ -204,7 +232,7 @@ describe DossierProjectionService do
 
         context 'when external id is set' do
           before do
-            dossier.champs.first.update(external_id: 'GB')
+            dossier.champs_public.first.update(external_id: 'GB')
           end
 
           it { is_expected.to eq('Royaume-Uni') }
@@ -212,10 +240,10 @@ describe DossierProjectionService do
 
         context 'when no external id is set' do
           before do
-            dossier.champs.first.update(value: "qu'il est beau mon pays")
+            dossier.champs_public.first.update(value: "qu'il est beau mon pays")
           end
 
-          it { is_expected.to eq("qu'il est beau mon pays") }
+          it { is_expected.to eq("") }
         end
       end
     end

@@ -15,11 +15,13 @@ class AttestationTemplate < ApplicationRecord
   include ActionView::Helpers::NumberHelper
   include TagsSubstitutionConcern
 
-  has_many :revisions, class_name: 'ProcedureRevision', inverse_of: :attestation_template, dependent: :nullify
+  belongs_to :procedure, inverse_of: :attestation_template
 
   has_one_attached :logo
   has_one_attached :signature
 
+  validates :title, tags: true, if: -> { procedure.present? }
+  validates :body, tags: true, if: -> { procedure.present? }
   validates :footer, length: { maximum: 190 }
 
   FILE_MAX_SIZE = 1.megabytes
@@ -41,7 +43,7 @@ class AttestationTemplate < ApplicationRecord
   end
 
   def unspecified_champs_for_dossier(dossier)
-    all_champs_with_libelle_index = (dossier.champs + dossier.champs_private).index_by { |champ| "tdc#{champ.stable_id}" }
+    all_champs_with_libelle_index = (dossier.champs_public + dossier.champs_private).index_by { |champ| "tdc#{champ.stable_id}" }
 
     used_tags.filter_map do |used_tag|
       corresponding_champ = all_champs_with_libelle_index[used_tag]
@@ -54,27 +56,7 @@ class AttestationTemplate < ApplicationRecord
 
   def dup
     attestation_template = AttestationTemplate.new(title: title, body: body, footer: footer, activated: activated)
-
-    if logo.attached?
-      attestation_template.logo.attach(
-        io: StringIO.new(logo.download),
-        filename: logo.filename.to_s,
-        content_type: logo.content_type,
-        # we don't want to run virus scanner on duplicated file
-        metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE }
-      )
-    end
-
-    if signature.attached?
-      attestation_template.signature.attach(
-        io: StringIO.new(signature.download),
-        filename: signature.filename.to_s,
-        content_type: signature.content_type,
-        # we don't want to run virus scanner on duplicated file
-        metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE }
-      )
-    end
-
+    PiecesJustificativesService.clone_attachments(self, attestation_template)
     attestation_template
   end
 
@@ -103,27 +85,6 @@ class AttestationTemplate < ApplicationRecord
     }
   end
 
-  def find_or_revise!
-    if revisions.size > 1 && procedure.feature_enabled?(:procedure_revisions)
-      # If attestation template belongs to more then one revision
-      # and procedure has revisions enabled – revise attestation template.
-      attestation_template = dup
-      attestation_template.save!
-      procedure.draft_revision.update!(attestation_template: attestation_template)
-      attestation_template
-    else
-      # If procedure has only one revision or revisions are not supported
-      # apply updates directly to the attestation template.
-      # If it is a published procedure with revisions disabled,
-      # draft and published attestation template will be the same.
-      self
-    end
-  end
-
-  def procedure
-    revisions.last&.procedure
-  end
-
   def logo_checksum
     logo.attached? ? logo.checksum : nil
   end
@@ -143,14 +104,7 @@ class AttestationTemplate < ApplicationRecord
   private
 
   def used_tags
-    delimiters_regex = /--(?<capture>((?!--).)*)--/
-
-    # We can't use flat_map as scan will return 3 levels of array,
-    # using flat_map would give us 2, whereas flatten will
-    # give us 1, which is what we want
-    [normalize_tags(title), normalize_tags(body)]
-      .map { |str| str.scan(delimiters_regex) }
-      .flatten
+    used_tags_for(title) + used_tags_for(body)
   end
 
   def build_pdf(dossier)

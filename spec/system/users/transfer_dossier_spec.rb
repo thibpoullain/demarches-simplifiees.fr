@@ -13,11 +13,11 @@ describe 'Transfer dossier:' do
   scenario 'the user can transfer dossier to another user' do
     within(:css, "tr[data-dossier-id=\"#{dossier.id}\"]") do
       click_on 'Actions'
-      click_on 'Transferer le dossier'
+      click_on 'Transférer le dossier'
     end
 
     expect(page).to have_current_path(transferer_dossier_path(dossier))
-    expect(page).to have_content("Transferer le dossier en construction nº #{dossier.id}")
+    expect(page).to have_content("transférer le dossier en construction nº #{dossier.id}")
     fill_in 'Email du compte destinataire', with: other_user.email
     click_on 'Envoyer la demande de transfert'
 
@@ -25,7 +25,7 @@ describe 'Transfer dossier:' do
     login_as other_user, scope: :user
     visit dossiers_path
 
-    expect(page).to have_content("Demande de transfert Nº #{dossier.reload.transfer.id} envoyé par #{user.email}")
+    expect(page).to have_content("Demande de transfert pour le dossier Nº #{dossier.id} envoyé par #{user.email}")
     click_on 'Accepter'
     expect(page).to have_current_path(dossiers_path)
   end

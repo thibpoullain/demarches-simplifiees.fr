@@ -55,6 +55,9 @@ Rails.application.configure do
   # Tell Active Support which deprecation messages to disallow.
   config.active_support.disallowed_deprecation_warnings = []
 
+  # Highlight code that triggered database queries in logs.
+  config.active_record.verbose_query_logs = true
+
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 
@@ -88,13 +91,17 @@ Rails.application.configure do
   config.active_storage.service = :test
 
   config.ds_autosave = {
-    debounce_delay: 500,
+    debounce_delay: 0,
     status_visible_duration: 500
   }
+
+  config.ds_zonage_enabled = true
 
   # BCrypt is slow by design - but during tests we want to make it faster
   # to compute hashes of passwords.
   silence_warnings do
     BCrypt::Engine::DEFAULT_COST = BCrypt::Engine::MIN_COST
   end
+
+  config.middleware.use RackSessionAccess::Middleware
 end

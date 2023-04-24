@@ -17,7 +17,7 @@ export const FAILURE_CONNECTIVITY = 'file-upload-failure-connectivity';
 /**
   Represent an error during a file upload.
   */
-export default class FileUploadError extends Error {
+export class FileUploadError extends Error {
   status?: number;
   code?: string;
 
@@ -30,10 +30,8 @@ export default class FileUploadError extends Error {
 
     // Prevent the constructor stacktrace from being included.
     // (it messes up with Sentry issues grouping)
-    if ('captureStackTrace' in Error) {
-      // V8-only
-      //Error.captureStackTrace(this, this.constructor);
-    } else {
+    const hasCaptureStackTrace = 'captureStackTrace' in Error;
+    if (!hasCaptureStackTrace) {
       this.stack = new Error().stack;
     }
   }
@@ -63,7 +61,9 @@ export default class FileUploadError extends Error {
 // 2. Create each kind of error on a different line
 //   (so that Sentry knows they are different kind of errors, from
 //   the line they were created.)
-export function errorFromDirectUploadMessage(message: string) {
+export function errorFromDirectUploadMessage(messageOrError: string | Error) {
+  const message =
+    typeof messageOrError == 'string' ? messageOrError : messageOrError.message;
   const matches = message.match(/ Status: ([0-9]{1,3})/);
   const status = matches ? parseInt(matches[1], 10) : undefined;
 

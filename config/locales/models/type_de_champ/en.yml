@@ -1,0 +1,52 @@
+en:
+  activerecord:
+    models:
+      type_de_champ: 'Field type'
+    attributes:
+      type_de_champ:
+        categorie:
+          structure: 'Field structure'
+          etat_civil: 'Civil status'
+          localisation: 'Location'
+          paiement_identification: 'Payment and identification'
+          standard: 'Standard field'
+          pieces_jointes: 'Attachments'
+          choice: 'Choice'
+          referentiel_externe: 'External referential'
+        type_champs:
+          header_section: 'Header section'
+          repetition: 'Repetition'
+          dossier_link: 'File link'
+          explication: 'Explication'
+          civilite: 'Civility'
+          email: 'Email'
+          phone: 'Phone'
+          address: 'Adress'
+          communes: 'Municipality'
+          departements: 'County'
+          regions: 'Region'
+          pays: 'Country'
+          iban: 'Iban'
+          siret: 'Siret'
+          text: 'Text'
+          textarea: 'Text area'
+          number: 'Number'
+          decimal_number: 'Decimal number'
+          integer_number: 'Integer number'
+          date: 'Date'
+          datetime: 'Datetime'
+          piece_justificative: 'Supporting document'
+          titre_identite: 'Identity title'
+          checkbox: 'Checkbox'
+          drop_down_list: 'Dropdown list'
+          multiple_drop_down_list: 'Multiple dropdown list'
+          linked_drop_down_list: 'Linked dropdown list'
+          yes_no: 'Yes/No'
+          annuaire_education: 'Schooling directory'
+          rna: 'RNA'
+          carte: 'Card'
+          cnaf: 'Data from Caisse nationale des allocations familiales'
+          dgfip: 'Data from Direction générale des Finances publiques'
+          pole_emploi: 'Pôle emploi status'
+          mesri: "Data from Ministère de l’Enseignement Supérieur, de la Recherche et de l’Innovation"
+          epci: "EPCI"

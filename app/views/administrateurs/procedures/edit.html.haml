@@ -1,15 +1,16 @@
 - content_for(:root_class, 'scroll-margins-for-sticky-footer')
 
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to('Démarches', admin_procedures_path),
-                    link_to(@procedure.libelle, admin_procedure_path(@procedure)),
-                    'Description'] }
+  locals: { steps: [['Démarches', admin_procedures_back_path(@procedure)],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Description']] }
 .procedure-form
   .procedure-form__columns.container
+    = render  NestedForms::FormOwnerComponent.new
     = form_for @procedure,
       url: url_for({ controller: 'administrateurs/procedures', action: :update, id: @procedure.id }),
-      multipart: true,
-      html: { class: 'form procedure-form__column--form' } do |f|
+      html: { class: 'form procedure-form__column--form',
+              multipart: true } do |f|
 
       %h1.page-title Description
 
@@ -17,8 +18,8 @@
 
       .procedure-form__actions.sticky--bottom
         .actions-right
-          = link_to 'Annuler', admin_procedure_path(id: @procedure), class: 'button', data: { confirm: 'Êtes-vous sûr de vouloir annuler les modifications effectuées ?'}
-          = f.button 'Enregistrer', class: 'button primary send'
+          = link_to 'Annuler', admin_procedure_path(id: @procedure), class: 'fr-btn fr-btn--secondary fr-mr-2w', data: { confirm: 'Êtes-vous sûr de vouloir annuler les modifications effectuées ?'}
+          = f.button 'Enregistrer', class: 'fr-btn'
 
     .procedure-form__column--preview
       .procedure-form__preview.sticky--top

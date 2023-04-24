@@ -67,6 +67,22 @@ describe APIEntreprise::EntrepriseAdapter do
       it 'L\'entreprise contient bien un prenom' do
         expect(subject[:entreprise_prenom]).to eq('test_prenom')
       end
+
+      it 'L\'entreprise contient bien un etat administratif' do
+        expect(subject[:entreprise_etat_administratif]).to eq('actif')
+      end
+    end
+
+    context "when date_creation is empty" do
+      let(:body) do
+        hash = JSON.parse(super())
+        hash["entreprise"]["date_creation"] = nil
+        JSON.generate(hash)
+      end
+
+      it 'L\'entreprise ne contient pas de date_creation' do
+        expect(subject[:entreprise_date_creation]).to be_nil
+      end
     end
   end
 
@@ -85,6 +101,22 @@ describe APIEntreprise::EntrepriseAdapter do
 
     it 'raises an exception' do
       expect { subject }.to raise_error(APIEntreprise::API::Error::RequestFailed)
+    end
+  end
+
+  context "when individual" do
+    let(:siren) { '909700890' }
+    let(:body) { File.read('spec/fixtures/files/api_entreprise/entreprise_individual.json') }
+    let(:status) { 200 }
+
+    context 'Attributs Entreprises' do
+      it 'L\'entreprise contient bien un forme_juridique_code' do
+        expect(subject[:entreprise_forme_juridique_code]).to eq('1000')
+      end
+
+      it 'L\'entreprise contient bien une raison_sociale' do
+        expect(subject[:entreprise_raison_sociale]).to eq('Marine LE LOUARN SMAIL (LE LOUARN)')
+      end
     end
   end
 end

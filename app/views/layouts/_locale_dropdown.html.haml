@@ -1,11 +1,13 @@
-.dropdown.locale-dropdown.header-menu-opener
-  %button.button.dropdown-button.icon-only.header-menu-button{ title: t('.languages'), aria: { expanded: 'false', controls: 'locale_menu' } }
-    .hidden t('.languages')
-    = image_tag "icons/translate-icon.svg", alt: t('.languages'), width: 24, height: 24, lazy: true, aria: { hidden: true }
-  %ul.header-menu.dropdown-content
-    %li
-      = active_link_to save_locale_path(locale: :fr), method: :post, class: "menu-item menu-link", active: I18n.locale == :fr do
-        Français
-    %li
-      = active_link_to save_locale_path(locale: :en), method: :post, class: "menu-item menu-link", active: I18n.locale == :en do
-        English
+%nav.fr-translate.fr-nav{ :role => "navigation", title: t('.select_locale') }
+  .fr-nav__item
+    %button.fr-translate__btn.fr-btn{ "aria-controls" => "translate", "aria-expanded" => "false", :title => t('.select_locale') }
+      = I18n.locale.upcase
+      %span.fr-hidden-lg= " - #{t('.locale_name')}"
+    #translate.fr-collapse.fr-menu
+      %ul.fr-menu__list
+        %li
+          = active_locale_link(:fr) do
+            FR - Français
+        %li
+          = active_locale_link(:en) do
+            EN - English

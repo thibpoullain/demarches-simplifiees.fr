@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean          default(FALSE)
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,10 +17,11 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::MultipleDropDownListChamp < Champ
-  before_save :format_before_save
+  validate :values_are_in_options, if: -> { value.present? }
 
   def options?
     drop_down_list_options?
@@ -68,17 +69,59 @@ class Champs::MultipleDropDownListChamp < Champ
     selected_options.blank?
   end
 
+  def in?(options)
+    (selected_options - options).size != selected_options.size
+  end
+
+  def remove_option(options)
+    update_column(:value, (selected_options - options).to_json)
+  end
+
+  def focusable_input_id
+    render_as_checkboxes? ? checkbox_id(options.find(&:present?)) : input_id
+  end
+
+  def checkbox_id(value)
+    "#{input_id}-#{Digest::MD5.hexdigest(value)}"
+  end
+
+  def next_checkbox_id(value)
+    return nil if value.blank? || !selected_options.include?(value)
+    index = selected_options.index(value)
+    next_values = selected_options.reject { _1 == value }
+    next_value = next_values[index] || next_values.last
+    next_value ? checkbox_id(next_value) : nil
+  end
+
+  def unselected_options
+    enabled_non_empty_options - selected_options
+  end
+
+  def value=(value)
+    return super(nil) if value.nil?
+
+    values = if value.is_a?(Array)
+      value
+    elsif value.starts_with?('[')
+      JSON.parse(value)
+    else
+      selected_options + [value]
+    end.uniq.without('')
+
+    if values.empty?
+      super(nil)
+    else
+      super(values.to_json)
+    end
+  end
+
   private
 
-  def format_before_save
-    if value.present?
-      json = JSON.parse(value)
-      if json == ['']
-        self.value = nil
-      else
-        json = json - ['']
-        self.value = json.to_s
-      end
-    end
+  def values_are_in_options
+    json = selected_options.reject(&:blank?)
+    return if json.empty?
+    return if (json - enabled_non_empty_options).empty?
+
+    errors.add(:value, :not_in_options)
   end
 end

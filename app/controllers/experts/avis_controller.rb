@@ -4,24 +4,39 @@ module Experts
     include Zipline
 
     before_action :authenticate_expert!, except: [:sign_up, :update_expert]
-    before_action :check_if_avis_revoked, only: [:show]
+    before_action :check_if_avis_revoked, except: [:index, :procedure]
     before_action :redirect_if_no_sign_up_needed, only: [:sign_up, :update_expert]
-    before_action :set_avis_and_dossier, only: [:show, :instruction, :messagerie, :create_commentaire, :delete_commentaire, :update, :telecharger_pjs]
+    before_action :set_avis_and_dossier, only: [:show, :instruction, :avis_list, :avis_new, :messagerie, :create_commentaire, :delete_commentaire, :update, :telecharger_pjs]
+    before_action :check_messaging_allowed, only: [:messagerie, :create_commentaire]
 
     A_DONNER_STATUS = 'a-donner'
     DONNES_STATUS   = 'donnes'
 
     def index
-      avis = current_expert.avis.includes(dossier: [groupe_instructeur: :procedure]).not_hidden_by_administration
+      avis = current_expert.avis.not_revoked.not_termine.includes(dossier: [groupe_instructeur: :procedure]).not_hidden_by_administration
       @avis_by_procedure = avis.to_a.group_by(&:procedure)
     end
 
     def procedure
       @procedure = current_expert.procedures.find_by(id: params[:procedure_id])
-      redirect_to(expert_all_avis_path, flash: { alert: "Vous n’avez pas accès à cette démarche." }) and return unless @procedure
-      expert_avis = current_expert.avis.includes(:dossier).not_hidden_by_administration.where(dossiers: { groupe_instructeur: GroupeInstructeur.where(procedure: @procedure.id) })
 
-      @avis_a_donner = expert_avis.without_answer
+      if @procedure.nil?
+        redirect_to(expert_all_avis_path, flash: { alert: "Vous n’avez pas accès à cette démarche." }) and return
+      end
+
+      expert_avis = current_expert
+        .avis
+        .not_revoked
+        .includes(:dossier)
+        .not_hidden_by_administration
+        .where(dossiers: { groupe_instructeur: GroupeInstructeur.where(procedure: @procedure) })
+
+      if expert_avis.empty?
+        redirect_to(expert_all_avis_path, flash: { alert: "Vous n’avez pas accès à cette démarche." }) and return
+      end
+
+      @avis_a_donner = expert_avis.not_termine.without_answer
+
       @avis_donnes = expert_avis.with_answer
 
       @statut = params[:statut].presence || A_DONNER_STATUS
@@ -32,7 +47,7 @@ module Experts
       when DONNES_STATUS
         @avis_donnes
       end
-
+      @avis = @avis.by_latest
       @avis = @avis.page([params[:page].to_i, 1].max)
     end
 
@@ -43,27 +58,37 @@ module Experts
       @new_avis = Avis.new
     end
 
+    def avis_list
+    end
+
+    def avis_new
+      @new_avis = Avis.new
+    end
+
     def create_avis
       @procedure = Procedure.find(params[:procedure_id])
-      if !@procedure.feature_enabled?(:expert_not_allowed_to_invite)
-        @new_avis = create_avis_from_params(avis.dossier, current_expert, avis.confidentiel)
+      @new_avis = create_avis_from_params(avis.dossier, current_expert, avis.confidentiel)
 
-        if @new_avis.nil?
-          redirect_to instruction_expert_avis_path(avis.procedure, avis)
-        else
-          set_avis_and_dossier
-          render :instruction
-        end
-      else
-        flash.alert = "Cette démarche ne vous permet pas de demander un avis externe"
+      if @new_avis.nil?
         redirect_to instruction_expert_avis_path(avis.procedure, avis)
+      else
+        set_avis_and_dossier
+        render :instruction
       end
     end
 
     def update
+      updated_recently = @avis.updated_recently?
       if @avis.update(avis_params)
         flash.notice = 'Votre réponse est enregistrée.'
         @avis.dossier.update!(last_avis_updated_at: Time.zone.now)
+        if !updated_recently
+          @avis.dossier.followers_instructeurs
+            .with_instant_expert_avis_email_notifications_enabled
+            .each do |instructeur|
+            DossierMailer.notify_new_avis_to_instructeur(@avis, instructeur.email).deliver_later
+          end
+        end
         redirect_to instruction_expert_avis_path(@avis.procedure, @avis)
       else
         flash.now.alert = @avis.errors.full_messages
@@ -102,9 +127,9 @@ module Experts
     end
 
     def create_commentaire
-      @commentaire = CommentaireService.build(current_expert, avis.dossier, commentaire_params)
+      @commentaire = CommentaireService.create(current_expert, avis.dossier, commentaire_params)
 
-      if @commentaire.save
+      if @commentaire.errors.empty?
         @commentaire.dossier.update!(last_commentaire_updated_at: Time.zone.now)
         flash.notice = "Message envoyé"
         redirect_to messagerie_expert_avis_path(avis.procedure, avis)
@@ -114,38 +139,30 @@ module Experts
       end
     end
 
-    def delete_commentaire
-      commentaire = avis.dossier.commentaires.find(params[:commentaire])
-      if commentaire.sent_by?(current_expert)
-        commentaire.piece_jointe.purge_later if commentaire.piece_jointe.attached?
-        commentaire.discard!
-        commentaire.update!(body: '')
-        flash[:notice] = t('views.shared.commentaires.destroy.notice')
-      else
-        flash[:alert] = I18n.t('views.shared.commentaires.destroy.alert_reasons.acl')
-      end
-      redirect_to(messagerie_expert_avis_path(avis.procedure, avis))
-    rescue Discard::RecordNotDiscarded
-      flash[:alert] = I18n.t('views.shared.commentaires.destroy.alert_reasons.already_discarded')
-      redirect_to(messagerie_expert_avis_path(avis.procedure, avis))
-    end
-
     def bilans_bdf
       if avis.dossier.etablissement&.entreprise_bilans_bdf.present?
         extension = params[:format]
         render extension.to_sym => avis.dossier.etablissement.entreprise_bilans_bdf_to_sheet(extension)
       else
-        redirect_to instructeur_avis_path(avis)
+        redirect_to expert_avis_path(avis)
       end
     end
 
     def telecharger_pjs
-      files = ActiveStorage::DownloadableFile.create_list_from_dossiers(Dossier.where(id: @dossier.id), true)
+      files = ActiveStorage::DownloadableFile.create_list_from_dossiers(Dossier.where(id: @dossier.id), include_avis_for_expert: current_expert)
+      cleaned_files = ActiveStorage::DownloadableFile.cleanup_list_from_dossier(files)
 
-      zipline(files, "dossier-#{@dossier.id}.zip")
+      zipline(cleaned_files, "dossier-#{@dossier.id}.zip")
     end
 
     private
+
+    def check_messaging_allowed
+      if !@avis.procedure.allow_expert_messaging
+        flash[:alert] = "Vous n'êtes pas autorisé à acceder à la messagerie"
+        redirect_to expert_avis_url(avis.procedure, avis)
+      end
+    end
 
     def redirect_if_no_sign_up_needed
       avis = Avis.find(params[:id])
@@ -178,7 +195,7 @@ module Experts
     end
 
     def avis_params
-      params.require(:avis).permit(:answer, :piece_justificative_file)
+      params.require(:avis).permit(:answer, :piece_justificative_file, :question_answer)
     end
 
     def commentaire_params

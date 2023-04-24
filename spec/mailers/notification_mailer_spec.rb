@@ -3,6 +3,23 @@ RSpec.describe NotificationMailer, type: :mailer do
   let(:user) { create(:user) }
   let(:procedure) { create(:simple_procedure) }
 
+  describe 'send_en_construction_notification' do
+    let(:dossier) { create(:dossier, :en_construction, :with_individual, :with_service, user: user, procedure: procedure) }
+    let(:email_template) { create(:initiated_mail, subject: 'Email subject', body: 'Your dossier was received. Thanks.') }
+
+    before do
+      dossier.procedure.initiated_mail = email_template
+    end
+
+    subject(:mail) { described_class.send_en_construction_notification(dossier) }
+
+    it 'renders the template' do
+      expect(mail.subject).to eq('Email subject')
+      expect((mail.html_part || mail).body).to include('Your dossier was received')
+      expect(mail.attachments.first.filename).to eq("attestation-de-depot.pdf")
+    end
+  end
+
   describe 'send_en_instruction_notification' do
     let(:dossier) { create(:dossier, :en_construction, :with_individual, :with_service, user: user, procedure: procedure) }
     let(:email_template) { create(:received_mail, subject: 'Email subject', body: 'Your dossier was processed. Thanks.') }
@@ -74,7 +91,7 @@ RSpec.describe NotificationMailer, type: :mailer do
 
     context 'when dossier user is deleted' do
       before do
-        dossier.user.delete_and_keep_track_dossiers(administrateur)
+        dossier.user.delete_and_keep_track_dossiers_also_delete_user(administrateur)
         dossier.reload
       end
 
@@ -82,6 +99,46 @@ RSpec.describe NotificationMailer, type: :mailer do
         expect { subject.deliver_now }.not_to change { Commentaire.count }
         expect(subject.perform_deliveries).to be_falsey
       end
+    end
+  end
+
+  describe 'subject length' do
+    let(:procedure) { create(:simple_procedure, libelle: "My super long title " + ("xo " * 100)) }
+    let(:dossier) { create(:dossier, :en_instruction, :with_individual, :with_service, user: user, procedure: procedure) }
+    let(:email_template) { create(:closed_mail, subject:, body: 'Your dossier was accepted. Thanks.') }
+
+    before do
+      dossier.procedure.closed_mail = email_template
+    end
+
+    subject(:mail) { described_class.send_accepte_notification(dossier) }
+
+    context "subject is too long" do
+      let(:subject) { 'Un long libellé --libellé démarche--' }
+      it { expect(mail.subject.length).to be <= 100 }
+    end
+
+    context "subject should fallback to default" do
+      let(:subject) { "" }
+      it { expect(mail.subject).to match(/^Votre dossier .+ a été accepté \(My super long title/) }
+      it { expect(mail.subject.length).to be <= 100 }
+    end
+  end
+
+  describe 'subject with apostrophe' do
+    let(:procedure) { create(:simple_procedure, libelle: "Mon titre avec l'apostrophe") }
+    let(:dossier) { create(:dossier, :en_instruction, :with_individual, :with_service, user: user, procedure: procedure) }
+    let(:email_template) { create(:closed_mail, subject:, body: 'Your dossier was accepted. Thanks.') }
+
+    before do
+      dossier.procedure.closed_mail = email_template
+    end
+
+    subject(:mail) { described_class.send_accepte_notification(dossier) }
+
+    context "subject has a special character" do
+      let(:subject) { '--libellé démarche--' }
+      it { expect(mail.subject).to eq("Mon titre avec l'apostrophe") }
     end
   end
 end

@@ -6,7 +6,9 @@ describe ChampSerializer do
     context 'when type champ is piece justificative' do
       let(:champ) { create(:champ_piece_justificative) }
 
-      it { expect(subject[:value]).to match('/rails/active_storage/disk/') }
+      it {
+        expect(subject[:value]).to a_string_matching('/rails/active_storage/disk/')
+      }
     end
 
     context 'when type champ is not piece justificative' do
@@ -65,7 +67,6 @@ describe ChampSerializer do
           }
           let(:serialized_id) { champ.type_de_champ.stable_id }
           let(:serialized_description) { champ.description }
-          let(:serialized_order_place) { champ.order_place }
           let(:serialized_libelle) { champ.libelle }
           let(:serialized_type_champ) { champ.type_champ }
           let(:serialized_value) { nil }
@@ -133,40 +134,20 @@ describe ChampSerializer do
     end
 
     context 'when type champ checkbox' do
-      context 'on' do
-        let(:champ) { create(:champ_checkbox, value: 'on') }
+      context 'true' do
+        let(:champ) { create(:champ_checkbox, value: 'true') }
 
-        it { is_expected.to include(value: 'on') }
+        it { is_expected.to include(value: 'true') }
       end
 
-      context 'off' do
-        let(:champ) { create(:champ_checkbox, value: 'off') }
+      context 'false' do
+        let(:champ) { create(:champ_checkbox, value: 'false') }
 
-        it { is_expected.to include(value: 'off') }
+        it { is_expected.to include(value: 'false') }
       end
 
       context 'nil' do
         let(:champ) { create(:champ_checkbox, value: nil) }
-
-        it { is_expected.to include(value: nil) }
-      end
-    end
-
-    context 'when type champ engagement' do
-      context 'on' do
-        let(:champ) { create(:champ_engagement, value: 'on') }
-
-        it { is_expected.to include(value: 'on') }
-      end
-
-      context 'off' do
-        let(:champ) { create(:champ_engagement, value: 'off') }
-
-        it { is_expected.to include(value: 'off') }
-      end
-
-      context 'nil' do
-        let(:champ) { create(:champ_engagement, value: nil) }
 
         it { is_expected.to include(value: nil) }
       end

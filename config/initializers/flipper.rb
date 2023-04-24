@@ -1,16 +1,3 @@
-Flipper.configure do |config|
-  config.default do
-    Flipper.new(Flipper::Adapters::ActiveRecord.new)
-  end
-end
-
-Flipper.register('Administrateurs') do |user|
-  user.administrateur_id.present?
-end
-Flipper.register('Instructeurs') do |user|
-  user.instructeur_id.present?
-end
-
 # This setup is primarily for first deployment, because consequently
 # we can add new features from the Web UI. However when the new DB is created
 # this will immediately migrate the default features to be controlled.
@@ -28,11 +15,9 @@ features = [
   :administrateur_web_hook,
   :api_particulier,
   :dossier_pdf_vide,
-  :expert_not_allowed_to_invite,
   :hide_instructeur_email,
-  :procedure_revisions,
   :procedure_routage_api,
-  :procedure_process_expired_dossiers_termine
+  :routing_rules
 ]
 
 def database_exists?

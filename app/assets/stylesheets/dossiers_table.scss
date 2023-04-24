@@ -5,16 +5,11 @@
   font-size: 14px;
 
   th {
-    vertical-align: top;
     padding: (2 * $default-spacer) $default-spacer;
   }
 
-  td {
-    padding: 0;
-  }
-
-  thead a {
-    color: #000000;
+  a {
+    background-image: none; // remove DSFR underline
   }
 
   .caret-icon {
@@ -24,7 +19,6 @@
   }
 
   .cell-link {
-    color: $black;
     // In order to have identical height in the table header and the table rows,
     // we compensate for the height difference between the biggest element of the header
     // (the Personnaliser button, 38px) and the biggest cell-link element of the rows (the label, 28px)
@@ -52,21 +46,15 @@
   }
 
   .number-col {
-    width: 110px;
+    white-space: nowrap;
   }
 
-  .folder-col {
+  .text-center {
     text-align: center;
   }
 
   .status-col {
-    width: 110px;
-
-    .label {
-      width: 110px;
-      text-align: center;
-      margin: 0 4px;
-    }
+    width: 175px;
   }
 
   .updated-at-col {
@@ -80,7 +68,15 @@
   }
 
   .follow-col {
-    width: 200px;
+    width: 450px;
+
+    .fr-btn {
+      margin-bottom: 0;
+    }
+  }
+
+  .no-border {
+    background-image: none;
   }
 }
 
@@ -90,4 +86,8 @@
   &:hover {
     background-color: rgba(242, 137, 0, 0.6) !important;
   }
+}
+
+table.display-table {
+  display: table;
 }

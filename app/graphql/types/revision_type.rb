@@ -8,11 +8,15 @@ module Types
     field :annotation_descriptors, [Types::ChampDescriptorType], null: false
 
     def champ_descriptors
-      Loaders::Association.for(object.class, :types_de_champ).load(object)
+      Loaders::Association.for(object.class, revision_types_de_champ_public: :type_de_champ).load(object)
     end
 
     def annotation_descriptors
-      Loaders::Association.for(object.class, :types_de_champ_private).load(object)
+      if context.authorized_demarche?(object.procedure, opendata: true)
+        Loaders::Association.for(object.class, revision_types_de_champ_private: :type_de_champ).load(object)
+      else
+        []
+      end
     end
   end
 end

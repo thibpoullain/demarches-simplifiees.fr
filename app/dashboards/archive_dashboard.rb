@@ -11,8 +11,8 @@ class ArchiveDashboard < Administrate::BaseDashboard
     id: Field::Number,
     created_at: Field::DateTime,
     updated_at: Field::DateTime,
-    status: Field::String,
-    file: Field::HasOne
+    job_status: Field::String,
+    file: AttachmentField
   }.freeze
 
   # COLLECTION_ATTRIBUTES
@@ -24,7 +24,8 @@ class ArchiveDashboard < Administrate::BaseDashboard
     :id,
     :created_at,
     :updated_at,
-    :status
+    :job_status,
+    :file
   ].freeze
 
   # SHOW_PAGE_ATTRIBUTES
@@ -33,14 +34,6 @@ class ArchiveDashboard < Administrate::BaseDashboard
     :id,
     :created_at,
     :updated_at,
-    :status,
-    :file
+    :job_status
   ].freeze
-
-  # Overwrite this method to customize how users are displayed
-  # across all pages of the admin dashboard.
-  #
-  def display_resource(archive)
-    "Archive : #{archive&.file.&byte_size}"
-  end
 end

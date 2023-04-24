@@ -15,7 +15,18 @@ export function useDeferredSubmit(input?: HTMLInputElement): {
       const interceptFormSubmit = (event: Event) => {
         event.preventDefault();
         runCallback();
-        form.submit();
+
+        if (
+          !Array.from(form.elements).some(
+            (e) =>
+              e.hasAttribute('data-direct-upload-url') &&
+              'value' in e &&
+              e.value != ''
+          )
+        ) {
+          form.submit();
+        }
+        // else: form will be submitted by diret upload once file have been uploaded
       };
       calledRef.current = false;
       form.addEventListener('submit', interceptFormSubmit);
@@ -60,7 +71,7 @@ export function useHiddenField(
       if (hiddenField) {
         hiddenField.setAttribute('value', value);
         setValue(value);
-        fire(hiddenField, 'autosave:trigger');
+        fire(hiddenField, 'change');
       }
     },
     hiddenField ?? undefined

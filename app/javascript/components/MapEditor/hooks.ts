@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { getJSON, ajax, fire } from '@utils';
+import { httpRequest, fire } from '@utils';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
 
 export const SOURCE_SELECTION_UTILISATEUR = 'selection_utilisateur';
@@ -23,7 +23,7 @@ export type DeleteFeatures = (params: {
 
 export function useFeatureCollection(
   initialFeatureCollection: FeatureCollection,
-  { url, enabled = true }: { url: string; enabled: boolean }
+  { url }: { url: string }
 ) {
   const [error, onError] = useError();
   const [featureCollection, setFeatureCollection] = useState(
@@ -37,8 +37,8 @@ export function useFeatureCollection(
         type: 'FeatureCollection',
         features: callback(features)
       }));
-      ajax({ url, type: 'GET' })
-        .then(() => fire(document, 'ds:page:update'))
+      httpRequest(url)
+        .turbo()
         .catch(() => null);
     },
     [url, setFeatureCollection]
@@ -98,13 +98,13 @@ export function useFeatureCollection(
       source = SOURCE_SELECTION_UTILISATEUR,
       external = false
     }) => {
-      if (!enabled) {
-        return;
-      }
       try {
         const newFeatures: Feature[] = [];
         for (const feature of features) {
-          const data = await getJSON(url, { feature, source }, 'post');
+          const data = await httpRequest(url, {
+            method: 'post',
+            json: { feature, source }
+          }).json<{ feature: Feature & { lid?: string | number } }>();
           if (data) {
             if (source == SOURCE_SELECTION_UTILISATEUR) {
               data.feature.lid = feature.id;
@@ -119,7 +119,7 @@ export function useFeatureCollection(
         onError('Le polygone dessiné n’est pas valide.');
       }
     },
-    [enabled, url, updateFeatureCollection, addFeatures, onError]
+    [url, updateFeatureCollection, addFeatures, onError]
   );
 
   const updateFeatures = useCallback<UpdateFatures>(
@@ -128,17 +128,20 @@ export function useFeatureCollection(
       source = SOURCE_SELECTION_UTILISATEUR,
       external = false
     }) => {
-      if (!enabled) {
-        return;
-      }
       try {
         const newFeatures: Feature[] = [];
         for (const feature of features) {
           const id = feature.properties?.id;
           if (id) {
-            await getJSON(`${url}/${id}`, { feature }, 'patch');
+            await httpRequest(`${url}/${id}`, {
+              method: 'patch',
+              json: { feature }
+            }).json();
           } else {
-            const data = await getJSON(url, { feature, source }, 'post');
+            const data = await httpRequest(url, {
+              method: 'post',
+              json: { feature, source }
+            }).json<{ feature: Feature & { lid?: string | number } }>();
             if (data) {
               if (source == SOURCE_SELECTION_UTILISATEUR) {
                 data.feature.lid = feature.id;
@@ -156,19 +159,16 @@ export function useFeatureCollection(
         onError('Le polygone dessiné n’est pas valide.');
       }
     },
-    [enabled, url, updateFeatureCollection, addFeatures, onError]
+    [url, updateFeatureCollection, addFeatures, onError]
   );
 
   const deleteFeatures = useCallback<DeleteFeatures>(
     async ({ features, external = false }) => {
-      if (!enabled) {
-        return;
-      }
       try {
         const deletedFeatures = [];
         for (const feature of features) {
           const id = feature.properties?.id;
-          await getJSON(`${url}/${id}`, null, 'delete');
+          await httpRequest(`${url}/${id}`, { method: 'delete' }).json();
           deletedFeatures.push(feature);
         }
         removeFeatures(deletedFeatures, external);
@@ -185,7 +185,7 @@ export function useFeatureCollection(
         onError('Le polygone n’a pas pu être supprimé.');
       }
     },
-    [enabled, url, updateFeatureCollection, removeFeatures, onError]
+    [url, updateFeatureCollection, removeFeatures, onError]
   );
 
   return {

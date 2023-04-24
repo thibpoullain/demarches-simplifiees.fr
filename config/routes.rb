@@ -3,7 +3,7 @@ Rails.application.routes.draw do
 
   get '/saml/auth' => 'saml_idp#new'
   post '/saml/auth' => 'saml_idp#create'
-  get '/saml/metadata' => 'saml_idp#metadata'
+  get '/saml/metadata' => 'saml_idp#show'
 
   #
   # Manager
@@ -15,9 +15,14 @@ Rails.application.routes.draw do
       post 'draft', on: :member
       post 'discard', on: :member
       post 'restore', on: :member
-      post 'add_administrateur', on: :member
+      put 'delete_administrateur', on: :member
+      post 'add_administrateur_and_instructeur', on: :member
+      post 'add_administrateur_with_confirmation', on: :member
       post 'change_piece_justificative_template', on: :member
+      patch 'add_tags', on: :member
       get 'export_mail_brouillons', on: :member
+      resources :confirmation_urls, only: :new
+      resources :administrateur_confirmations, only: [:new, :create]
     end
 
     resources :archives, only: [:index, :show]
@@ -36,6 +41,7 @@ Rails.application.routes.draw do
     resources :users, only: [:index, :show, :edit, :update] do
       delete 'delete', on: :member
       post 'resend_confirmation_instructions', on: :member
+      post 'resend_reset_password_instructions', on: :member
       put 'enable_feature', on: :member
       get 'emails', on: :member
       put 'unblock_email'
@@ -52,11 +58,25 @@ Rails.application.routes.draw do
 
     resources :bill_signatures, only: [:index]
 
+    resources :exports, only: [:index, :show]
+
     resources :services, only: [:index, :show]
 
     resources :super_admins, only: [:index, :show, :destroy]
 
     resources :zones, only: [:index, :show]
+
+    resources :team_accounts, only: [:index, :show]
+
+    resources :email_events, only: [:index, :show] do
+      post :generate_dolist_report, on: :collection
+    end
+
+    resources :dubious_procedures, only: [:index]
+    resources :outdated_procedures, only: [:index] do
+      patch :bulk_update, on: :collection
+    end
+    resources :safe_mailers, only: [:index, :edit, :update, :destroy, :new, :create, :show]
 
     post 'demandes/create_administrateur'
     post 'demandes/refuse_administrateur'
@@ -66,6 +86,8 @@ Rails.application.routes.draw do
       match "/delayed_job" => DelayedJobWeb, :anchor => false, :via => [:get, :post]
     end
 
+    get 'import_procedure_tags' => 'procedures#import_data'
+    post 'import_tags' => 'procedures#import_tags'
     root to: "administrateurs#index"
   end
 
@@ -117,6 +139,8 @@ Rails.application.routes.draw do
 
   get 'password_complexity' => 'password_complexity#show', as: 'show_password_complexity'
 
+  resources :targeted_user_links, only: [:show]
+
   #
   # Main routes
   #
@@ -147,22 +171,25 @@ Rails.application.routes.draw do
   end
 
   namespace :champs do
-    get ':position/siret', to: 'siret#show', as: :siret
-    get ':position/dossier_link', to: 'dossier_link#show', as: :dossier_link
-    post ':position/carte', to: 'carte#show', as: :carte
+    get ':champ_id/siret', to: 'siret#show', as: :siret
+    get ':champ_id/rna', to: 'rna#show', as: :rna
+    post ':champ_id/repetition', to: 'repetition#add', as: :repetition
+    delete ':champ_id/repetition', to: 'repetition#remove'
+    delete ':champ_id/options', to: 'options#remove', as: :options
 
     get ':champ_id/carte/features', to: 'carte#index', as: :carte_features
     post ':champ_id/carte/features', to: 'carte#create'
-    post ':champ_id/carte/features/import', to: 'carte#import'
     patch ':champ_id/carte/features/:id', to: 'carte#update'
     delete ':champ_id/carte/features/:id', to: 'carte#destroy'
 
-    post ':position/repetition', to: 'repetition#show', as: :repetition
-    put 'piece_justificative/:champ_id', to: 'piece_justificative#update', as: :piece_justificative
+    get ':champ_id/piece_justificative', to: 'piece_justificative#show', as: :piece_justificative
+    put ':champ_id/piece_justificative', to: 'piece_justificative#update', as: :attach_piece_justificative
+    get ':champ_id/piece_justificative/template', to: 'piece_justificative#template', as: :piece_justificative_template
   end
 
   resources :attachments, only: [:show, :destroy]
   resources :recherche, only: [:index]
+  resources :api_tokens, only: [:create, :update, :destroy]
 
   get "patron" => "root#patron" if Rails.env.development? || Rails.env.test?
   get "suivi" => "root#suivi"
@@ -174,8 +201,22 @@ Rails.application.routes.draw do
 
   get "contact-admin", to: "support#index"
 
+  get "mentions-legales", to: "static_pages#legal_notice"
+  get "declaration-accessibilite", to: "static_pages#accessibility_statement"
+
+  post "webhooks/sendinblue", to: "webhook#sendinblue"
   post "webhooks/helpscout", to: "webhook#helpscout"
+  post "webhooks/helpscout_support_dev", to: "webhook#helpscout_support_dev"
   match "webhooks/helpscout", to: lambda { |_| [204, {}, nil] }, via: :head
+
+  get '/preremplir/:path', to: 'prefill_descriptions#edit', as: :preremplir
+  get '/preremplir/:path/schema', to: 'api/public/v1/json_description_procedures#show', as: :prefill_json_description, defaults: { format: :json }
+  resources :procedures, only: [], param: :path do
+    member do
+      resource :prefill_description, only: :update
+      resources :prefill_type_de_champs, only: :show
+    end
+  end
 
   #
   # Deprecated UI
@@ -222,9 +263,8 @@ Rails.application.routes.draw do
   # API
   #
 
-  authenticated :user, lambda { |user| user.administrateur? } do
-    mount GraphqlPlayground::Rails::Engine, at: "/graphql", graphql_path: "/api/v2/graphql"
-  end
+  get 'graphql/schema' => redirect('/graphql/schema/index.html')
+  get 'graphql', to: "graphql#playground"
 
   namespace :api do
     namespace :v1 do
@@ -241,6 +281,17 @@ Rails.application.routes.draw do
     end
 
     resources :pays, only: :index
+
+    namespace :public do
+      namespace :v1 do
+        resources :demarches, only: [] do
+          member do
+            resources :dossiers, only: [:create, :index]
+            resources :stats, only: :index
+          end
+        end
+      end
+    end
   end
 
   #
@@ -253,7 +304,7 @@ Rails.application.routes.draw do
     end
 
     namespace :commencer do
-      get '/test/:path/dossier_vide', action: 'dossier_vide_pdf_test', as: :dossier_vide_test
+      get '/test/:path/dossier_vide', action: :dossier_vide_pdf_test, as: :dossier_vide_test
       get '/test/:path', action: 'commencer_test', as: :test
       get '/:path', action: 'commencer'
       get '/:path/dossier_vide', action: 'dossier_vide_pdf', as: :dossier_vide
@@ -262,25 +313,27 @@ Rails.application.routes.draw do
       get '/:path/france_connect', action: 'france_connect', as: :france_connect
     end
 
-    resources :dossiers, only: [:index, :show, :new] do
+    resources :dossiers, only: [:index, :show, :destroy, :new] do
       member do
         get 'identite'
         patch 'update_identite'
+        post 'clone'
         get 'siret'
         post 'siret', to: 'dossiers#update_siret'
         get 'etablissement'
         get 'brouillon'
         patch 'brouillon', to: 'dossiers#update_brouillon'
+        post 'brouillon', to: 'dossiers#submit_brouillon'
         get 'modifier', to: 'dossiers#modifier'
         patch 'modifier', to: 'dossiers#update'
         get 'merci'
         get 'demande'
         get 'messagerie'
         post 'commentaire' => 'dossiers#create_commentaire'
-        patch 'delete_dossier'
         patch 'restore', to: 'dossiers#restore'
         get 'attestation'
         get 'transferer', to: 'dossiers#transferer'
+        get 'papertrail', format: :pdf
       end
 
       collection do
@@ -294,13 +347,11 @@ Rails.application.routes.draw do
     get 'demarches' => 'demarches#index'
 
     get 'profil' => 'profil#show'
-    post 'renew-api-token' => 'profil#renew_api_token'
-    # allow refresh 'renew api token' page
-    get 'renew-api-token' => redirect('/profil')
     patch 'update_email' => 'profil#update_email'
     post 'transfer_all_dossiers' => 'profil#transfer_all_dossiers'
     post 'accept_merge' => 'profil#accept_merge'
     post 'refuse_merge' => 'profil#refuse_merge'
+    delete 'france_connect_information' => 'profil#destroy_fci'
   end
 
   #
@@ -315,9 +366,10 @@ Rails.application.routes.draw do
           get '', action: 'procedure', on: :collection, as: :procedure
           member do
             get 'instruction'
+            get 'avis_list'
+            get 'avis_new'
             get 'messagerie'
             post 'commentaire' => 'avis#create_commentaire'
-            delete 'delete_commentaire' => 'avis#delete_commentaire'
             post 'avis' => 'avis#create_avis'
             get 'bilans_bdf'
             get 'telecharger_pjs' => 'avis#telecharger_pjs'
@@ -342,6 +394,8 @@ Rails.application.routes.draw do
   scope module: 'instructeurs', as: 'instructeur' do
     resources :procedures, only: [:index, :show], param: :procedure_id do
       member do
+        resources :archives, only: [:index, :create]
+
         resources :groupes, only: [:index, :show], controller: 'groupe_instructeurs' do
           member do
             post 'add_instructeur'
@@ -349,21 +403,23 @@ Rails.application.routes.draw do
           end
         end
 
-        resources :avis, only: [:show, :update] do
-          get '', action: 'procedure', on: :collection, as: :procedure
+        resources :avis, only: [] do
           member do
             patch 'revoquer'
-            get 'revive'
+            get 'remind'
           end
         end
 
         patch 'update_displayed_fields'
         get 'update_sort/:table/:column' => 'procedures#update_sort', as: 'update_sort'
         post 'add_filter'
-        get 'remove_filter' => 'procedures#remove_filter', as: 'remove_filter'
+        post 'update_filter'
+        get 'remove_filter'
         get 'download_export'
+        post 'download_export'
         get 'stats'
         get 'email_notifications'
+        get 'administrateurs'
         patch 'update_email_notifications'
         get 'deleted_dossiers'
         get 'email_usagers'
@@ -380,6 +436,7 @@ Rails.application.routes.draw do
             get 'messagerie'
             get 'annotations-privees' => 'dossiers#annotations_privees'
             get 'avis'
+            get 'avis_new'
             get 'personnes-impliquees' => 'dossiers#personnes_impliquees'
             patch 'follow'
             patch 'unfollow'
@@ -399,7 +456,7 @@ Rails.application.routes.draw do
           end
         end
 
-        resources :archives, only: [:index, :create, :show], controller: 'archives'
+        resources :batch_operations, only: [:create]
       end
     end
   end
@@ -410,13 +467,26 @@ Rails.application.routes.draw do
 
   scope module: 'administrateurs', path: 'admin', as: 'admin' do
     resources :procedures do
+      resources :archives, only: [:index, :create]
+      resources :exports, only: [] do
+        collection do
+          get 'download'
+          post 'download'
+        end
+      end
+
       collection do
         get 'new_from_existing'
+        post 'search'
+        get 'all' if Rails.application.config.ds_zonage_enabled
+        get 'administrateurs' if Rails.application.config.ds_zonage_enabled
       end
 
       member do
+        post 'detail'
         get 'apercu'
         get 'champs'
+        get 'zones'
         get 'annotations'
         get 'modifications'
         get 'monavis'
@@ -424,7 +494,9 @@ Rails.application.routes.draw do
         get 'jeton'
         patch 'update_jeton'
         put :allow_expert_review
+        put :allow_expert_messaging
         put :experts_require_administrateur_invitation
+        put :restore
       end
 
       get :api_particulier, controller: 'jeton_particulier'
@@ -434,13 +506,23 @@ Rails.application.routes.draw do
         resource 'sources', only: [:show, :update], controller: 'sources_particulier'
       end
 
+      resources :conditions, only: [:update, :destroy], param: :stable_id do
+        patch :add_row, on: :member
+        patch :change_targeted_champ, on: :member
+        delete :delete_row, on: :member
+      end
+
+      patch :update, controller: 'routing', as: :routing_rules
+
       put 'clone'
       put 'archive'
       get 'publication' => 'procedures#publication', as: :publication
       put 'publish' => 'procedures#publish', as: :publish
+      put 'reset_draft' => 'procedures#reset_draft', as: :reset_draft
       get 'transfert' => 'procedures#transfert', as: :transfert
+      get 'close' => 'procedures#close', as: :close
       post 'transfer' => 'procedures#transfer', as: :transfer
-      resources :mail_templates, only: [:edit, :update]
+      resources :mail_templates, only: [:edit, :update, :show]
 
       resources :groupe_instructeurs, only: [:index, :show, :create, :update, :destroy] do
         member do
@@ -452,7 +534,6 @@ Rails.application.routes.draw do
 
         collection do
           patch 'update_routing_criteria_name'
-          patch 'update_routing_enabled'
           patch 'update_instructeurs_self_management_enabled'
           post 'import'
           get 'export_groupe_instructeurs'
@@ -463,9 +544,12 @@ Rails.application.routes.draw do
 
       resources :experts, controller: 'experts_procedures', only: [:index, :create, :update, :destroy]
 
-      resources :types_de_champ, only: [:create, :update, :destroy] do
+      resources :types_de_champ, only: [:create, :update, :destroy], param: :stable_id do
         member do
           patch :move
+          patch :move_up
+          patch :move_down
+          put :piece_justificative_template
         end
       end
 
@@ -473,7 +557,7 @@ Rails.application.routes.draw do
         get 'preview', on: :member
       end
 
-      resource :attestation_template, only: [:edit, :update, :create] do
+      resource :attestation_template, only: [:show, :edit, :update, :create] do
         get 'preview', on: :member
       end
       resource :dossier_submitted_message, only: [:edit, :update, :create]

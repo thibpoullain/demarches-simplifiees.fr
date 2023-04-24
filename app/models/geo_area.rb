@@ -12,6 +12,7 @@
 #  geo_reference_id :string
 #
 class GeoArea < ApplicationRecord
+  include ActionView::Helpers::NumberHelper
   belongs_to :champ, optional: false
 
   # FIXME: once geo_areas are migrated to not use YAML serialization we can enable store_accessor
@@ -51,11 +52,12 @@ class GeoArea < ApplicationRecord
   scope :cadastres, -> { where(source: sources.fetch(:cadastre)) }
 
   validates :geometry, geo_json: true, allow_blank: false
+  before_validation :normalize_geometry
 
   def to_feature
     {
       type: 'Feature',
-      geometry: safe_geometry,
+      geometry: geometry.deep_symbolize_keys,
       properties: cadastre_properties.merge(
         source: source,
         area: area,
@@ -63,20 +65,36 @@ class GeoArea < ApplicationRecord
         description: description,
         filename: filename,
         id: id,
+        champ_label: champ.libelle,
         champ_id: champ.stable_id,
+        champ_row: champ.row_id,
+        champ_private: champ.private?,
         dossier_id: champ.dossier_id
       ).compact
     }
   end
 
-  def safe_geometry
-    RGeo::GeoJSON.encode(rgeo_geometry)
-  end
-
-  def rgeo_geometry
-    RGeo::GeoJSON.decode(geometry.to_json, geo_factory: RGeo::Geographic.simple_mercator_factory)
-  rescue RGeo::Error::InvalidGeometry
-    nil
+  def label
+    case source
+    when GeoArea.sources.fetch(:cadastre)
+      I18n.t("cadastre", scope: 'geo_area.label', numero: numero, prefixe: prefixe, section: section, surface: surface.round, commune: commune)
+    when GeoArea.sources.fetch(:selection_utilisateur)
+      if polygon?
+        if area > 0
+          I18n.t("area", scope: 'geo_area.label', area: number_with_delimiter(area))
+        else
+          I18n.t("area_unknown", scope: 'geo_area.label')
+        end
+      elsif line?
+        if length > 0
+          I18n.t("line", scope: 'geo_area.label', length: number_with_delimiter(length))
+        else
+          I18n.t("line_unknown", scope: 'geo_area.label')
+        end
+      elsif point?
+        I18n.t("point", scope: 'geo_area.label', location: location)
+      end
+    end
   end
 
   def area
@@ -93,7 +111,7 @@ class GeoArea < ApplicationRecord
 
   def location
     if point?
-      Geo::Coord.new(*rgeo_geometry.coordinates.reverse).to_s
+      Geo::Coord.new(*geometry['coordinates'].reverse).to_s
     end
   end
 
@@ -181,11 +199,12 @@ class GeoArea < ApplicationRecord
   end
 
   def surface
-    if legacy_cadastre?
+    api_surface = if legacy_cadastre?
       properties['surface_parcelle']
     else
       properties['contenance']
     end
+    api_surface ? api_surface : area
   end
 
   def prefixe
@@ -210,5 +229,22 @@ class GeoArea < ApplicationRecord
     else
       properties['id']
     end
+  end
+
+  private
+
+  def normalize_geometry
+    if geometry.present?
+      normalized_geometry = rgeo_geometry
+      if normalized_geometry.present?
+        self.geometry = RGeo::GeoJSON.encode(normalized_geometry)
+      end
+    end
+  end
+
+  def rgeo_geometry
+    RGeo::GeoJSON.decode(geometry.to_json, geo_factory: RGeo::Geographic.simple_mercator_factory)
+  rescue RGeo::Error::InvalidGeometry
+    nil
   end
 end

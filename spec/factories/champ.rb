@@ -58,12 +58,12 @@ FactoryBot.define do
 
     factory :champ_checkbox, class: 'Champs::CheckboxChamp' do
       type_de_champ { association :type_de_champ_checkbox, procedure: dossier.procedure }
-      value { 'on' }
+      value { 'true' }
     end
 
     factory :champ_civilite, class: 'Champs::CiviliteChamp' do
       type_de_champ { association :type_de_champ_civilite, procedure: dossier.procedure }
-      value { 'Monsieur' }
+      value { 'M.' }
     end
 
     factory :champ_email, class: 'Champs::EmailChamp' do
@@ -92,13 +92,17 @@ FactoryBot.define do
     end
 
     factory :champ_drop_down_list, class: 'Champs::DropDownListChamp' do
-      type_de_champ { association :type_de_champ_drop_down_list, procedure: dossier.procedure }
-      value { 'choix 1' }
+      transient do
+        other { false }
+      end
+
+      type_de_champ { association :type_de_champ_drop_down_list, procedure: dossier.procedure, drop_down_other: other }
+      value { 'val1' }
     end
 
     factory :champ_multiple_drop_down_list, class: 'Champs::MultipleDropDownListChamp' do
       type_de_champ { association :type_de_champ_multiple_drop_down_list, procedure: dossier.procedure }
-      value { '["choix 1", "choix 2"]' }
+      value { '["val1", "val2"]' }
     end
 
     factory :champ_linked_drop_down_list, class: 'Champs::LinkedDropDownListChamp' do
@@ -118,17 +122,20 @@ FactoryBot.define do
 
     factory :champ_departements, class: 'Champs::DepartementChamp' do
       type_de_champ { association :type_de_champ_departements, procedure: dossier.procedure }
-      value { '971 - Guadeloupe' }
+      value { '01' }
     end
 
     factory :champ_communes, class: 'Champs::CommuneChamp' do
       type_de_champ { association :type_de_champ_communes, procedure: dossier.procedure }
-      value { 'Paris' }
+      value { 'Coye-la-Forêt (60580)' }
+      value_json { { "departement" => "Oise", "code_departement" => "60" } }
+      external_id { "60172" }
     end
 
-    factory :champ_engagement, class: 'Champs::EngagementChamp' do
-      type_de_champ { association :type_de_champ_engagement, procedure: dossier.procedure }
-      value { 'true' }
+    factory :champ_epci, class: 'Champs::EpciChamp' do
+      type_de_champ { association :type_de_champ_epci, procedure: dossier.procedure }
+      value { 'CC Retz en Valois' }
+      external_id { '200071991' }
     end
 
     factory :champ_header_section, class: 'Champs::HeaderSectionChamp' do
@@ -145,7 +152,9 @@ FactoryBot.define do
       type_de_champ { association :type_de_champ_dossier_link, procedure: dossier.procedure }
       value { create(:dossier).id }
     end
-
+    factory :champ_without_piece_justificative, class: 'Champs::PieceJustificativeChamp' do
+      type_de_champ { association :type_de_champ_piece_justificative, procedure: dossier.procedure }
+    end
     factory :champ_piece_justificative, class: 'Champs::PieceJustificativeChamp' do
       type_de_champ { association :type_de_champ_piece_justificative, procedure: dossier.procedure }
 
@@ -166,8 +175,13 @@ FactoryBot.define do
 
     factory :champ_titre_identite, class: 'Champs::TitreIdentiteChamp' do
       type_de_champ { association :type_de_champ_titre_identite, procedure: dossier.procedure }
+      transient do
+        skip_default_attachment { false }
+      end
 
-      after(:build) do |champ, _evaluator|
+      after(:build) do |champ, evaluator|
+        next if evaluator.skip_default_attachment
+
         champ.piece_justificative_file.attach(
           io: StringIO.new("toto"),
           filename: "toto.png",
@@ -220,6 +234,12 @@ FactoryBot.define do
       value { '44011762001530' }
     end
 
+    factory :champ_rna, class: 'Champs::RNAChamp' do
+      type_de_champ { association :type_de_champ_rna, procedure: dossier.procedure }
+      association :etablissement, factory: [:etablissement]
+      value { 'W173847273' }
+    end
+
     factory :champ_repetition, class: 'Champs::RepetitionChamp' do
       type_de_champ { association :type_de_champ_repetition, procedure: dossier.procedure }
 
@@ -228,29 +248,15 @@ FactoryBot.define do
       end
 
       after(:build) do |champ_repetition, evaluator|
-        types_de_champ = champ_repetition.type_de_champ.types_de_champ
-        existing_type_de_champ_text = types_de_champ.find { |tdc| tdc.libelle == 'Nom' }
-        type_de_champ_text = existing_type_de_champ_text || build(
-          :type_de_champ_text,
-          position: 0,
-          parent: champ_repetition.type_de_champ,
-          libelle: 'Nom'
-        )
+        revision = champ_repetition.type_de_champ.procedure&.active_revision || build(:procedure_revision)
+        parent = revision.revision_types_de_champ.find { |rtdc| rtdc.type_de_champ == champ_repetition.type_de_champ }
+        types_de_champ = revision.revision_types_de_champ.filter { |rtdc| rtdc.parent == parent }.map(&:type_de_champ)
 
-        existing_type_de_champ_number = types_de_champ.find { |tdc| tdc.libelle == 'Age' }
-        type_de_champ_number = existing_type_de_champ_number || build(
-          :type_de_champ_number,
-          position: 1,
-          parent: champ_repetition.type_de_champ,
-          libelle: 'Age'
-        )
-
-        champ_repetition.type_de_champ.types_de_champ << [type_de_champ_text, type_de_champ_number]
-        evaluator.rows.times do |row|
-          champ_repetition.champs << [
-            build(:champ_text, dossier: champ_repetition.dossier, row: row, type_de_champ: type_de_champ_text, parent: champ_repetition),
-            build(:champ_number, dossier: champ_repetition.dossier, row: row, type_de_champ: type_de_champ_number, parent: champ_repetition)
-          ]
+        evaluator.rows.times do
+          row_id = ULID.generate
+          champ_repetition.champs << types_de_champ.map do |type_de_champ|
+            build(:"champ_#{type_de_champ.type_champ}", dossier: champ_repetition.dossier, row_id:, type_de_champ: type_de_champ, parent: champ_repetition, private: champ_repetition.private?)
+          end
         end
       end
 

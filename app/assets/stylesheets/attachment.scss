@@ -1,51 +1,57 @@
 @import "colors";
 @import "constants";
 
-.attachment-actions {
-  display: flex;
-  margin-bottom: $default-spacer;
-}
+.attachment-error,
+.attachment-upload-error {
+  position: relative;
 
-.attachment-action {
-  margin-right: $default-spacer;
+  &::before {
+    box-shadow: inset 2px 0 0 0 var(--border-plain-error);
+    height: 100%;
+    content: "";
+    left: -0.75rem;
+    position: absolute;
+    width: 2px;
+  }
 
-  .button {
-    text-transform: lowercase;
+  .attachment-filename {
+    color: var(--text-default-error);
   }
 }
 
 .attachment-error {
-  display: flex;
-  width: max-content;
-  max-width: 100%;
-  align-items: center;
-  margin-bottom: $default-padding;
-  padding: $default-padding;
-  background: $background-red;
-
-  &.hidden {
-    display: none;
+  .fr-error-text {
+    margin-top: 0.5rem;
   }
 }
 
-.attachment-error-message {
-  display: inline-block;
-  margin-right: $default-padding;
-  color: $medium-red;
-}
+.attachment-multiple:not(.fr-downloads-group),
+.attachment-multiple.fr-downloads-group[data-controller=replace-attachment] {
+  ul {
+    list-style-type: none;
+    padding-inline-start: 0;
+  }
 
-.attachment-error-title {
-  font-weight: bold;
-}
-
-.attachment-error-retry {
-  white-space: nowrap;
-
-  &.hidden {
-    display: none;
+  li {
+    padding-bottom: 0;
   }
 }
 
-.attachment-input.hidden {
-  display: none;
+.attachment {
+  // Anti-virus badge for just uploaded attachment when seen as downloadable
+  .fr-download + .fr-badge {
+    position: relative;
+    top: -1rem;
+  }
+
+  .fr-btn {
+    align-self: flex-start;
+  }
+}
+
+.attachment-multiple.fr-downloads-group.destroyable {
+  ul {
+    list-style-type: none;
+    padding-inline-start: 0;
+  }
 }

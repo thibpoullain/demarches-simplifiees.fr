@@ -15,6 +15,8 @@ module Administrateurs
       @service.administrateur = current_administrateur
 
       if @service.save
+        @service.enqueue_api_entreprise
+
         redirect_to admin_services_path(procedure_id: params[:procedure_id]),
           notice: "#{@service.nom} créé"
       else
@@ -33,6 +35,10 @@ module Administrateurs
       @service = service
 
       if @service.update(service_params)
+        if @service.siret_previously_changed?
+          @service.enqueue_api_entreprise
+        end
+
         redirect_to admin_services_path(procedure_id: params[:procedure_id]),
           notice: "#{@service.nom} modifié"
       else
@@ -64,6 +70,7 @@ module Administrateurs
         flash[:alert] = message
         redirect_to admin_services_path(procedure_id: params[:procedure_id])
       else
+        service_to_destroy.procedures.with_discarded.discarded.update(service: nil)
         service_to_destroy.destroy
         redirect_to admin_services_path(procedure_id: params[:procedure_id]),
           notice: "#{service_to_destroy.nom} est supprimé"
@@ -73,7 +80,7 @@ module Administrateurs
     private
 
     def service_params
-      params.require(:service).permit(:nom, :organisme, :type_organisme, :email, :telephone, :horaires, :adresse)
+      params.require(:service).permit(:nom, :organisme, :type_organisme, :email, :telephone, :horaires, :adresse, :siret)
     end
 
     def service

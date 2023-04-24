@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean          default(FALSE)
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,6 +17,7 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::AddressChamp < Champs::TextChamp
@@ -62,5 +63,25 @@ class Champs::AddressChamp < Champs::TextChamp
 
   def fetch_external_data
     APIAddress::AddressAdapter.new(external_id).to_params
+  end
+
+  def departement_name
+    APIGeoService.departement_name(address.fetch('department_code'))
+  end
+
+  def commune_name
+    APIGeoService.commune_name(address.fetch('department_code'), address.fetch('city_code'))
+  end
+
+  def departement
+    if full_address?
+      { code: address.fetch('department_code'), name: departement_name }
+    end
+  end
+
+  def commune
+    if full_address?
+      { code: address.fetch('city_code'), name: commune_name, postal_code: address.fetch('postal_code') }
+    end
   end
 end

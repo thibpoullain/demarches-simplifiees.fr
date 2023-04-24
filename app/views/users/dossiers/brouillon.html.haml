@@ -1,5 +1,5 @@
 - content_for(:root_class, 'scroll-margins-for-sticky-footer')
-- content_for(:title, "Modification du brouillon nº #{@dossier.id} (#{@dossier.procedure.libelle})")
+- content_for(:title, t(".title", scope: :metas, number: @dossier.id.to_s, procedure_label: @dossier.procedure.libelle))
 
 - content_for :footer do
   = render partial: "users/procedure_footer", locals: { procedure: @dossier.procedure, dossier: @dossier }
@@ -7,6 +7,6 @@
 .dossier-container
   .dossier-header.sub-header
     .container
-      = render partial: "shared/dossiers/header", locals: { dossier: @dossier, apercu: false }
+      = render partial: "shared/dossiers/header", locals: { dossier: @dossier }
 
-  = render partial: "shared/dossiers/edit", locals: { dossier: @dossier, apercu: false }
+  = render partial: "shared/dossiers/edit", locals: { dossier: @dossier }

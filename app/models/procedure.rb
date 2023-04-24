@@ -11,15 +11,16 @@
 #  ask_birthday                              :boolean          default(FALSE), not null
 #  auto_archive_on                           :date
 #  cadre_juridique                           :string
-#  cerfa_flag                                :boolean          default(FALSE)
 #  cloned_from_library                       :boolean          default(FALSE)
 #  closed_at                                 :datetime
 #  declarative_with_state                    :string
 #  description                               :string
-#  direction                                 :string
+#  dossiers_count_computed_at                :datetime
 #  duree_conservation_dossiers_dans_ds       :integer
-#  durees_conservation_required              :boolean          default(TRUE)
+#  duree_conservation_etendue_par_ds         :boolean          default(FALSE)
 #  encrypted_api_particulier_token           :string
+#  estimated_duration_visible                :boolean          default(TRUE), not null
+#  estimated_dossiers_count                  :integer
 #  euro_flag                                 :boolean          default(FALSE)
 #  experts_require_administrateur_invitation :boolean          default(FALSE)
 #  for_individual                            :boolean          default(FALSE)
@@ -28,42 +29,52 @@
 #  juridique_required                        :boolean          default(TRUE)
 #  libelle                                   :string
 #  lien_demarche                             :string
+#  lien_dpo                                  :string
 #  lien_notice                               :string
 #  lien_site_web                             :string
+#  max_duree_conservation_dossiers_dans_ds   :integer          default(12)
+#  migrated_champ_routage                    :boolean
 #  monavis_embed                             :text
+#  opendata                                  :boolean          default(TRUE)
 #  organisation                              :string
 #  path                                      :string           not null
-#  procedure_expires_when_termine_enabled    :boolean          default(FALSE)
+#  piece_justificative_multiple              :boolean          default(TRUE), not null
+#  procedure_expires_when_termine_enabled    :boolean          default(TRUE)
 #  published_at                              :datetime
 #  routing_criteria_name                     :text             default("Votre ville")
 #  routing_enabled                           :boolean
-#  test_started_at                           :datetime
+#  tags                                      :text             default([]), is an Array
 #  unpublished_at                            :datetime
 #  web_hook_url                              :string
 #  whitelisted_at                            :datetime
 #  created_at                                :datetime         not null
 #  updated_at                                :datetime         not null
 #  canonical_procedure_id                    :bigint
+#  defaut_groupe_instructeur_id              :bigint
 #  draft_revision_id                         :bigint
 #  parent_procedure_id                       :bigint
 #  published_revision_id                     :bigint
+#  replaced_by_procedure_id                  :bigint
 #  service_id                                :bigint
 #  zone_id                                   :bigint
 #
 
 class Procedure < ApplicationRecord
-  self.ignored_columns = [:duree_conservation_dossiers_hors_ds]
   include ProcedureStatsConcern
   include EncryptableConcern
 
   include Discard::Model
   self.discard_column = :hidden_at
+  self.ignored_columns = [:direction, :durees_conservation_required, :cerfa_flag, :test_started_at, :lien_demarche]
+
   default_scope -> { kept }
 
-  MAX_DUREE_CONSERVATION = 36
-  MAX_DUREE_CONSERVATION_EXPORT = 3.hours
+  OLD_MAX_DUREE_CONSERVATION = 36
+  NEW_MAX_DUREE_CONSERVATION = ENV.fetch('NEW_MAX_DUREE_CONSERVATION') { 12 }.to_i
 
   MIN_WEIGHT = 350000
+
+  DOSSIERS_COUNT_EXPIRING = 1.hour
 
   attr_encrypted :api_particulier_token
 
@@ -72,12 +83,10 @@ class Procedure < ApplicationRecord
   belongs_to :published_revision, class_name: 'ProcedureRevision', optional: true
   has_many :deleted_dossiers, dependent: :destroy
 
-  has_many :published_types_de_champ, through: :published_revision, source: :types_de_champ
-  has_many :published_types_de_champ_private, through: :published_revision, source: :types_de_champ_private
-  has_many :draft_types_de_champ, through: :draft_revision, source: :types_de_champ
+  has_many :draft_types_de_champ_public, through: :draft_revision, source: :types_de_champ_public
   has_many :draft_types_de_champ_private, through: :draft_revision, source: :types_de_champ_private
-  has_one :draft_attestation_template, through: :draft_revision, source: :attestation_template
-  has_one :published_attestation_template, through: :published_revision, source: :attestation_template
+  has_many :published_types_de_champ_public, through: :published_revision, source: :types_de_champ_public
+  has_many :published_types_de_champ_private, through: :published_revision, source: :types_de_champ_private
 
   has_one :published_dossier_submitted_message, dependent: :destroy, through: :published_revision, source: :dossier_submitted_message
   has_one :draft_dossier_submitted_message, dependent: :destroy, through: :draft_revision, source: :dossier_submitted_message
@@ -85,15 +94,18 @@ class Procedure < ApplicationRecord
 
   has_many :experts_procedures, dependent: :destroy
   has_many :experts, through: :experts_procedures
+  has_many :replaced_procedures, -> { with_discarded }, inverse_of: :replaced_by_procedure, class_name: "Procedure",
+  foreign_key: "replaced_by_procedure_id", dependent: :nullify
 
   has_one :module_api_carto, dependent: :destroy
-  has_one :legacy_attestation_template, class_name: 'AttestationTemplate', dependent: :destroy
-  has_many :attestation_templates, through: :revisions, source: :attestation_template
+  has_one :attestation_template, dependent: :destroy
 
   belongs_to :parent_procedure, class_name: 'Procedure', optional: true
   belongs_to :canonical_procedure, class_name: 'Procedure', optional: true
+  belongs_to :replaced_by_procedure, -> { with_discarded }, inverse_of: :replaced_procedures, class_name: "Procedure", optional: true
   belongs_to :service, optional: true
   belongs_to :zone, optional: true
+  has_and_belongs_to_many :zones
 
   def active_dossier_submitted_message
     published_dossier_submitted_message || draft_dossier_submitted_message
@@ -103,35 +115,39 @@ class Procedure < ApplicationRecord
     brouillon? ? draft_revision : published_revision
   end
 
-  def types_de_champ
-    brouillon? ? draft_types_de_champ : published_types_de_champ
-  end
-
-  def types_de_champ_private
-    brouillon? ? draft_types_de_champ_private : published_types_de_champ_private
-  end
-
-  def types_de_champ_for_procedure_presentation
+  def types_de_champ_for_procedure_presentation(parent = nil)
     if brouillon?
-      TypeDeChamp.fillable
-        .joins(:revision_types_de_champ)
-        .where(revision_types_de_champ: { revision: draft_revision, parent_id: nil })
-        .order(:private, :position)
+      if parent.nil?
+        TypeDeChamp.fillable
+          .joins(:revision_types_de_champ)
+          .where(revision_types_de_champ: { revision_id: draft_revision_id, parent_id: nil })
+          .order(:private, :position)
+      else
+        draft_revision.children_of(parent)
+      end
     else
+      # all published revisions
+      revision_ids = revisions.ids - [draft_revision_id]
+      # fetch all parent types de champ
+      parent_ids = if parent.present?
+        ProcedureRevisionTypeDeChamp
+          .where(revision_id: revision_ids)
+          .joins(:type_de_champ)
+          .where(type_de_champ: { stable_id: parent.stable_id })
+          .ids
+      end
+
       # fetch all type_de_champ.stable_id for all the revisions expect draft
       # and for each stable_id take the bigger (more recent) type_de_champ.id
-      recent_ids = TypeDeChamp.fillable
-        .joins(:revisions)
-        .where(procedure_revisions: { procedure_id: id })
-        .where.not(procedure_revisions: { id: draft_revision_id })
-        .where(revision_types_de_champ: { parent_id: nil })
-        .group(:stable_id)
-        .select('MAX(types_de_champ.id)')
+      recent_ids = TypeDeChamp
+        .fillable
+        .joins(:revision_types_de_champ)
+        .where(revision_types_de_champ: { revision_id: revision_ids, parent_id: parent_ids })
+        .group(:stable_id).select('MAX(types_de_champ.id)')
 
       # fetch the more recent procedure_revision_types_de_champ
       # which includes recents_ids
       recents_prtdc = ProcedureRevisionTypeDeChamp
-        .root
         .where(type_de_champ_id: recent_ids)
         .where.not(revision_id: draft_revision_id)
         .group(:type_de_champ_id)
@@ -145,41 +161,41 @@ class Procedure < ApplicationRecord
   end
 
   def types_de_champ_for_tags
-    if brouillon?
-      draft_types_de_champ
-    else
-      TypeDeChamp.root
-        .public_only
-        .fillable
-        .joins(:revisions)
-        .where(procedure_revisions: { procedure_id: id })
-        .where.not(procedure_revisions: { id: draft_revision_id })
-        .where(revision_types_de_champ: { parent_id: nil })
-        .order(:created_at)
-        .uniq
-    end
+    TypeDeChamp
+      .fillable
+      .joins(:revisions)
+      .where(procedure_revisions: brouillon? ? { id: draft_revision_id } : { procedure_id: id })
+      .where(revision_types_de_champ: { parent_id: nil })
+      .order(:created_at)
+      .distinct(:id)
+  end
+
+  def types_de_champ_public_for_tags
+    types_de_champ_for_tags.public_only
   end
 
   def types_de_champ_private_for_tags
-    if brouillon?
-      draft_types_de_champ_private
-    else
-      TypeDeChamp.root
-        .private_only
-        .fillable
-        .joins(:revisions)
-        .where(procedure_revisions: { procedure_id: id })
-        .where.not(procedure_revisions: { id: draft_revision_id })
-        .where(revision_types_de_champ: { parent_id: nil })
-        .order(:created_at)
-        .uniq
+    types_de_champ_for_tags.private_only
+  end
+
+  def revisions_with_pending_dossiers
+    @revisions_with_pending_dossiers ||= begin
+      ids = dossiers
+        .where.not(revision_id: [draft_revision_id, published_revision_id].compact)
+        .state_en_construction_ou_instruction
+        .distinct(:revision_id)
+        .pluck(:revision_id)
+      ProcedureRevision.includes(revision_types_de_champ: [:type_de_champ]).where(id: ids)
     end
   end
 
   has_many :administrateurs_procedures, dependent: :delete_all
   has_many :administrateurs, through: :administrateurs_procedures, after_remove: -> (procedure, _admin) { procedure.validate! }
-  has_many :groupe_instructeurs, dependent: :destroy
+  has_many :groupe_instructeurs, -> { order(:label) }, inverse_of: :procedure, dependent: :destroy
   has_many :instructeurs, through: :groupe_instructeurs
+
+  has_many :active_groupe_instructeurs, -> { active }, class_name: 'GroupeInstructeur', inverse_of: false
+  has_many :closed_groupe_instructeurs, -> { closed }, class_name: 'GroupeInstructeur', inverse_of: false
 
   # This relationship is used in following dossiers through. We can not use revisions relationship
   # as order scope introduces invalid sql in some combinations.
@@ -192,20 +208,31 @@ class Procedure < ApplicationRecord
   has_one :refused_mail, class_name: "Mails::RefusedMail", dependent: :destroy
   has_one :without_continuation_mail, class_name: "Mails::WithoutContinuationMail", dependent: :destroy
 
-  has_one :defaut_groupe_instructeur, -> { order(:label) }, class_name: 'GroupeInstructeur', inverse_of: :procedure
+  has_one :defaut_groupe_instructeur, -> { active.order(id: :asc) }, class_name: 'GroupeInstructeur', inverse_of: false
 
   has_one_attached :logo
   has_one_attached :notice
   has_one_attached :deliberation
 
-  scope :brouillons,            -> { where(aasm_state: :brouillon) }
-  scope :publiees,              -> { where(aasm_state: :publiee) }
-  scope :closes,                -> { where(aasm_state: [:close, :depubliee]) }
-  scope :publiees_ou_closes,    -> { where(aasm_state: [:publiee, :close, :depubliee]) }
-  scope :by_libelle,            -> { order(libelle: :asc) }
-  scope :created_during,        -> (range) { where(created_at: range) }
-  scope :cloned_from_library,   -> { where(cloned_from_library: true) }
-  scope :declarative,           -> { where.not(declarative_with_state: nil) }
+  scope :brouillons,             -> { where(aasm_state: :brouillon) }
+  scope :publiees,               -> { where(aasm_state: :publiee) }
+  scope :publiees_ou_brouillons, -> { where(aasm_state: [:publiee, :brouillon]) }
+  scope :closes,                 -> { where(aasm_state: [:close, :depubliee]) }
+  scope :opendata,               -> { where(opendata: true) }
+  scope :publiees_ou_closes,     -> { where(aasm_state: [:publiee, :close, :depubliee]) }
+
+  scope :publiques,              -> do
+    publiees_ou_closes
+      .opendata
+      .where('estimated_dossiers_count >= ?', 4)
+      .where.not('lien_site_web LIKE ?', '%mail%')
+      .where.not('lien_site_web LIKE ?', '%intra%')
+  end
+
+  scope :by_libelle,             -> { order(libelle: :asc) }
+  scope :created_during,         -> (range) { where(created_at: range) }
+  scope :cloned_from_library,    -> { where(cloned_from_library: true) }
+  scope :declarative,            -> { where.not(declarative_with_state: nil) }
 
   scope :discarded_expired, -> do
     with_discarded
@@ -219,11 +246,11 @@ class Procedure < ApplicationRecord
       :module_api_carto,
       published_revision: [
         :types_de_champ_private,
-        :types_de_champ
+        :types_de_champ_public
       ],
       draft_revision: [
         :types_de_champ_private,
-        :types_de_champ
+        :types_de_champ_public
       ]
     )
   }
@@ -241,10 +268,10 @@ class Procedure < ApplicationRecord
     includes(
       :groupe_instructeurs,
       dossiers: {
-        champs: [
-          piece_justificative_file_attachment: :blob,
+        champs_public: [
+          piece_justificative_file_attachments: :blob,
           champs: [
-            piece_justificative_file_attachment: :blob
+            piece_justificative_file_attachments: :blob
           ]
         ]
       }
@@ -255,18 +282,41 @@ class Procedure < ApplicationRecord
   validates :description, presence: true, allow_blank: false, allow_nil: false
   validates :administrateurs, presence: true
   validates :lien_site_web, presence: true, if: :publiee?
-  validates :draft_types_de_champ,
-    'types_de_champ/no_empty_repetition': true,
+  validates :draft_types_de_champ_public,
+    'types_de_champ/no_empty_block': true,
     'types_de_champ/no_empty_drop_down': true,
-    if: :validate_for_publication?
+    on: :publication
   validates :draft_types_de_champ_private,
-    'types_de_champ/no_empty_repetition': true,
+    'types_de_champ/no_empty_block': true,
     'types_de_champ/no_empty_drop_down': true,
-    if: :validate_for_publication?
-  validate :check_juridique
+    on: :publication
+
+  validate :check_juridique, on: [:create, :publication]
+
   validates :path, presence: true, format: { with: /\A[a-z0-9_\-]{3,200}\z/ }, uniqueness: { scope: [:path, :closed_at, :hidden_at, :unpublished_at], case_sensitive: false }
-  validates :duree_conservation_dossiers_dans_ds, allow_nil: false, numericality: { only_integer: true, greater_than_or_equal_to: 1, less_than_or_equal_to: MAX_DUREE_CONSERVATION }
+  validates :duree_conservation_dossiers_dans_ds, allow_nil: false,
+                                                  numericality: {
+                                                    only_integer: true,
+                                                    greater_than_or_equal_to: 1,
+                                                    less_than_or_equal_to: :max_duree_conservation_dossiers_dans_ds
+                                                  }
+  validates :max_duree_conservation_dossiers_dans_ds, allow_nil: false,
+                                                  numericality: {
+                                                    only_integer: true,
+                                                    greater_than_or_equal_to: 1,
+                                                    less_than_or_equal_to: 60
+                                                  }
+
+  validates :lien_dpo, email_or_link: true, allow_nil: true
   validates_with MonAvisEmbedValidator
+
+  validates_associated :draft_revision, on: :publication
+  validates_associated :initiated_mail, on: :publication
+  validates_associated :received_mail, on: :publication
+  validates_associated :closed_mail, on: :publication
+  validates_associated :refused_mail, on: :publication
+  validates_associated :without_continuation_mail, on: :publication
+  validates_associated :attestation_template, on: :publication, if: -> { attestation_template&.activated? }
 
   FILE_MAX_SIZE = 20.megabytes
   validates :notice, content_type: [
@@ -301,6 +351,7 @@ class Procedure < ApplicationRecord
 
   validates :api_entreprise_token, jwt_token: true, allow_blank: true
   validates :api_particulier_token, format: { with: /\A[A-Za-z0-9\-_=.]{15,}\z/ }, allow_blank: true
+  validates :routing_criteria_name, presence: true, allow_blank: false
 
   before_save :update_juridique_required
   after_initialize :ensure_path_exists
@@ -328,6 +379,10 @@ class Procedure < ApplicationRecord
     event :unpublish, after: :after_unpublish do
       transitions from: :publiee, to: :depubliee
     end
+  end
+
+  def dossiers_close_to_expiration
+    dossiers.close_to_expiration.count
   end
 
   def publish_or_reopen!(administrateur)
@@ -387,7 +442,7 @@ class Procedure < ApplicationRecord
   end
 
   def draft_changed?
-    publiee? && published_revision.different_from?(draft_revision) && revision_changes.present?
+    !brouillon? && published_revision.different_from?(draft_revision) && revision_changes.present?
   end
 
   def revision_changes
@@ -412,6 +467,10 @@ class Procedure < ApplicationRecord
 
   def declarative_accepte?
     declarative_with_state == Procedure.declarative_with_states.fetch(:accepte)
+  end
+
+  def declarative_en_instruction?
+    declarative_with_state == Procedure.declarative_with_states.fetch(:en_instruction)
   end
 
   def self.declarative_attributes_for_select
@@ -441,30 +500,29 @@ class Procedure < ApplicationRecord
 
     populate_champ_stable_ids
     include_list = {
+      attestation_template: [],
       draft_revision: {
-        revision_types_de_champ: {
-          type_de_champ: :types_de_champ
-        },
-        revision_types_de_champ_private: {
-          type_de_champ: :types_de_champ
-        },
-        attestation_template: [],
+        revision_types_de_champ: [:type_de_champ],
         dossier_submitted_message: []
       }
     }
     include_list[:groupe_instructeurs] = :instructeurs if !is_different_admin
     procedure = self.deep_clone(include: include_list) do |original, kopy|
-      begin
-        PiecesJustificativesService.clone_attachments(original, kopy)
-      rescue ActiveStorage::FileNotFoundError
-      end
+      PiecesJustificativesService.clone_attachments(original, kopy)
     end
     procedure.path = SecureRandom.uuid
     procedure.aasm_state = :brouillon
     procedure.closed_at = nil
     procedure.unpublished_at = nil
     procedure.published_at = nil
+    procedure.auto_archive_on = nil
     procedure.lien_notice = nil
+    procedure.duree_conservation_etendue_par_ds = false
+    if procedure.duree_conservation_dossiers_dans_ds > NEW_MAX_DUREE_CONSERVATION
+      procedure.duree_conservation_dossiers_dans_ds = NEW_MAX_DUREE_CONSERVATION
+      procedure.max_duree_conservation_dossiers_dans_ds = NEW_MAX_DUREE_CONSERVATION
+    end
+    procedure.estimated_dossiers_count = 0
     procedure.published_revision = nil
     procedure.draft_revision.procedure = procedure
 
@@ -472,6 +530,7 @@ class Procedure < ApplicationRecord
       procedure.administrateurs = [admin]
       procedure.api_entreprise_token = nil
       procedure.encrypted_api_particulier_token = nil
+      procedure.opendata = true
       procedure.api_particulier_scopes = []
     else
       procedure.administrateurs = administrateurs
@@ -487,22 +546,17 @@ class Procedure < ApplicationRecord
     procedure.cloned_from_library = from_library
     procedure.parent_procedure = self
     procedure.canonical_procedure = nil
+    procedure.replaced_by_procedure = nil
+    procedure.service = nil
 
-    if from_library
-      procedure.service = nil
-    elsif self.service.present? && is_different_admin
-      procedure.service = self.service.clone_and_assign_to_administrateur(admin)
+    transaction do
+      procedure.save
+
+      move_new_children_to_new_parent_coordinate(procedure.draft_revision)
     end
 
-    procedure.save
-    procedure.draft_types_de_champ.update_all(revision_id: procedure.draft_revision.id)
-    procedure.draft_types_de_champ_private.update_all(revision_id: procedure.draft_revision.id)
-    types_de_champ_in_repetition = TypeDeChamp.where(parent: procedure.draft_types_de_champ.repetition + procedure.draft_types_de_champ_private.repetition)
-    types_de_champ_in_repetition.update_all(revision_id: procedure.draft_revision.id)
-    types_de_champ_in_repetition.each(&:migrate_parent!)
-
     if is_different_admin || from_library
-      procedure.draft_types_de_champ.each { |tdc| tdc.options&.delete(:old_pj) }
+      procedure.draft_revision.types_de_champ_public.each { |tdc| tdc.options&.delete(:old_pj) }
     end
 
     procedure
@@ -569,10 +623,6 @@ class Procedure < ApplicationRecord
     touch(:whitelisted_at)
   end
 
-  def attestation_template
-    published_attestation_template || draft_attestation_template
-  end
-
   def closed_mail_template_attestation_inconsistency_state
     # As an optimization, don’t check the predefined templates (they are presumed correct)
     if closed_mail.present?
@@ -605,22 +655,11 @@ class Procedure < ApplicationRecord
       result << :instructeurs
     end
 
-    result
-  end
-
-  def process_dossiers!
-    case declarative_with_state
-    when Procedure.declarative_with_states.fetch(:en_instruction)
-      dossiers
-        .state_en_construction
-        .where(declarative_triggered_at: nil)
-        .find_each(&:passer_automatiquement_en_instruction!)
-    when Procedure.declarative_with_states.fetch(:accepte)
-      dossiers
-        .state_en_construction
-        .where(declarative_triggered_at: nil)
-        .find_each(&:accepter_automatiquement!)
+    if missing_zones?
+      result << :zones
     end
+
+    result
   end
 
   def logo_url
@@ -635,20 +674,29 @@ class Procedure < ApplicationRecord
     !AssignTo.exists?(groupe_instructeur: groupe_instructeurs)
   end
 
-  def revised?
-    feature_enabled?(:procedure_revisions) && revisions.size > 2
+  def missing_zones?
+    if Rails.application.config.ds_zonage_enabled
+      zones.empty?
+    else
+      false
+    end
   end
 
-  def routee?
-    routing_enabled? || groupe_instructeurs.size > 1
+  def revised?
+    revisions.size > 2
+  end
+
+  def revisions_count
+    # We start counting from the first revision after publication and we are not counting the draft (there is always one)
+    revisions.size - 2
   end
 
   def instructeurs_self_management?
-    routee? || instructeurs_self_management_enabled?
+    routing_enabled? || instructeurs_self_management_enabled?
   end
 
   def defaut_groupe_instructeur_for_new_dossier
-    if !routee? || feature_enabled?(:procedure_routage_api)
+    if !routing_enabled? || feature_enabled?(:procedure_routage_api)
       defaut_groupe_instructeur
     end
   end
@@ -693,6 +741,15 @@ class Procedure < ApplicationRecord
     end
   end
 
+  def restore_procedure(author)
+    if discarded?
+      undiscard
+      self.dossiers.hidden_by_administration.each do |dossier|
+        dossier.restore(author)
+      end
+    end
+  end
+
   def flipper_id
     "Procedure;#{id}"
   end
@@ -709,17 +766,28 @@ class Procedure < ApplicationRecord
     APIEntrepriseToken.new(api_entreprise_token).expired?
   end
 
-  def create_new_revision
-    draft_revision
-      .deep_clone(include: [:revision_types_de_champ, :revision_types_de_champ_private])
-      .tap(&:save!)
+  def create_new_revision(revision = nil)
+    transaction do
+      new_revision = (revision || draft_revision)
+        .deep_clone(include: [:revision_types_de_champ])
+        .tap { |revision| revision.published_at = nil }
+        .tap(&:save!)
+
+      move_new_children_to_new_parent_coordinate(new_revision)
+
+      # they are not aware of the new tdcs
+      new_revision.types_de_champ_public.reset
+      new_revision.types_de_champ_private.reset
+
+      new_revision
+    end
   end
 
   def average_dossier_weight
     if dossiers.termine.any?
       dossiers_sample = dossiers.termine.limit(100)
       total_size = Champ
-        .includes(piece_justificative_file_attachment: :blob)
+        .includes(piece_justificative_file_attachments: :blob)
         .where(type: Champs::PieceJustificativeChamp.to_s, dossier: dossiers_sample)
         .sum('active_storage_blobs.byte_size')
 
@@ -730,11 +798,28 @@ class Procedure < ApplicationRecord
   end
 
   def publish_revision!
-    update!(draft_revision: create_new_revision, published_revision: draft_revision)
-    published_revision.touch(:published_at)
+    reset!
+    transaction do
+      self.published_revision = draft_revision
+      self.draft_revision = create_new_revision
+      save!(context: :publication)
+      published_revision.touch(:published_at)
+    end
     dossiers
       .state_not_termine
-      .find_each { |dossier| DossierRebaseJob.perform_later(dossier) }
+      .find_each(&:rebase_later)
+  end
+
+  def reset_draft_revision!
+    if published_revision.present? && draft_changed?
+      reset!
+      transaction do
+        draft_revision.types_de_champ.filter(&:only_present_on_draft?).each(&:destroy)
+        draft_revision.update(dossier_submitted_message: nil)
+        draft_revision.destroy
+        update!(draft_revision: create_new_revision(published_revision))
+      end
+    end
   end
 
   def cnaf_enabled?
@@ -753,10 +838,40 @@ class Procedure < ApplicationRecord
     api_particulier_sources['mesri'].present?
   end
 
-  private
+  def published_or_created_at
+    published_at || created_at
+  end
 
-  def validate_for_publication?
-    validation_context == :publication || publiee?
+  def publiee_or_close?
+    publiee? || close?
+  end
+
+  def self.tags
+    unnest = Arel::Nodes::NamedFunction.new('UNNEST', [self.arel_table[:tags]])
+    query = self.select(unnest.as('tags')).publiees.distinct.order('tags')
+    self.connection.query(query.to_sql).flatten
+  end
+
+  def compute_dossiers_count
+    now = Time.zone.now
+    if now > (self.dossiers_count_computed_at || self.created_at) + DOSSIERS_COUNT_EXPIRING
+      self.update(estimated_dossiers_count: self.dossiers.visible_by_administration.count,
+                dossiers_count_computed_at: now)
+    end
+  end
+
+  def move_new_children_to_new_parent_coordinate(new_draft)
+    children = new_draft.revision_types_de_champ
+      .includes(parent: :type_de_champ)
+      .where.not(parent_id: nil)
+    coordinates_by_stable_id = new_draft.revision_types_de_champ
+      .includes(:type_de_champ)
+      .index_by(&:stable_id)
+
+    children.each do |child|
+      child.update!(parent: coordinates_by_stable_id.fetch(child.parent.stable_id))
+    end
+    new_draft.reload
   end
 
   def before_publish
@@ -764,7 +879,10 @@ class Procedure < ApplicationRecord
   end
 
   def after_publish(canonical_procedure = nil)
-    update!(canonical_procedure: canonical_procedure, draft_revision: create_new_revision, published_revision: draft_revision)
+    self.canonical_procedure = canonical_procedure
+    self.published_revision = draft_revision
+    self.draft_revision = create_new_revision
+    save!(context: :publication)
     touch(:published_at)
     published_revision.touch(:published_at)
   end
@@ -800,7 +918,12 @@ class Procedure < ApplicationRecord
 
   def ensure_defaut_groupe_instructeur
     if self.groupe_instructeurs.empty?
-      groupe_instructeurs.create(label: GroupeInstructeur::DEFAUT_LABEL)
+      gi = groupe_instructeurs.create(label: GroupeInstructeur::DEFAUT_LABEL)
+      self.update(defaut_groupe_instructeur_id: gi.id)
     end
+  end
+
+  def stable_ids_used_by_routing_rules
+    @stable_ids_used_by_routing_rules ||= groupe_instructeurs.flat_map { _1.routing_rule&.sources }.compact
   end
 end

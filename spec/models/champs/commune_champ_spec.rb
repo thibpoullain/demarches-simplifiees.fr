@@ -1,10 +1,21 @@
 describe Champs::CommuneChamp do
-  let(:type_de_champ) { create(:type_de_champ_communes, libelle: 'Ma commune') }
-  let(:champ) { Champs::CommuneChamp.new(value: value, external_id: code_insee, type_de_champ: type_de_champ) }
-  let(:value) { 'Châteldon (63290)' }
   let(:code_insee) { '63102' }
+  let(:code_postal) { '63290' }
+  let(:code_departement) { '63' }
 
-  it { expect(champ.value).to eq('Châteldon (63290)') }
-  it { expect(champ.external_id).to eq('63102') }
-  it { expect(champ.for_export).to eq(['Châteldon (63290)', '63102']) }
+  describe 'value' do
+    let(:champ) { create(:champ_communes, code_postal: code_postal) }
+
+    it 'with code_postal' do
+      champ.update(value: code_insee)
+      expect(champ.to_s).to eq('Châteldon (63290)')
+      expect(champ.name).to eq('Châteldon')
+      expect(champ.external_id).to eq(code_insee)
+      expect(champ.code).to eq(code_insee)
+      expect(champ.code_departement).to eq(code_departement)
+      expect(champ.code_postal).to eq(code_postal)
+      expect(champ.for_export).to eq(['Châteldon (63290)', '63102', '63 – Puy-de-Dôme'])
+      expect(champ.communes.size).to eq(8)
+    end
+  end
 end

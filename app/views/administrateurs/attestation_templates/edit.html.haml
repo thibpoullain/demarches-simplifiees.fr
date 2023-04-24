@@ -1,16 +1,16 @@
 - content_for(:root_class, 'scroll-margins-for-sticky-footer')
 
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to('Démarches', admin_procedures_path),
-                    link_to(@procedure.libelle, admin_procedure_path(@procedure)),
-                    'Attestation'] }
+  locals: { steps: [['Démarches', admin_procedures_path],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Attestation']] }
 
 .procedure-form#attestation-template-edit
   .procedure-form__columns.container
+    = render NestedForms::FormOwnerComponent.new
     = form_for @attestation_template,
-      url: url_for({ controller: 'administrateurs/attestation_templates', action: :update, id: @procedure.id }),
-      multipart: true,
-      html: { class: 'form procedure-form__column--form' } do |f|
+      url: admin_procedure_attestation_template_path(@procedure),
+      html: { multipart: true, class: 'form form-ds-fr-white procedure-form__column--form' } do |f|
 
       %h1.page-title
         Délivrance d’attestation
@@ -36,8 +36,8 @@
             %span.toggle-switch-label.off Attestation désactivée
 
         .actions-right
-          = link_to 'Annuler', edit_admin_procedure_attestation_template_path(id: @procedure), class: 'button', data: { confirm: 'Êtes-vous sûr de vouloir annuler les modifications effectuées ?'}
-          = f.button 'Enregistrer', class: 'button primary send'
+          = link_to 'Annuler', edit_admin_procedure_attestation_template_path(id: @procedure), class: 'fr-btn fr-btn--secondary fr-mr-2w', data: { confirm: 'Êtes-vous sûr de vouloir annuler les modifications effectuées ?'}
+          = f.button 'Enregistrer', class: 'fr-btn'
 
     .procedure-form__column--preview
       .procedure-form__preview.sticky--top

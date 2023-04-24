@@ -1,17 +1,20 @@
-= form_for(commentaire, url: form_url, html: { class: 'form', data: { persisted_content_id: @dossier.present? ? @dossier.id : "bulk-message-#{@procedure.id}" } }) do |f|
+= render NestedForms::FormOwnerComponent.new
+= form_for(commentaire, url: form_url, html: { class: 'form', multipart: true, data: { controller: 'persisted-form', persisted_form_key_value: @dossier.present? ? dom_id(@dossier) : dom_id(@procedure, :bulk_message) } }) do |f|
   - dossier = commentaire.dossier
   - placeholder = t('views.shared.dossiers.messages.form.write_message_to_administration_placeholder')
   - if instructeur_signed_in? || administrateur_signed_in? || expert_signed_in?
     - placeholder = t('views.shared.dossiers.messages.form.write_message_placeholder')
-  = f.text_area :body, rows: 5, placeholder: placeholder, title: placeholder, required: true, class: 'message-textarea persisted-input'
+  %p.mandatory-explanation= t('asterisk_html', scope: [:utils])
+  .fr-input-group
+    = label_tag :commentaire_body, class: 'fr-label' do
+      = t('message', scope: [:utils])
+      %span.mandatory *
+    = f.text_area :body, rows: 5, placeholder: placeholder, title: placeholder, required: true, class: 'fr-input message-textarea'
   .flex.justify-between.wrap
     - disable_piece_jointe = defined?(disable_piece_jointe) ? disable_piece_jointe : false
     %div
       - if !disable_piece_jointe
-        = f.label :piece_jointe, for: :piece_jointe do
-          = t('views.shared.dossiers.messages.form.attach_dossier')
-          %span.notice= t('views.shared.dossiers.messages.form.attachment_size')
-        = f.file_field :piece_jointe, id: 'piece_jointe', direct_upload: true
+        = render Attachment::EditComponent.new(attached_file: commentaire.piece_jointe)
 
-    %div
-      = f.submit t('views.shared.dossiers.messages.form.send_message'), class: 'button primary send', data: { disable: true }
+    .send-wrapper.fr-my-3w
+      = f.submit t('views.shared.dossiers.messages.form.send_message'), class: 'fr-btn send', data: { disable: true }
