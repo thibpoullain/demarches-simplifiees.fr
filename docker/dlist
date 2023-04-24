@@ -1,0 +1,9 @@
+#!/bin/bash
+# A bash script to list Docker containers
+
+echo "List of active Docker containers"
+echo "=============================================================================================================="
+
+docker ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+ echo "=============================================================================================================="

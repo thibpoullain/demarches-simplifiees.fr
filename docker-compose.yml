@@ -1,0 +1,47 @@
+version: '3.7'
+services:
+  db:
+    image: postgres
+    container_name: demat-social-sql
+    environment:
+      POSTGRES_DB: tps_development
+      POSTGRES_USER: tps_development
+      POSTGRES_PASSWORD: tps_development
+    ports:
+      - '5432:5432'
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+      - ./docker:/docker-entrypoint-initdb.d
+  webapp-main:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: demat-social
+    container_name: demat-social-app
+    env_file:
+      - docker/dev.env.mandatory
+      - docker/.env.optional
+    links:
+      - db
+      - sftp
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+    volumes:
+      - '.:/opt/ds'
+      - demat-dev_gems:/opt/ds/tmp/
+      - demat-dev_node-modules:/opt/ds/node_modules
+  sftp:
+    image: atmoz/sftp
+    container_name: demat-social-ftp
+    volumes:
+      - ./sftp_fake/upload:/home/foo
+      - ./sftp_fake/ssh_keys/id_rsa.pub:/home/foo/.ssh/keys/id_rsa.pub:ro
+    ports:
+      - '2222:22'
+    command: foo::${UID}
+volumes:
+  demat-dev_node-modules:
+  demat-dev_gems:
+  pg-data:
