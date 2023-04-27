@@ -115,7 +115,7 @@ Rails.application.configure do
   }
 
   # Use Content-Security-Policy-Report-Only headers
-  config.content_security_policy_report_only = true
+  config.content_security_policy_report_only = false
 
   # Raises error for missing translations
   # config.action_view.raise_on_missing_translations = true

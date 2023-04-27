@@ -1,10 +1,15 @@
 FROM ruby:3.1.3
 
+ARG port
+
+# environment variables
+ENV PORT $port
+
 RUN sed -i 's#http:#https:#g' /etc/apt/sources.list
 RUN apt update && apt install -y libcurl3-dev libpq-dev zlib1g-dev libssl-dev libreadline-dev zlib1g-dev zip
 
 # Add node for webpack
-RUN curl -sL https://deb.nodesource.com/setup_12.x | bash -
+RUN curl -sL https://deb.nodesource.com/setup_16.x | bash -
 RUN curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
 RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list
 RUN apt-get update; apt-get install -y yarn
@@ -25,6 +30,7 @@ COPY package.json /opt/ds
 COPY yarn.lock /opt/ds
 COPY Gemfile /opt/ds
 COPY Gemfile.lock /opt/ds
+COPY config/vite.json /opt/ds/config/vite.json
 
 RUN mkdir /usr/local/bundle/gems && \
     mkdir node_modules && \
@@ -37,6 +43,8 @@ RUN bundle config path /usr/local/bundle/cache && \
 RUN bundle install --jobs 20 --retry 5
 RUN yarn install
 
+# app port 3000
+# vite port 3036
 EXPOSE $PORT
 
 CMD ["/bin/bash", "-c", "bin/rails s -b 0.0.0.0 -p 3000"]

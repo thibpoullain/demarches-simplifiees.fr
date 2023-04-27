@@ -54,8 +54,10 @@ window.DS = window.DS || DS;
 // enable legacy mode of DSFR when vite is not detectde as modern browser
 window.addEventListener('load', function () {
   if (!window.__vite_is_modern_browser) {
+    console.log('Using legacy bundler');
     window.dsfr.internals.legacy.setLegacy();
   }
+  console.log('Using vite bundler');
 });
 
 import('../shared/track/matomo');

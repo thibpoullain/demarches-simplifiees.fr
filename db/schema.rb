@@ -51,6 +51,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.datetime "virus_scanned_at"
     t.datetime "watermarked_at"
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+    t.index ["virus_scan_result"], name: "index_active_storage_blobs_on_virus_scan_result"
   end
 
   create_table "active_storage_variant_records", force: :cascade do |t|
@@ -93,9 +94,9 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.datetime "created_at", precision: 6, null: false
     t.string "encrypted_token", null: false
     t.string "name", null: false
-    t.boolean "write_access", default: true, null: false
     t.datetime "updated_at", precision: 6, null: false
     t.integer "version", default: 3, null: false
+    t.boolean "write_access", default: true, null: false
     t.index ["administrateur_id"], name: "index_api_tokens_on_administrateur_id"
   end
 
@@ -221,7 +222,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   create_table "champs", id: :serial, force: :cascade do |t|
     t.datetime "created_at"
     t.jsonb "data"
-    t.integer "dossier_id", null: false
+    t.integer "dossier_id"
     t.integer "etablissement_id"
     t.string "external_id"
     t.string "fetch_external_data_exceptions", array: true
@@ -382,7 +383,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.bigint "parent_dossier_id"
     t.string "prefill_token"
     t.boolean "prefilled"
-    t.string "private_search_terms"
+    t.text "private_search_terms"
     t.datetime "processed_at"
     t.bigint "revision_id"
     t.text "search_terms"
@@ -715,11 +716,11 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.datetime "dossiers_count_computed_at"
     t.bigint "draft_revision_id"
     t.integer "duree_conservation_dossiers_dans_ds"
-    t.boolean "duree_conservation_etendue_par_ds", default: false
+    t.boolean "duree_conservation_etendue_par_ds", default: false, null: false
     t.boolean "durees_conservation_required", default: true
     t.string "encrypted_api_particulier_token"
-    t.boolean "estimated_duration_visible", default: true, null: false
     t.integer "estimated_dossiers_count"
+    t.boolean "estimated_duration_visible", default: true, null: false
     t.boolean "euro_flag", default: false
     t.boolean "experts_require_administrateur_invitation", default: false
     t.boolean "for_individual", default: false
@@ -731,7 +732,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.string "lien_dpo"
     t.string "lien_notice"
     t.string "lien_site_web"
-    t.integer "max_duree_conservation_dossiers_dans_ds", default: 12
+    t.integer "max_duree_conservation_dossiers_dans_ds", default: 12, null: false
     t.boolean "migrated_champ_routage"
     t.text "monavis_embed"
     t.boolean "opendata", default: true
@@ -855,7 +856,6 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
     t.integer "sign_in_count", default: 0, null: false
-    t.boolean "team_account", default: false
     t.string "unlock_token"
     t.datetime "updated_at"
     t.index ["email"], name: "index_super_admins_on_email", unique: true
@@ -904,12 +904,18 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.text "description"
     t.string "libelle"
     t.boolean "mandatory", default: false
+    t.boolean "migrated_parent"
     t.jsonb "options"
+    t.integer "order_place"
+    t.bigint "parent_id"
     t.boolean "private", default: false, null: false
+    t.bigint "revision_id"
     t.bigint "stable_id"
     t.string "type_champ"
     t.datetime "updated_at"
+    t.index ["parent_id"], name: "index_types_de_champ_on_parent_id"
     t.index ["private"], name: "index_types_de_champ_on_private"
+    t.index ["revision_id"], name: "index_types_de_champ_on_revision_id"
     t.index ["stable_id"], name: "index_types_de_champ_on_stable_id"
   end
 
@@ -934,6 +940,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.string "reset_password_token"
     t.integer "sign_in_count", default: 0, null: false
     t.string "siret"
+    t.boolean "team_account", default: false
     t.text "unconfirmed_email"
     t.string "unlock_token"
     t.datetime "updated_at"
@@ -999,13 +1006,12 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   add_foreign_key "bulk_messages_groupe_instructeurs", "bulk_messages"
   add_foreign_key "bulk_messages_groupe_instructeurs", "groupe_instructeurs"
   add_foreign_key "champs", "champs", column: "parent_id"
-  add_foreign_key "champs", "dossiers"
-  add_foreign_key "champs", "etablissements"
-  add_foreign_key "champs", "types_de_champ"
   add_foreign_key "closed_mails", "procedures"
   add_foreign_key "commentaires", "dossiers"
   add_foreign_key "commentaires", "experts"
   add_foreign_key "commentaires", "instructeurs"
+  add_foreign_key "dossier_batch_operations", "batch_operations"
+  add_foreign_key "dossier_batch_operations", "dossiers"
   add_foreign_key "dossier_operation_logs", "bill_signatures"
   add_foreign_key "dossier_transfer_logs", "dossiers"
   add_foreign_key "dossiers", "batch_operations"
@@ -1014,7 +1020,6 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   add_foreign_key "dossiers", "groupe_instructeurs"
   add_foreign_key "dossiers", "procedure_revisions", column: "revision_id"
   add_foreign_key "dossiers", "users"
-  add_foreign_key "etablissements", "dossiers"
   add_foreign_key "experts", "users"
   add_foreign_key "experts_procedures", "experts"
   add_foreign_key "experts_procedures", "procedures"
@@ -1042,6 +1047,8 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   add_foreign_key "targeted_user_links", "users"
   add_foreign_key "traitements", "dossiers"
   add_foreign_key "trusted_device_tokens", "instructeurs"
+  add_foreign_key "types_de_champ", "procedure_revisions", column: "revision_id"
+  add_foreign_key "types_de_champ", "types_de_champ", column: "parent_id"
   add_foreign_key "users", "users", column: "requested_merge_into_id"
   add_foreign_key "without_continuation_mails", "procedures"
   add_foreign_key "zone_labels", "zones"

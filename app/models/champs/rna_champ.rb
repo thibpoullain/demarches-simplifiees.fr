@@ -5,7 +5,7 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
-#  prefilled                      :boolean          default(FALSE)
+#  prefilled                      :boolean
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
 #  type                           :string
@@ -13,12 +13,12 @@
 #  value_json                     :jsonb
 #  created_at                     :datetime
 #  updated_at                     :datetime
-#  dossier_id                     :integer          not null
+#  dossier_id                     :integer
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
-#  type_de_champ_id               :integer          not null
 #  row_id                         :string
+#  type_de_champ_id               :integer
 #
 class Champs::RNAChamp < Champ
   include RNAChampAssociationFetchableConcern
