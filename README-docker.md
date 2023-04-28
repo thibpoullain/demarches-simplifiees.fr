@@ -35,8 +35,6 @@ Pour démarrer simplement, exécuter les instructions suivantes dans un terminal
 
 # Pointer votre navigateur sur l'URL:
 localhost:3000
-# A la première connexion, les assets front (React) sont construites avec
-# webpack, ce qui prend un peu de temps.
 
 # Se connecter en tant qu'utilisateur avec les identifiants suivants:
 email:    test@exemple.fr
@@ -54,8 +52,8 @@ password: this is a very complicated password !
 Autres commandes disponibles:
 
 ```bash
-# Lister les containers chargés:
-> make show
+# Status des containers docker:
+> make status
 
 # Ouvrir un terminal dans le container principal de l'app demat-social,
 # quand l'app est lancée.
@@ -68,12 +66,15 @@ Autres commandes disponibles:
 # Lancer les tâches d'arrière plan (background jobs)
 > make workers
 
-# Faire un backup de la base de données dans log/
+# Faire un backup de la base de données dans log/ au format sql
 > make dump
 
 # Recharger la dernière archive de la base de donnée log/backup.sql
 # dans une base de données vide.
 > make load
+
+# Recharger la base de donnée à partir de la base de production anonymisée au format dump
+> make restore
 
 # Reconstruire les images.
 > make build

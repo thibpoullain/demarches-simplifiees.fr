@@ -59,14 +59,11 @@ Rails.application.config.content_security_policy do |policy|
   if Rails.env.development?
     # Allow LiveReload requests
     policy.connect_src(*policy.connect_src, "ws://localhost:3035", "http://localhost:3035")
+    policy.connect_src(*policy.connect_src, "ws://localhost:3036", "http://localhost:3036")
 
     # Allow Vite.js
-Rails.logger.info("VITE ACCESSING ws://#{ViteRuby.config.host_with_port}")
     policy.connect_src(*policy.connect_src, "ws://#{ViteRuby.config.host_with_port}")
-    policy.connect_src(*policy.connect_src, "ws://front:3036")
     policy.script_src(*policy.script_src, :unsafe_eval, "http://#{ViteRuby.config.host_with_port}")
-    policy.script_src(*policy.script_src, :unsafe_eval, "http://front:3036")
-    policy.script_src(*policy.script_src, :unsafe_eval, "http://localhost:3036")
 
     # CSP are not enforced in development (see content_security_policy_report_only in development.rb)
     # However we notify a random local URL, to see breakage in the DevTools when adding a new external resource.

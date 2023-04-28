@@ -2,7 +2,7 @@ version: '3.7'
 services:
   db:
     image: postgres
-    container_name: demat-social-sql
+    container_name: demat-social-data
     environment:
       POSTGRES_DB: tps_development
       POSTGRES_USER: tps_development
@@ -51,7 +51,7 @@ services:
       - docker/dev.env.mandatory
       - docker/.env.optional
     ports:
-      - '3036:3000'
+      - '3036:3036'
     volumes:
       - '.:/opt/ds'
       - demat-dev_gems:/opt/ds/tmp/
