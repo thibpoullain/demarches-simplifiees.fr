@@ -69,13 +69,18 @@ Autres commandes disponibles:
 # Faire un backup de la base de données dans log/ au format sql
 > make dump
 
-# Recharger la dernière archive de la base de donnée log/backup.sql
-# dans une base de données vide.
+# Recharger la dernière archive locale de la base de donnée située
+# dans log/backup.sql (générée par un make dump).
+# Cette commande supprime la base de donnée actuelle de l'environnement
+# de développement.
 > make load
 
-# Recharger la base de donnée à partir de la base de production anonymisée au format dump
+# Recharger la base de donnée à partir du dump de la base de production
+# anonymisée copiée dans ../dumps/
+# Cette commande supprime la base de donnée actuelle de l'environnement
+# de développement.
 > make restore
 
-# Reconstruire les images.
+# Reconstruire les images docker.
 > make build
 ```
