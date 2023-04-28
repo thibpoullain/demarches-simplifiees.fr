@@ -54,7 +54,7 @@ shell:
 
 # Open a bash shell inside the database container when app is running
 dbshell:
-	docker exec -it demat-social-sql /bin/bash
+	docker exec -it demat-social-data /bin/bash
 
 # Open a bash terminal inside the app container when app is not running
 console:
@@ -70,18 +70,22 @@ status:
 
 # Dump postgresql database - sql format
 dump:
-	docker exec -i demat-social-sql /bin/bash -c "pg_dump -U $(postgres_role) $(postgres_database)" > log/backup.sql
+	docker exec -i demat-social-data /bin/bash -c "pg_dump -U $(postgres_role) $(postgres_database)" > log/backup.sql
 	cp log/backup.sql log/backup-$(current_date).sql
 
 # Load the application database from backup - sql format
+# It will drop the current database
 load:
-	docker exec -i demat-social-sql /bin/bash -c "psql -U $(postgres_role) $(postgres_database)" < log/backup.sql
+	docker exec -i demat-social-data /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
+	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+	docker exec -i demat-social-data /bin/bash -c "psql -U $(postgres_role) $(postgres_database)" < log/backup.sql
 
 # Restore the anonymized database from production - dump format
+# It will drop the current database
 # tdb: run interlaced migrations and after_party tasks - customized script entrypoint.sh ?
 restore:
-		docker cp ../dumps/$(postgres_dump) demat-social-sql:./
-		docker exec -i demat-social-sql /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
-		docker exec -i demat-social-sql /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
-		docker exec -i demat-social-sql /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
-		docker exec -i demat-social-sql /bin/bash -c "rm ./$(postgres_dump)"
+		docker cp ../dumps/$(postgres_dump) demat-social-data:./
+		docker exec -i demat-social-data /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
+		docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+		docker exec -i demat-social-data /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
+		docker exec -i demat-social-data /bin/bash -c "rm ./$(postgres_dump)"
