@@ -1,4 +1,14 @@
+@import "colors";
+@import "constants";
 @import "mixins";
+@import "placeholders";
+
+footer {
+  background-color: $light-grey;
+  border-top: 1px solid $border-grey;
+  bottom: 0;
+  width: 100%;
+}
 
 .landing-footer {
   @include vertical-padding(72px);
@@ -9,18 +19,111 @@
   line-height: 24px;
 }
 
+.footer-columns {
+  @extend %horizontal-list;
+  justify-content: flex-start;
+  margin: 0 -15px;
+}
+
+.footer-column {
+  @extend %horizontal-list-item;
+  font-size: 14px;
+  vertical-align: top;
+  flex: 0 0 33.333333%;
+  min-width: 280px;
+  margin-bottom: 30px;
+
+  @media (max-width: 550px) {
+    width: 100%;
+  }
+}
+
+.footer-logos,
+.footer-links {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-header {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.footer-link {
+  margin-bottom: 14px;
+
+  &:last-of-type {
+    margin-bottom: 0;
+  }
+}
+
+.footer-text {
+  margin-bottom: 14px;
+}
+
 .footer-logo:hover {
   opacity: 0.8;
 }
 
-.fr-footer__logo {
-  &.logo-beta-gouv-fr {
-    width: 9rem;
+.footer-logo-beta-gouv-fr {
+  @include ie-compatible-background-image("footer/logo-beta-gouv-fr.svg");
+
+  width: 150px;
+  height: 25px;
+  margin-top: 14px;
+}
+
+.footer-logo-france {
+  @include ie-compatible-background-image("republique-francaise-logo.svg");
+
+  width: 105px;
+  height: 90px;
+}
+
+.footer-link a,
+.footer-text a {
+  color: $black;
+  text-decoration: none;
+
+  &:hover,
+  &:focus {
+    color: $blue-france-700;
+    text-decoration: none;
   }
 }
 
-.fr-footer__top-link p {
-  margin-bottom: 0;
-  font-size: 0.75rem;
-  line-height: 1.25rem;
+.footer-bottom-line {
+  text-align: center;
+  font-size: small;
+
+  @media (max-width: 550px) {
+    text-align: left;
+  }
+}
+
+.footer-row {
+  margin-bottom: 30px;
+
+  // In this case, the bottom margin is defined directly on each individual column
+  &.footer-columns {
+    margin-bottom: 0;
+  }
+}
+
+.footer-site-links {
+  li {
+    display: inline;
+
+
+    &::before {
+      content: "-";
+      margin: $default-spacer;
+    }
+
+    &:first-child::before {
+      content: none;
+    }
+  }
 }
