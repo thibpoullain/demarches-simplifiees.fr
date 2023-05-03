@@ -38,6 +38,6 @@
             = image_tag "icons/switch-profile.svg", alt: '', width: 20, height: 20, class: 'mr-1'
             = t('profile', scope: [:layouts])
         %li
-          = link_to destroy_user_session_path, method: :delete, class: "fr-nav__link flex align-center" do
+          = button_to destroy_user_session_path, method: :delete, class: "fr-nav__link flex align-center" do
             = image_tag "icons/sign-out.svg", alt: '', width: 20, height: 20, class: 'mr-1'
             = t('logout', scope: [:layouts])
