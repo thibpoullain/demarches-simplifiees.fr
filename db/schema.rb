@@ -156,7 +156,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   end
 
   create_table "avis", id: :serial, force: :cascade do |t|
-    t.text "answer"
+    t.string "answer"
     t.integer "claimant_id", null: false
     t.string "claimant_type"
     t.boolean "confidentiel", default: false, null: false
@@ -164,7 +164,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.integer "dossier_id"
     t.string "email"
     t.bigint "experts_procedure_id"
-    t.text "introduction"
+    t.string "introduction"
     t.boolean "question_answer"
     t.string "question_label"
     t.datetime "reminded_at"
@@ -383,10 +383,10 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.bigint "parent_dossier_id"
     t.string "prefill_token"
     t.boolean "prefilled"
-    t.text "private_search_terms"
+    t.string "private_search_terms"
     t.datetime "processed_at"
     t.bigint "revision_id"
-    t.text "search_terms"
+    t.string "search_terms"
     t.string "state"
     t.datetime "termine_close_to_expiration_notice_sent_at"
     t.datetime "updated_at"
@@ -521,11 +521,11 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "flipper_features", id: false, force: :cascade do |t|
+  create_table "flipper_features", force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.bigserial "id", null: false
     t.string "key", null: false
     t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_flipper_features_on_key", unique: true
   end
 
   create_table "flipper_gates", force: :cascade do |t|
@@ -567,7 +567,6 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.datetime "merge_token_created_at"
     t.datetime "updated_at", null: false
     t.integer "user_id"
-    t.index ["merge_token"], name: "index_france_connect_informations_on_merge_token"
     t.index ["user_id"], name: "index_france_connect_informations_on_user_id"
   end
 
@@ -596,7 +595,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   end
 
   create_table "individuals", id: :serial, force: :cascade do |t|
-    t.date "birthdate"
+    t.string "birthdate"
     t.datetime "created_at"
     t.integer "dossier_id"
     t.string "gender"
@@ -619,7 +618,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.string "agent_connect_id"
     t.boolean "bypass_email_login_token", default: false, null: false
     t.datetime "created_at"
-    t.text "encrypted_login_token"
+    t.string "encrypted_login_token"
     t.datetime "login_token_created_at"
     t.datetime "updated_at"
     t.bigint "user_id", null: false
@@ -893,7 +892,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   create_table "trusted_device_tokens", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "instructeur_id"
-    t.string "token", null: false
+    t.string "token"
     t.datetime "updated_at", null: false
     t.index ["instructeur_id"], name: "index_trusted_device_tokens_on_instructeur_id"
   end
@@ -904,18 +903,12 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.text "description"
     t.string "libelle"
     t.boolean "mandatory", default: false
-    t.boolean "migrated_parent"
     t.jsonb "options"
-    t.integer "order_place"
-    t.bigint "parent_id"
     t.boolean "private", default: false, null: false
-    t.bigint "revision_id"
     t.bigint "stable_id"
     t.string "type_champ"
     t.datetime "updated_at"
-    t.index ["parent_id"], name: "index_types_de_champ_on_parent_id"
     t.index ["private"], name: "index_types_de_champ_on_private"
-    t.index ["revision_id"], name: "index_types_de_champ_on_revision_id"
     t.index ["stable_id"], name: "index_types_de_champ_on_stable_id"
   end
 
@@ -941,7 +934,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.integer "sign_in_count", default: 0, null: false
     t.string "siret"
     t.boolean "team_account", default: false
-    t.text "unconfirmed_email"
+    t.string "unconfirmed_email"
     t.string "unlock_token"
     t.datetime "updated_at"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
@@ -1047,8 +1040,6 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
   add_foreign_key "targeted_user_links", "users"
   add_foreign_key "traitements", "dossiers"
   add_foreign_key "trusted_device_tokens", "instructeurs"
-  add_foreign_key "types_de_champ", "procedure_revisions", column: "revision_id"
-  add_foreign_key "types_de_champ", "types_de_champ", column: "parent_id"
   add_foreign_key "users", "users", column: "requested_merge_into_id"
   add_foreign_key "without_continuation_mails", "procedures"
   add_foreign_key "zone_labels", "zones"

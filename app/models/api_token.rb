@@ -6,8 +6,8 @@
 #  allowed_procedure_ids :bigint           is an Array
 #  encrypted_token       :string           not null
 #  name                  :string           not null
-#  write_access          :boolean          default(TRUE), not null
 #  version               :integer          default(3), not null
+#  write_access          :boolean          default(TRUE), not null
 #  created_at            :datetime         not null
 #  updated_at            :datetime         not null
 #  administrateur_id     :bigint           not null
