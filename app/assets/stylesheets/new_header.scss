@@ -1,7 +1,7 @@
-@import 'colors';
-// @import 'common';
-@import 'constants';
-@import 'mixins';
+@import "colors";
+// @import "common";
+@import "constants";
+@import "mixins";
 // @import 'utils';
 
 $header-landing-breakpoint: 1040px;
@@ -9,7 +9,7 @@ $header-mobile-breakpoint: 550px;
 
 // FIXME: Rename when the header is generalized
 .new-header {
-  background-color: #ffffff;
+  background-color: #FFFFFF;
 }
 
 .new-header-with-border {
@@ -84,7 +84,7 @@ $header-mobile-breakpoint: 550px;
   display: none;
   position: absolute;
   left: -165px;
-  background: #ffffff;
+  background: #FFFFFF;
   border: 2px solid $blue-france-500;
   border-radius: 5px;
   padding: 15px;
@@ -99,7 +99,7 @@ $header-mobile-breakpoint: 550px;
     bottom: 100%;
     left: 50%;
     border: solid transparent;
-    content: ' ';
+    content: " ";
     height: 0;
     width: 0;
     position: absolute;
@@ -108,7 +108,7 @@ $header-mobile-breakpoint: 550px;
 
   &::after {
     border-color: rgba(255, 255, 255, 0);
-    border-bottom-color: #ffffff;
+    border-bottom-color: #FFFFFF;
     border-width: 15px;
     margin-left: -15px;
   }
@@ -199,7 +199,7 @@ $header-mobile-breakpoint: 550px;
   right: 0;
   top: 34px;
   font-size: 14px;
-  background: #ffffff;
+  background: #FFFFFF;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   border: 1px solid $border-grey;
   min-width: 270px;

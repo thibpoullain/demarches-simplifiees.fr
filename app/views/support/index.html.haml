@@ -9,10 +9,10 @@
 
     = form_tag contact_path, method: :post, multipart: true, class: 'fr-form-group', data: {controller: :support } do
 
-        .recommandations
-          %h2
-            = t('.intro_html')
-        %p.mandatory-explanation= t('asterisk_html', scope: [:utils])
+      .recommandations
+        %h2
+          = t('.intro_html')
+      %p.mandatory-explanation= t('asterisk_html', scope: [:utils])
 
       - if !user_signed_in?
         .fr-input-group
