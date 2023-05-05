@@ -3,8 +3,8 @@ import { httpRequest, getConfig } from '@utils';
 
 const API_EDUCATION_QUERY_LIMIT = 5;
 const API_ADRESSE_QUERY_LIMIT = 5;
-const API_FINESS_QUERY_LIMIT = 10;
-const API_RPPSANTE_QUERY_LIMIT = 10;
+// const API_FINESS_QUERY_LIMIT = 10;
+// const API_RPPSANTE_QUERY_LIMIT = 10;
 
 const {
   autocomplete: { api_adresse_url, api_education_url }
