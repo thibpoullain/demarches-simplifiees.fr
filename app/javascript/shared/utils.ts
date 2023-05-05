@@ -22,7 +22,7 @@ const Gon = z
         cookieDomain: z.string().optional(),
         domain: z.string().optional(),
         enabled: z.boolean().default(false),
-        host: z.string().optional(),
+        host: z.string().optional().or(z.string()).nullish(),
         key: z.string().or(z.number()).nullish()
       })
       .default({}),
