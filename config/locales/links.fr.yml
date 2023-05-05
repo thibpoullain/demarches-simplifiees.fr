@@ -4,6 +4,7 @@ fr:
       provided_by: 'la DINUM'
       title: 'Direction Interministérielle au Numérique'
       url: 'https://numerique.gouv.fr'
+      name: 'to-be-defined'
     common:
       faq:
         label: 'FAQ'
@@ -37,10 +38,14 @@ fr:
         label: 'Aide'
         title: 'Foire aux Questions'
         url: 'https://faq.demarches-simplifiees.fr'
-      api_doc:
-        label: 'Documentation de l’API'
-        title: 'Documentation graphql de l’API'
-        url: 'https://doc.demarches-simplifiees.fr/pour-aller-plus-loin/graphql'
+      aide_admin:
+        label: 'to-be-defined'
+        title: 'to-be-defined'
+        url: 'to-be-defined'
+      # api_doc:
+      #   label: 'Documentation de l’API'
+      #   title: 'Documentation graphql de l’API'
+      #   url: 'https://doc.demarches-simplifiees.fr/pour-aller-plus-loin/graphql'
       betagouv:
         label: 'Beta.gouv.fr'
         title: 'Le site de beta.gouv.fr — Premier Ministre'
@@ -91,6 +96,10 @@ fr:
       stats:
         label: 'Statistiques'
         title: 'Statistiques d’usage'
+      webinaire:
+        label: "Online workshop registration"
+        title: "Online workshop registration"
+        url: "https://app.livestorm.co/demarches-simplifiees"
       status_page:
         label: 'Disponibilité'
         title: 'Disponibilité du site demarches-simplifiees'
