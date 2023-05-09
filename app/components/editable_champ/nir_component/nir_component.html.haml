@@ -1,0 +1,7 @@
+= @form.text_field :value,
+  id: @champ.input_id,
+  aria: { describedby: @champ.describedby_id },
+  placeholder: @champ.libelle,
+  required: @champ.mandatory?,
+  pattern: "[1-478][0-9]{2}(0[1-9]|1[0-2]|62|63)(2[ABab]|[0-9]{2})(00[1-9]|0[1-9][0-9]|[1-8][0-9]{2}|9[0-8][0-9]|990)(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2})(0[1-9]|[1-8][0-9]|9[0-7])",
+  title: "Le NIR doit être saisi sur 15 caractères."

@@ -98,6 +98,15 @@ Rails.application.configure do
     config.action_mailer.delivery_method = :mailtrap
   elsif ENV['MAILCATCHER_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :mailcatcher
+  elsif ENV['SMTP_ENABLED'] == 'enabled'
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.smtp_settings = {
+      address:              ENV.fetch("SMTP_HOST"),
+      port:                 ENV.fetch("SMTP_PORT"),
+      domain:               ENV.fetch("SMTP_DOMAIN"),
+      user_name:            Rails.application.secrets.smtp[:username],
+      password:             Rails.application.secrets.smtp[:password],
+    }
   elsif ENV['CLASSIC_SMTP_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :smtp
     config.action_mailer.smtp_settings = {
