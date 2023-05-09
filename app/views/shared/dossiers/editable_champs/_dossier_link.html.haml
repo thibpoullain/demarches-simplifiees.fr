@@ -1,0 +1,11 @@
+.dossier-link{ class: "dossier-link-#{form.index}" }
+  = form.number_field :value,
+    id: champ.input_id,
+    aria: { describedby: champ.describedby_id },
+    placeholder: "Numéro de dossier",
+    autocomplete: 'off',
+    required: champ.mandatory?,
+    data: { remote: true, url: champs_dossier_link_path(form.index) }
+
+  .help-block
+    = render partial: 'shared/champs/dossier_link/help_block', locals: { id: champ.value }
