@@ -25,8 +25,9 @@ gem 'daemons'
 gem 'deep_cloneable' # Enable deep clone of active record models
 gem 'delayed_cron_job' # Cron jobs
 gem 'delayed_job_active_record'
-gem 'delayed_job_web'
+gem 'delayed_job_web', '>= 1.4.4'
 gem 'devise' # Gestion des comptes utilisateurs
+gem 'devise-async'
 gem 'devise-i18n'
 gem 'devise-two-factor'
 gem 'discard'
@@ -55,7 +56,7 @@ gem 'image_processing'
 gem 'invisible_captcha'
 gem 'json_schemer'
 gem 'jwt'
-gem 'kaminari'
+gem 'kaminari', '1.2.1' # Pagination
 gem 'listen' # Required by ActiveSupport::EventedFileUpdateChecker
 gem 'lograge'
 gem 'logstash-event'
@@ -70,6 +71,7 @@ gem 'parsby'
 gem 'pg'
 gem 'phonelib'
 gem 'prawn-rails' # PDF Generation
+gem 'prawn-svg'
 gem 'premailer-rails'
 gem 'puma' # Use Puma as the app server
 gem 'pundit'
@@ -78,10 +80,11 @@ gem 'rails'
 gem 'rails-i18n' # Locales par défaut
 gem 'rake-progressbar', require: false
 gem 'redcarpet'
+gem 'react-rails'
 gem 'rexml' # add missing gem due to ruby3 (https://github.com/Shopify/bootsnap/issues/325)
 gem 'rgeo-geojson'
 gem 'rqrcode'
-gem 'saml_idp'
+gem 'ruby-saml-idp'
 gem 'sanitize-url'
 gem 'sassc-rails' # Use SCSS for stylesheets
 gem 'sentry-delayed_job'
@@ -115,7 +118,7 @@ group :test do
   gem 'shoulda-matchers', require: false
   gem 'timecop'
   gem 'vcr'
-  gem 'webdrivers'
+  gem 'webdrivers', '~> 4.0'
   gem 'webmock'
 end
 

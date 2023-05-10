@@ -2,7 +2,11 @@ class PiecesJustificativesService
   def self.liste_documents(dossiers, with_bills:, with_champs_private:)
     bill_ids = []
 
-    docs = dossiers.in_batches.flat_map do |batch|
+    # batch only on ActiveRecord::Relation class
+    # for zip export format, dossiers are currently an Array class
+    dossiers = dossiers.in_batches if (dossiers.class != Array)
+
+    docs = dossiers.flat_map do |batch|
       pjs = pjs_for_champs(batch, with_champs_private:) +
         pjs_for_commentaires(batch) +
         pjs_for_dossier(batch)
