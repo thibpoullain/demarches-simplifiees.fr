@@ -7,7 +7,7 @@
         %th.libelle= champ.to_s
       %tr
         %th.libelle Numéro RPPS :
-        %td= champ.data['identification_nationale_pp']
+        %td= champ.data['identifiant_pp']
       - if champ.data['libelle_civilite_d_exercice'].present?
         %tr
           %th.libelle Professionnel :

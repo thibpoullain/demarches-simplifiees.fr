@@ -106,7 +106,7 @@
     }
   },
   "required": [
-    "identification_nationale_pp",
+    "identifiant_pp",
     "nom_d_exercice",
     "prenom_d_exercice",
     "libelle_civilite",

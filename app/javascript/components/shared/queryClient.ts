@@ -84,13 +84,13 @@ function buildURL(scope: string, term: string, extra?: string) {
     for (let i = 0; i < reg.length - 1; i++) {
       ch =
         ch +
-        '%23search(identification_nationale_pp,prenom_d_exercice,libelle_profession,nom_d_exercice,code_postal_coord_structure,libelle_commune_coord_structure,"' +
+        '%23search(identifiant_pp,prenom_d_exercice,libelle_profession,nom_d_exercice,code_postal_coord_structure,libelle_commune_coord_structure,"' +
         reg[i] +
         '") AND ';
     }
     ch =
       ch +
-      '%23search(identification_nationale_pp,prenom_d_exercice,libelle_profession,nom_d_exercice,code_postal_coord_structure,libelle_commune_coord_structure,"' +
+      '%23search(identifiant_pp,prenom_d_exercice,libelle_profession,nom_d_exercice,code_postal_coord_structure,libelle_commune_coord_structure,"' +
       reg[reg.length - 1] +
       '")';
     ch = ch + ' AND NOT %23null(libelle_commune_coord_structure) ';
