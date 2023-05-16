@@ -6,11 +6,17 @@ class VirusScannerJob < ApplicationJob
   # If for some reason the file appears invalid, retry for a while
   retry_on(ActiveStorage::IntegrityError, attempts: 5, wait: 5.seconds) do |job, _error|
     blob = job.arguments.first
-    blob.update_columns(virus_scan_result: ActiveStorage::VirusScanner::INTEGRITY_ERROR, virus_scanned_at: Time.zone.now)
+
+    metadata = {
+      virus_scan_result: ActiveStorage::VirusScanner::INTEGRITY_ERROR,
+      scanned_at: Time.zone.now
+    }
+
+    merge_and_update_metadata(blob, metadata)
   end
 
   def perform(blob)
-    return if blob.virus_scanner.done?
+    if blob.virus_scanner.done? then return end
 
     begin
       metadata = extract_metadata_via_virus_scanner(blob)
