@@ -22,6 +22,7 @@ services:
     container_name: demat-social-app
     environment:
       RAILS_ENV: development
+      PORT: 3000
     env_file:
       - docker/dev.env.mandatory
       - docker/.env.optional

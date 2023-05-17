@@ -27,7 +27,7 @@ postgres_database := tps_development
 
 # Build the Docker image of the application
 build:
-	docker-compose build --no-cache
+	docker-compose build
 
 # Create the Docker images for demat-social and install
 install:
