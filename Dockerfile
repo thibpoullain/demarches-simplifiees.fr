@@ -44,7 +44,7 @@ RUN bundle install --jobs 20 --retry 5
 RUN yarn install
 
 # app port 3000
-# vite port 3036 (default 3000, will be changed to 5173 in later versions of Vite)
+# vite port 3036 (default 3036, will be changed to 5173 in later versions of Vite)
 EXPOSE $PORT
 
 CMD ["/bin/bash", "-c", "bin/rails s -b 0.0.0.0 -p $PORT"]
