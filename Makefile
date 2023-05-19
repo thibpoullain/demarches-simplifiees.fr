@@ -1,29 +1,62 @@
 .PHONY: build install run setup clean shell dbshell console status dump load workers
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
-postgres_dump := ano_dds_1025749_230426.dump
+postgres_dump := production.dump
 postgres_role := tps_development
 postgres_database := tps_development
 
-# The first time app is installed, do:
+# How to use the Makefile
+
+# To install and run the application with an empty database, do:
 # 1. make install
 # 2. make setup
 # 3. make run
+
+# The database will contain the seed user:
+# user: test@exemple.fr
+# password: 'this is a very complicated password !'
+# Connect your browser to http://localhost:3000
+
+# To inspect the docker containers status
 # 4. make status
+
+# To stop the application
 # 5. CONTROL C
 # 6. make clean
 
-# After the first installation, do:
+
+# After the initial installation:
+
+# Run the application
 # 1. make run
+
+# Examine the application status
 # 2. make status
-# 3. stop with CONTROL C
+
+# Stop the application
+# 3. CONTROL C in app terminal
 # 4. make clean
 
-# To dump the database in log/
+# To work with the anonymized database from production stored in ../dumps/production.dump
+# 1. make run
+# 2. make restore
+# 3. make shell
+# 4. in container shell
+#    $ bin/migrate-data
+#    $ bin/rails db:seed
+
+# To dump the local database to log/backup.sql
 # make dump
 
-# To load the database from log/backup.sql
+# To load the local database from log/backup.sql
 # make load
+
+# To start the workers
+# make workers
+
+# To open a database shell to inspect the database container or use psql
+# make dbshell
+
 
 # Build the Docker image of the application
 build:
@@ -49,6 +82,7 @@ clean:
 	docker-compose down
 
 # Open a bash shell inside the app container when app is running
+# Can be used to inspect the container content or run the interactive Rails console
 shell:
 	docker exec -it demat-social-app /bin/bash
 
@@ -57,8 +91,9 @@ dbshell:
 	docker exec -it demat-social-data /bin/bash
 
 # Open a bash terminal inside the app container when app is not running
+# Used for running tests inside the app container in RAILS_ENV=test
 console:
-	docker-compose run --rm  webapp-main /bin/bash
+	docker-compose run -e RAILS_ENV=test --rm  webapp-main /bin/bash
 
 # Start the background jobs (workers)
 workers:
@@ -74,15 +109,14 @@ dump:
 	cp log/backup.sql log/backup-$(current_date).sql
 
 # Load the application database from backup - sql format
-# It will drop the current database
+# Warning: it will drop the current database
 load:
 	docker exec -i demat-social-data /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
 	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
 	docker exec -i demat-social-data /bin/bash -c "psql -U $(postgres_role) $(postgres_database)" < log/backup.sql
 
 # Restore the anonymized database from production - dump format
-# It will drop the current database
-# tdb: run interlaced migrations and after_party tasks - customized script entrypoint.sh ?
+# Warning: it will drop the current database
 restore:
 		docker cp ../dumps/$(postgres_dump) demat-social-data:./
 		docker exec -i demat-social-data /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
