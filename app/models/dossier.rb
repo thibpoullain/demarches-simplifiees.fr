@@ -40,6 +40,7 @@
 #  updated_at                                         :datetime
 #  batch_operation_id                                 :bigint
 #  dossier_transfer_id                                :bigint
+#  editing_fork_origin_id                             :bigint
 #  groupe_instructeur_id                              :bigint
 #  parent_dossier_id                                  :bigint
 #  revision_id                                        :bigint

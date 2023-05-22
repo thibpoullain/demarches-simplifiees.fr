@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2023_03_31_125931) do
+ActiveRecord::Schema.define(version: 2023_05_02_160046) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -39,7 +39,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
 
   create_table "active_storage_blobs", force: :cascade do |t|
     t.bigint "byte_size", null: false
-    t.string "checksum", null: false
+    t.string "checksum"
     t.string "content_type"
     t.datetime "created_at", null: false
     t.string "filename", null: false
@@ -363,6 +363,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.string "deleted_user_email_never_send"
     t.datetime "depose_at"
     t.bigint "dossier_transfer_id"
+    t.bigint "editing_fork_origin_id"
     t.datetime "en_construction_at"
     t.datetime "en_construction_close_to_expiration_notice_sent_at"
     t.datetime "en_instruction_at"
@@ -394,6 +395,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.index ["archived"], name: "index_dossiers_on_archived"
     t.index ["batch_operation_id"], name: "index_dossiers_on_batch_operation_id"
     t.index ["dossier_transfer_id"], name: "index_dossiers_on_dossier_transfer_id"
+    t.index ["editing_fork_origin_id"], name: "index_dossiers_on_editing_fork_origin_id"
     t.index ["groupe_instructeur_id"], name: "index_dossiers_on_groupe_instructeur_id"
     t.index ["hidden_at"], name: "index_dossiers_on_hidden_at"
     t.index ["prefill_token"], name: "index_dossiers_on_prefill_token", unique: true
@@ -851,6 +853,7 @@ ActiveRecord::Schema.define(version: 2023_03_31_125931) do
     t.string "last_sign_in_ip"
     t.datetime "locked_at"
     t.boolean "otp_required_for_login"
+    t.string "otp_secret"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
