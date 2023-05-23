@@ -56,3 +56,67 @@ ministeres:
   - OM:
     - '2022-05-20': "Non attribué"
     - '2020-07-06': "Ministère des Outre-mer"
+  - ARS ARA:
+    label: "ARS Auvergne-Rhône-Alpes"
+  - ARS BFC:
+    label: "ARS Bourgogne-Franche-Comté"
+  - ARS BRET:
+    label: "ARS Bretagne"
+  - ARS CVL:
+    label: "ARS Centre-Val de Loire"
+  - ARS COR:
+    label: "ARS Corse"
+  - ARS GE:
+    label: "ARS Grand Est"
+  - ARS GUAD:
+    label: "ARS Guadeloupe"
+  - ARS GUY:
+    label: "ARS Guyane"
+  - ARS HDF:
+    label: "ARS Hauts-de-France"
+  - ARS IF:
+    label: "ARS Île-de-France"
+  - ARS REU:
+    label: "ARS La Réunion"
+  - ARS MART:
+    label: "ARS Martinique"
+  - ARS MAY:
+    label: "ARS Mayotte"
+  - ARS NORM:
+    label: "ARS Normandie"
+  - ARS NA:
+    label: "ARS Nouvelle-Aquitaine"
+  - ARS OCC:
+    label: "ARS Occitanie"
+  - ARS PDL:
+    label: "Pays de la Loire"
+  - ARS PACA:
+    label: "ARS Provence-Alpes-Côte d'Azur"
+  - BCJS:
+    label: "Bureau de la communication Jeunesse et sports"
+  - DICOM:
+    label: "Délégation à l'information et à la communication"
+  - DAEI:
+    label: "Délégation aux affaires européennes et internationales"
+  - DSS:
+    label: "Direction de la sécurité sociale"
+  - DAJ:
+    label: "Direction des affaires juridiques"
+  - DFAS:
+    label: "Direction des finances, des achats et des services"
+  - DRH:
+    label: "Direction des ressources humaines des ministères sociaux"
+  - DNUM:
+    label: "Direction du numérique"
+  - DGOS:
+    label: "Direction générale de l’offre de soins"
+  - DGCS:
+    label: "Direction générale de la cohésion sociale"
+  - DGS:
+    label: "Direction générale de la santé"
+  - SG:
+    label: "Secrétariat général des ministères chargés des affaires sociales"
+  - SPF:
+    label: Santé Publique France
+  - AUTRE:
+    lable: "Autre"
