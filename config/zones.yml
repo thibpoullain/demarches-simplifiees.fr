@@ -57,66 +57,66 @@ ministeres:
     - '2022-05-20': "Non attribué"
     - '2020-07-06': "Ministère des Outre-mer"
   - ARS ARA:
-    label: "ARS Auvergne-Rhône-Alpes"
+    - '2023-05-23': "ARS Auvergne-Rhône-Alpes"
   - ARS BFC:
-    label: "ARS Bourgogne-Franche-Comté"
+    - '2023-05-23': "ARS Bourgogne-Franche-Comté"
   - ARS BRET:
-    label: "ARS Bretagne"
+    - '2023-05-23': "ARS Bretagne"
   - ARS CVL:
-    label: "ARS Centre-Val de Loire"
+    - '2023-05-23': "ARS Centre-Val de Loire"
   - ARS COR:
-    label: "ARS Corse"
+    - '2023-05-23': "ARS Corse"
   - ARS GE:
-    label: "ARS Grand Est"
+    - '2023-05-23': "ARS Grand Est"
   - ARS GUAD:
-    label: "ARS Guadeloupe"
+    - '2023-05-23': "ARS Guadeloupe"
   - ARS GUY:
-    label: "ARS Guyane"
+    - '2023-05-23': "ARS Guyane"
   - ARS HDF:
-    label: "ARS Hauts-de-France"
+    - '2023-05-23': "ARS Hauts-de-France"
   - ARS IF:
-    label: "ARS Île-de-France"
+    - '2023-05-23': "ARS Île-de-France"
   - ARS REU:
-    label: "ARS La Réunion"
+    - '2023-05-23': "ARS La Réunion"
   - ARS MART:
-    label: "ARS Martinique"
+    - '2023-05-23': "ARS Martinique"
   - ARS MAY:
-    label: "ARS Mayotte"
+    - '2023-05-23': "ARS Mayotte"
   - ARS NORM:
-    label: "ARS Normandie"
+    - '2023-05-23': "ARS Normandie"
   - ARS NA:
-    label: "ARS Nouvelle-Aquitaine"
+    - '2023-05-23': "ARS Nouvelle-Aquitaine"
   - ARS OCC:
-    label: "ARS Occitanie"
+    - '2023-05-23': "ARS Occitanie"
   - ARS PDL:
-    label: "Pays de la Loire"
+    - '2023-05-23': "Pays de la Loire"
   - ARS PACA:
-    label: "ARS Provence-Alpes-Côte d'Azur"
+    - '2023-05-23': "ARS Provence-Alpes-Côte d'Azur"
   - BCJS:
-    label: "Bureau de la communication Jeunesse et sports"
+    - '2023-05-23': "Bureau de la communication Jeunesse et sports"
   - DICOM:
-    label: "Délégation à l'information et à la communication"
+    - '2023-05-23': "Délégation à l'information et à la communication"
   - DAEI:
-    label: "Délégation aux affaires européennes et internationales"
+    - '2023-05-23': "Délégation aux affaires européennes et internationales"
   - DSS:
-    label: "Direction de la sécurité sociale"
+    - '2023-05-23': "Direction de la sécurité sociale"
   - DAJ:
-    label: "Direction des affaires juridiques"
+    - '2023-05-23': "Direction des affaires juridiques"
   - DFAS:
-    label: "Direction des finances, des achats et des services"
+    - '2023-05-23': "Direction des finances, des achats et des services"
   - DRH:
-    label: "Direction des ressources humaines des ministères sociaux"
+    - '2023-05-23': "Direction des ressources humaines des ministères sociaux"
   - DNUM:
-    label: "Direction du numérique"
+    - '2023-05-23': "Direction du numérique"
   - DGOS:
-    label: "Direction générale de l’offre de soins"
+    - '2023-05-23': "Direction générale de l’offre de soins"
   - DGCS:
-    label: "Direction générale de la cohésion sociale"
+    - '2023-05-23': "Direction générale de la cohésion sociale"
   - DGS:
-    label: "Direction générale de la santé"
+    - '2023-05-23': "Direction générale de la santé"
   - SG:
-    label: "Secrétariat général des ministères chargés des affaires sociales"
+    - '2023-05-23': "Secrétariat général des ministères chargés des affaires sociales"
   - SPF:
-    label: Santé Publique France
+    - '2023-05-23': "Santé Publique France"
   - AUTRE:
-    lable: "Autre"
+    - '2023-05-23': "Autre"
