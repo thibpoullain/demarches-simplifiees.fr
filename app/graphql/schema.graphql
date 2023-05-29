@@ -86,10 +86,7 @@ type AddressChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -110,8 +107,7 @@ type AddressChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 enum AddressType {
@@ -140,10 +136,7 @@ type AnnuaireEducationChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -164,8 +157,7 @@ type AnnuaireEducationChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Association {
@@ -178,16 +170,14 @@ type Association {
 }
 
 type Avis {
-  attachment: File
-    @deprecated(reason: "Utilisez le champ `attachments` à la place.")
+  attachment: File @deprecated(reason: "Utilisez le champ `attachments` à la place.")
   attachments: [File!]!
   claimant: Profile
   dateQuestion: ISO8601DateTime!
   dateReponse: ISO8601DateTime
   expert: Profile
   id: ID!
-  instructeur: Profile!
-    @deprecated(reason: "Utilisez le champ `claimant` à la place.")
+  instructeur: Profile! @deprecated(reason: "Utilisez le champ `claimant` à la place.")
   question: String!
   questionAnswer: Boolean
   questionLabel: String
@@ -219,10 +209,7 @@ type CarteChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -243,8 +230,7 @@ type CarteChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 interface Champ {
@@ -265,10 +251,7 @@ interface ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -289,8 +272,7 @@ interface ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type CheckboxChamp implements Champ {
@@ -312,10 +294,7 @@ type CheckboxChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -336,8 +315,7 @@ type CheckboxChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 enum Civilite {
@@ -371,10 +349,7 @@ type CiviliteChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -395,18 +370,14 @@ type CiviliteChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type CnafChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -427,8 +398,7 @@ type CnafChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Commune {
@@ -468,10 +438,7 @@ type CommuneChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -492,8 +459,7 @@ type CommuneChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 """
@@ -567,20 +533,14 @@ type DateChamp implements Champ {
   """
   La valeur du champ formaté en ISO8601 (DateTime).
   """
-  value: ISO8601DateTime
-    @deprecated(
-      reason: "Utilisez le champ `date` ou le fragment `DatetimeChamp` à la place."
-    )
+  value: ISO8601DateTime @deprecated(reason: "Utilisez le champ `date` ou le fragment `DatetimeChamp` à la place.")
 }
 
 type DateChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -601,8 +561,7 @@ type DateChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type DatetimeChamp implements Champ {
@@ -627,10 +586,7 @@ type DatetimeChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -651,8 +607,7 @@ type DatetimeChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type DecimalNumberChamp implements Champ {
@@ -674,10 +629,7 @@ type DecimalNumberChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -698,8 +650,7 @@ type DecimalNumberChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 """
@@ -772,14 +723,8 @@ Une démarche
 """
 type Demarche {
   activeRevision: Revision!
-  annotationDescriptors: [ChampDescriptor!]!
-    @deprecated(
-      reason: "Utilisez le champ `activeRevision.annotationDescriptors` à la place."
-    )
-  champDescriptors: [ChampDescriptor!]!
-    @deprecated(
-      reason: "Utilisez le champ `activeRevision.champDescriptors` à la place."
-    )
+  annotationDescriptors: [ChampDescriptor!]! @deprecated(reason: "Utilisez le champ `activeRevision.annotationDescriptors` à la place.")
+  champDescriptors: [ChampDescriptor!]! @deprecated(reason: "Utilisez le champ `activeRevision.champDescriptors` à la place.")
 
   """
   Date de la création.
@@ -1159,10 +1104,7 @@ type DepartementChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -1188,18 +1130,14 @@ type DepartementChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type DgfipChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -1220,8 +1158,7 @@ type DgfipChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 """
@@ -1325,8 +1262,7 @@ type Dossier {
   L’URL du dossier au format PDF.
   """
   pdf: File
-  revision: Revision!
-    @deprecated(reason: "Utilisez le champ `demarche.revision` à la place.")
+  revision: Revision! @deprecated(reason: "Utilisez le champ `demarche.revision` à la place.")
 
   """
   L’état du dossier.
@@ -1571,10 +1507,7 @@ type DossierLinkChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -1595,8 +1528,7 @@ type DossierLinkChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 """
@@ -2013,10 +1945,7 @@ type DropDownListChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2047,8 +1976,7 @@ type DropDownListChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Effectif {
@@ -2060,10 +1988,7 @@ type EmailChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2084,8 +2009,7 @@ type EmailChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Entreprise {
@@ -2158,10 +2082,7 @@ type EpciChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2182,18 +2103,14 @@ type EpciChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type ExplicationChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
   collapsibleExplanationEnabled: Boolean
   collapsibleExplanationText: String
 
@@ -2216,13 +2133,11 @@ type ExplicationChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type File {
-  byteSize: Int!
-    @deprecated(reason: "Utilisez le champ `byteSizeBigInt` à la place.")
+  byteSize: Int! @deprecated(reason: "Utilisez le champ `byteSizeBigInt` à la place.")
   byteSizeBigInt: BigInt!
   checksum: String!
   contentType: String!
@@ -2569,10 +2484,7 @@ type HeaderSectionChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2593,8 +2505,7 @@ type HeaderSectionChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 """
@@ -2611,10 +2522,7 @@ type IbanChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2635,8 +2543,7 @@ type IbanChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type IntegerNumberChamp implements Champ {
@@ -2658,10 +2565,7 @@ type IntegerNumberChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2682,8 +2586,7 @@ type IntegerNumberChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type LinkedDropDownListChamp implements Champ {
@@ -2706,10 +2609,7 @@ type LinkedDropDownListChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2735,18 +2635,14 @@ type LinkedDropDownListChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type MesriChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2767,13 +2663,11 @@ type MesriChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Message {
-  attachment: File
-    @deprecated(reason: "Utilisez le champ `attachments` à la place.")
+  attachment: File @deprecated(reason: "Utilisez le champ `attachments` à la place.")
   attachments: [File!]!
   body: String!
   createdAt: ISO8601DateTime!
@@ -2800,10 +2694,7 @@ type MultipleDropDownListChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -2829,8 +2720,7 @@ type MultipleDropDownListChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Mutation {
@@ -3045,10 +2935,7 @@ type NumberChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3069,8 +2956,7 @@ type NumberChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 enum Order {
@@ -3111,12 +2997,9 @@ type PageInfo {
 }
 
 type ParcelleCadastrale implements GeoArea {
-  codeArr: String!
-    @deprecated(reason: "Utilisez le champ `prefixe` à la place.")
-  codeCom: String!
-    @deprecated(reason: "Utilisez le champ `commune` à la place.")
-  codeDep: String!
-    @deprecated(reason: "Utilisez le champ `commune` à la place.")
+  codeArr: String! @deprecated(reason: "Utilisez le champ `prefixe` à la place.")
+  codeCom: String! @deprecated(reason: "Utilisez le champ `commune` à la place.")
+  codeDep: String! @deprecated(reason: "Utilisez le champ `commune` à la place.")
   commune: String!
   description: String
   feuille: Int! @deprecated(reason: "L’information n’est plus disponible.")
@@ -3128,10 +3011,8 @@ type ParcelleCadastrale implements GeoArea {
   section: String!
   source: GeoAreaSource!
   surface: String!
-  surfaceIntersection: Float!
-    @deprecated(reason: "L’information n’est plus disponible.")
-  surfaceParcelle: Float!
-    @deprecated(reason: "Utilisez le champ `surface` à la place.")
+  surfaceIntersection: Float! @deprecated(reason: "L’information n’est plus disponible.")
+  surfaceParcelle: Float! @deprecated(reason: "Utilisez le champ `surface` à la place.")
 }
 
 type Pays {
@@ -3158,10 +3039,7 @@ type PaysChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3187,37 +3065,26 @@ type PaysChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type PersonneMorale implements Demandeur {
   address: Address!
-  adresse: String!
-    @deprecated(reason: "Utilisez le champ `address.label` à la place.")
+  adresse: String! @deprecated(reason: "Utilisez le champ `address.label` à la place.")
   association: Association
-  codeInseeLocalite: String!
-    @deprecated(reason: "Utilisez le champ `address.city_code` à la place.")
-  codePostal: String!
-    @deprecated(reason: "Utilisez le champ `address.postal_code` à la place.")
-  complementAdresse: String
-    @deprecated(reason: "Utilisez le champ `address` à la place.")
+  codeInseeLocalite: String! @deprecated(reason: "Utilisez le champ `address.city_code` à la place.")
+  codePostal: String! @deprecated(reason: "Utilisez le champ `address.postal_code` à la place.")
+  complementAdresse: String @deprecated(reason: "Utilisez le champ `address` à la place.")
   entreprise: Entreprise
   id: ID!
   libelleNaf: String!
-  localite: String!
-    @deprecated(reason: "Utilisez le champ `address.city_name` à la place.")
+  localite: String! @deprecated(reason: "Utilisez le champ `address.city_name` à la place.")
   naf: String
-  nomVoie: String
-    @deprecated(reason: "Utilisez le champ `address.street_name` à la place.")
-  numeroVoie: String
-    @deprecated(reason: "Utilisez le champ `address.street_number` à la place.")
+  nomVoie: String @deprecated(reason: "Utilisez le champ `address.street_name` à la place.")
+  numeroVoie: String @deprecated(reason: "Utilisez le champ `address.street_number` à la place.")
   siegeSocial: Boolean!
   siret: String!
-  typeVoie: String
-    @deprecated(
-      reason: "Utilisez le champ `address.street_address` à la place."
-    )
+  typeVoie: String @deprecated(reason: "Utilisez le champ `address.street_address` à la place.")
 }
 
 type PersonneMoraleIncomplete implements Demandeur {
@@ -3237,10 +3104,7 @@ type PhoneChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3261,8 +3125,7 @@ type PhoneChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type PieceJustificativeChamp implements Champ {
@@ -3285,10 +3148,7 @@ type PieceJustificativeChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3314,18 +3174,14 @@ type PieceJustificativeChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type PoleEmploiChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3346,8 +3202,7 @@ type PoleEmploiChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Profile {
@@ -3409,10 +3264,7 @@ type RNAChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3433,8 +3285,7 @@ type RNAChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Region {
@@ -3461,10 +3312,7 @@ type RegionChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3490,8 +3338,7 @@ type RegionChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type RepetitionChamp implements Champ {
@@ -3535,8 +3382,7 @@ type RepetitionChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type Revision {
@@ -3610,10 +3456,7 @@ type SiretChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3634,8 +3477,7 @@ type SiretChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type TextChamp implements Champ {
@@ -3657,10 +3499,7 @@ type TextChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3681,18 +3520,14 @@ type TextChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type TextareaChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3713,8 +3548,7 @@ type TextareaChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 type TitreIdentiteChamp implements Champ {
@@ -3737,10 +3571,7 @@ type TitreIdentiteChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -3761,8 +3592,7 @@ type TitreIdentiteChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }
 
 enum TitreIdentiteGrantType {
@@ -3872,6 +3702,11 @@ enum TypeDeChamp {
   explication
 
   """
+  Numéro FINESS
+  """
+  finess
+
+  """
   Titre de section
   """
   header_section
@@ -3892,7 +3727,7 @@ enum TypeDeChamp {
   linked_drop_down_list
 
   """
-  Données du Ministère de l’Enseignement Supérieur, de la Recherche et de l’Innovation
+  Données du Ministère de l'Enseignement Supérieur, de la Recherche et de l'Innovation
   """
   mesri
 
@@ -3900,6 +3735,11 @@ enum TypeDeChamp {
   Choix multiple
   """
   multiple_drop_down_list
+
+  """
+  Numéro de sécurité sociale
+  """
+  nir
 
   """
   Nombre
@@ -3942,6 +3782,11 @@ enum TypeDeChamp {
   rna
 
   """
+  Numéro RPPS
+  """
+  rppsante
+
+  """
   Numéro Siret
   """
   siret
@@ -3965,21 +3810,6 @@ enum TypeDeChamp {
   Oui/Non
   """
   yes_no
-
-  """
-  Numéro de sécurité sociale
-  """
-  nir
-
-  """
-  Numéro FINESS
-  """
-  finess
-
-  """
-  Numéro RPPS
-  """
-  rppsante
 }
 
 enum TypeOrganisme {
@@ -4048,10 +3878,7 @@ type YesNoChampDescriptor implements ChampDescriptor {
   """
   Description des champs d’un bloc répétable.
   """
-  champDescriptors: [ChampDescriptor!]
-    @deprecated(
-      reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place."
-    )
+  champDescriptors: [ChampDescriptor!] @deprecated(reason: "Utilisez le champ `RepetitionChampDescriptor.champ_descriptors` à la place.")
 
   """
   Description du champ.
@@ -4072,6 +3899,5 @@ type YesNoChampDescriptor implements ChampDescriptor {
   """
   Type de la valeur du champ.
   """
-  type: TypeDeChamp!
-    @deprecated(reason: "Utilisez le champ `__typename` à la place.")
+  type: TypeDeChamp! @deprecated(reason: "Utilisez le champ `__typename` à la place.")
 }

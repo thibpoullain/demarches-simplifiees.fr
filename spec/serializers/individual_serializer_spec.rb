@@ -14,7 +14,7 @@ describe IndividualSerializer do
     context 'when the procedure asks for a birthdate' do
       before { procedure.update(ask_birthday: true) }
 
-      it { is_expected.to include(date_naissance: Date.new(2001, 8, 27)) }
+      it { is_expected.to include(date_naissance: I18n.l(Date.new(2001, 8, 27), locale: :en)) }
     end
   end
 end

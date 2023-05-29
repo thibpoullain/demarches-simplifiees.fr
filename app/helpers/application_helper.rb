@@ -95,11 +95,23 @@ module ApplicationHelper
   end
 
   def try_format_date(date)
-    date.present? ? I18n.l(date, format: :long) : ''
+    puts "Triggering try_format_date with param of type #{date.class}"
+    puts "param date: #{date}"
+    if date&.class == Date || date&.class == ActiveSupport::TimeWithZone
+        date.present? ? I18n.l(date, format: :long) : ''
+    else
+        date.present? ? date : ''
+    end
   end
 
   def try_format_datetime(datetime)
-    datetime.present? ? I18n.l(datetime) : ''
+    puts "Triggering try_format_datetime with param of type #{datetime.class}"
+    puts "param datetime: #{datetime}"
+    if datetime&.class == DateTime || datetime&.class == ActiveSupport::TimeWithZone
+      datetime.present? ? I18n.l(datetime) : ''
+    else
+      datetime.present? ? datetime : ''
+    end
   end
 
   def try_format_mois_effectif(etablissement)
