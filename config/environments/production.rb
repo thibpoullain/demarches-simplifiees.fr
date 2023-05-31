@@ -105,7 +105,7 @@ Rails.application.configure do
       port:                 ENV.fetch("SMTP_PORT"),
       domain:               ENV.fetch("SMTP_DOMAIN"),
       user_name:            Rails.application.secrets.smtp[:username],
-      password:             Rails.application.secrets.smtp[:password],
+      password:             Rails.application.secrets.smtp[:password]
     }
   elsif ENV['CLASSIC_SMTP_ENABLED'] == 'enabled'
     config.action_mailer.delivery_method = :smtp
