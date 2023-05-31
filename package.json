@@ -26,7 +26,7 @@
     "dom4": "^2.1.6",
     "email-butler": "^1.0.13",
     "geojson": "^0.5.0",
-    "graphiql": "^2.4.1",
+    "graphiql": "^2.4.7",
     "graphql": "^16.6.0",
     "highcharts": "^10.3.3",
     "intersection-observer": "^0.12.2",
