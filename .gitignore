@@ -12,6 +12,7 @@
 !/log/.keep
 /tmp
 failing_specs.txt
+tmp.zip
 
 public/uploads
 public/downloads
