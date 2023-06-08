@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2023_05_02_160046) do
+ActiveRecord::Schema.define(version: 2023_03_31_125931) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
@@ -39,7 +39,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
 
   create_table "active_storage_blobs", force: :cascade do |t|
     t.bigint "byte_size", null: false
-    t.string "checksum"
+    t.string "checksum", null: false
     t.string "content_type"
     t.datetime "created_at", null: false
     t.string "filename", null: false
@@ -156,7 +156,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   end
 
   create_table "avis", id: :serial, force: :cascade do |t|
-    t.string "answer"
+    t.text "answer"
     t.integer "claimant_id", null: false
     t.string "claimant_type"
     t.boolean "confidentiel", default: false, null: false
@@ -164,7 +164,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.integer "dossier_id"
     t.string "email"
     t.bigint "experts_procedure_id"
-    t.string "introduction"
+    t.text "introduction"
     t.boolean "question_answer"
     t.string "question_label"
     t.datetime "reminded_at"
@@ -363,7 +363,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "deleted_user_email_never_send"
     t.datetime "depose_at"
     t.bigint "dossier_transfer_id"
-    t.bigint "editing_fork_origin_id"
     t.datetime "en_construction_at"
     t.datetime "en_construction_close_to_expiration_notice_sent_at"
     t.datetime "en_instruction_at"
@@ -384,10 +383,10 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.bigint "parent_dossier_id"
     t.string "prefill_token"
     t.boolean "prefilled"
-    t.string "private_search_terms"
+    t.text "private_search_terms"
     t.datetime "processed_at"
     t.bigint "revision_id"
-    t.string "search_terms"
+    t.text "search_terms"
     t.string "state"
     t.datetime "termine_close_to_expiration_notice_sent_at"
     t.datetime "updated_at"
@@ -395,7 +394,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["archived"], name: "index_dossiers_on_archived"
     t.index ["batch_operation_id"], name: "index_dossiers_on_batch_operation_id"
     t.index ["dossier_transfer_id"], name: "index_dossiers_on_dossier_transfer_id"
-    t.index ["editing_fork_origin_id"], name: "index_dossiers_on_editing_fork_origin_id"
     t.index ["groupe_instructeur_id"], name: "index_dossiers_on_groupe_instructeur_id"
     t.index ["hidden_at"], name: "index_dossiers_on_hidden_at"
     t.index ["prefill_token"], name: "index_dossiers_on_prefill_token", unique: true
@@ -597,7 +595,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   end
 
   create_table "individuals", id: :serial, force: :cascade do |t|
-    t.string "birthdate"
+    t.date "birthdate"
     t.datetime "created_at"
     t.integer "dossier_id"
     t.string "gender"
@@ -620,7 +618,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "agent_connect_id"
     t.boolean "bypass_email_login_token", default: false, null: false
     t.datetime "created_at"
-    t.string "encrypted_login_token"
+    t.text "encrypted_login_token"
     t.datetime "login_token_created_at"
     t.datetime "updated_at"
     t.bigint "user_id", null: false
@@ -853,7 +851,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "last_sign_in_ip"
     t.datetime "locked_at"
     t.boolean "otp_required_for_login"
-    t.string "otp_secret"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
@@ -937,7 +934,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.integer "sign_in_count", default: 0, null: false
     t.string "siret"
     t.boolean "team_account", default: false
-    t.string "unconfirmed_email"
+    t.text "unconfirmed_email"
     t.string "unlock_token"
     t.datetime "updated_at"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true

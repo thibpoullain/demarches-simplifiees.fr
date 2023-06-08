@@ -3,7 +3,7 @@
 # Table name: individuals
 #
 #  id         :integer          not null, primary key
-#  birthdate  :string
+#  birthdate  :date
 #  gender     :string
 #  nom        :string
 #  prenom     :string

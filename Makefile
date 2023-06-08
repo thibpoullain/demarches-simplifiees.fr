@@ -1,4 +1,4 @@
-.PHONY: build install run setup clean shell dbshell console status dump load workers
+.PHONY: build install run setup clean shell dbshell console dbconsole status dump load workers
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
 postgres_dump := production.dump
@@ -91,9 +91,15 @@ dbshell:
 	docker exec -it demat-social-data /bin/bash
 
 # Open a bash terminal inside the app container when app is not running
-# Used for running tests inside the app container in RAILS_ENV=test
+# Used for running data migration scripts or to run tests
+# Properly override RAILS_ENV inside the container (development or test) as needed
 console:
-	docker-compose run -e RAILS_ENV=test --rm  webapp-main /bin/bash
+	docker-compose run --name webapp-console -e RAILS_ENV=development --rm  webapp-main /bin/bash
+
+# Open a bash terminal inside the app container when app is not running
+# Used for restoring a database from a dump or running psql
+dbconsole:
+	docker run --name data-console -p 5432:5432 --mount source=pg-data,target=/var/lib/postgresql/data -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development -e RAILS_ENV=development --rm postgres
 
 # Start the background jobs (workers)
 workers:
@@ -116,10 +122,12 @@ load:
 	docker exec -i demat-social-data /bin/bash -c "psql -U $(postgres_role) $(postgres_database)" < log/backup.sql
 
 # Restore the anonymized database from production - dump format
+# First start database container in a terminal with 'make dbconsole'
+# This allows to restore the database without having the web app running
 # Warning: it will drop the current database
 restore:
-		docker cp ../dumps/$(postgres_dump) demat-social-data:./
-		docker exec -i demat-social-data /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
-		docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
-		docker exec -i demat-social-data /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
-		docker exec -i demat-social-data /bin/bash -c "rm ./$(postgres_dump)"
+		docker cp ../dumps/$(postgres_dump) data-console:./
+		docker exec -i data-console /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
+		docker exec -i data-console /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+		docker exec -i data-console /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
+		docker exec -i data-console /bin/bash -c "rm ./$(postgres_dump)"

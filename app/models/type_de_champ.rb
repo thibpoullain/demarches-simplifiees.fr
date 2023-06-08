@@ -15,7 +15,8 @@
 #  stable_id   :bigint
 #
 class TypeDeChamp < ApplicationRecord
-  self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
+  #TODO re-enable when production database has been migrated
+  # self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
 
   FILE_MAX_SIZE = 200.megabytes
   FEATURE_FLAGS = {}
@@ -132,6 +133,9 @@ class TypeDeChamp < ApplicationRecord
   has_many :revisions, -> { ordered }, through: :revision_types_de_champ
   has_one :revision, through: :revision_type_de_champ
   has_one :procedure, through: :revision
+
+  #TODO remove once the production database has been migrated
+  belongs_to :parent, class_name: 'TypeDeChamp', optional: true
 
   delegate :estimated_fill_duration, :estimated_read_duration, :tags_for_template, :libelle_for_export, to: :dynamic_type
 
