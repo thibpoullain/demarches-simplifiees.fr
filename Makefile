@@ -99,7 +99,7 @@ console:
 # Open a bash terminal inside the app container when app is not running
 # Used for restoring a database from a dump or running psql
 dbconsole:
-	docker run --name data-console -p 5432:5432 --mount source=pg-data,target=/var/lib/postgresql/data -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development -e RAILS_ENV=development --rm postgres
+	docker-compose run --name data-console -p 5432:5432 -e RAILS_ENV=development -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development --rm  db
 
 # Start the background jobs (workers)
 workers:
@@ -126,8 +126,8 @@ load:
 # This allows to restore the database without having the web app running
 # Warning: it will drop the current database
 restore:
-		docker cp ../dumps/$(postgres_dump) data-console:./
-		docker exec -i data-console /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
-		docker exec -i data-console /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
-		docker exec -i data-console /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
-		docker exec -i data-console /bin/bash -c "rm ./$(postgres_dump)"
+	docker cp ../dumps/$(postgres_dump) data-console:./
+	docker exec -i data-console /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
+	docker exec -i data-console /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+	docker exec -i data-console /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
+	docker exec -i data-console /bin/bash -c "rm ./$(postgres_dump)"
