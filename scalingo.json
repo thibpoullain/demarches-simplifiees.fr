@@ -247,7 +247,7 @@
   },
   "addons": [
     {
-      "plan": "postgresql-starter"
+      "plan": "postgresql:postgresql-starter"
     }
   ],
   "formation": {
