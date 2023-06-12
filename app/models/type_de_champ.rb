@@ -128,6 +128,7 @@ class TypeDeChamp < ApplicationRecord
                  :collapsible_explanation_enabled,
                  :collapsible_explanation_text
 
+  #TODO remove once the production database has been migrated
   belongs_to :parent, class_name: 'TypeDeChamp', optional: true
   has_many :types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'TypeDeChamp', inverse_of: :parent, dependent: :destroy
 
@@ -137,9 +138,6 @@ class TypeDeChamp < ApplicationRecord
   has_many :revisions, -> { ordered }, through: :revision_types_de_champ
   has_one :revision, through: :revision_type_de_champ
   has_one :procedure, through: :revision
-
-  #TODO remove once the production database has been migrated
-  belongs_to :parent, class_name: 'TypeDeChamp', optional: true
 
   delegate :estimated_fill_duration, :estimated_read_duration, :tags_for_template, :libelle_for_export, to: :dynamic_type
 
