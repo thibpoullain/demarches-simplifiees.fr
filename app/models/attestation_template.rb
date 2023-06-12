@@ -16,6 +16,7 @@ class AttestationTemplate < ApplicationRecord
   include TagsSubstitutionConcern
 
   belongs_to :procedure, inverse_of: :attestation_template
+  has_many :revisions, class_name: 'ProcedureRevision', inverse_of: :attestation_template, dependent: :nullify
 
   has_one_attached :logo
   has_one_attached :signature
@@ -40,6 +41,10 @@ class AttestationTemplate < ApplicationRecord
       metadata: { virus_scan_result: ActiveStorage::VirusScanner::SAFE }
     )
     attestation
+  end
+
+  def procedure
+    super || revisions.last&.procedure
   end
 
   def unspecified_champs_for_dossier(dossier)
