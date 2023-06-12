@@ -363,7 +363,7 @@ describe User, type: :model do
     # 2 - somewhat guessable: protection from unthrottled online attacks. (guesses < 10^8)
     # 3 - safely unguessable: moderate protection from offline slow-hash scenario. (guesses < 10^10)
     # 4 - very unguessable: strong protection from offline slow-hash scenario. (guesses >= 10^10)
-    # Note: minimum paswword length has been raised from 8 to 12 in demat-social
+    # Note: minimum pasword length has been raised from 8 to 12 in demat-social
     # See env variable PASSWORD_MIN_LENGTH
     passwords = ['thenewpassword', 'thenew12pass23', 'thenewdémarches ', 'démarches-simple', '{My-$3cure-p4ssWord}']
     min_complexity = PASSWORD_COMPLEXITY_FOR_ADMIN
