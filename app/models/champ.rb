@@ -102,7 +102,8 @@ class Champ < ApplicationRecord
   before_save :normalize
   after_update_commit :fetch_external_data_later
 
-  validates :type_de_champ_id, uniqueness: { scope: [:dossier_id, :row_id] }
+  #TODO uncomment out when deploying next release (Enterprise API)
+  #validates :type_de_champ_id, uniqueness: { scope: [:dossier_id, :row_id] }
 
   def public?
     !private?
