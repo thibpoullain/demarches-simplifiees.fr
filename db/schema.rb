@@ -10,10 +10,9 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2023_05_02_160046) do
+ActiveRecord::Schema.define(version: 2022_09_13_094806) do
 
   # These are extensions that must be enabled in order to support this database
-  enable_extension "pgcrypto"
   enable_extension "plpgsql"
   enable_extension "unaccent"
 
@@ -39,7 +38,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
 
   create_table "active_storage_blobs", force: :cascade do |t|
     t.bigint "byte_size", null: false
-    t.string "checksum"
+    t.string "checksum", null: false
     t.string "content_type"
     t.datetime "created_at", null: false
     t.string "filename", null: false
@@ -47,11 +46,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.integer "lock_version"
     t.text "metadata"
     t.string "service_name", null: false
-    t.string "virus_scan_result"
-    t.datetime "virus_scanned_at"
-    t.datetime "watermarked_at"
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
-    t.index ["virus_scan_result"], name: "index_active_storage_blobs_on_virus_scan_result"
   end
 
   create_table "active_storage_variant_records", force: :cascade do |t|
@@ -61,7 +56,9 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   end
 
   create_table "administrateurs", id: :serial, force: :cascade do |t|
+    t.boolean "active", default: false
     t.datetime "created_at"
+    t.string "encrypted_token"
     t.datetime "updated_at"
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_administrateurs_on_user_id"
@@ -88,23 +85,11 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["procedure_id"], name: "index_administrateurs_procedures_on_procedure_id"
   end
 
-  create_table "api_tokens", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.bigint "administrateur_id", null: false
-    t.bigint "allowed_procedure_ids", array: true
-    t.datetime "created_at", precision: 6, null: false
-    t.string "encrypted_token", null: false
-    t.string "name", null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.integer "version", default: 3, null: false
-    t.boolean "write_access", default: true, null: false
-    t.index ["administrateur_id"], name: "index_api_tokens_on_administrateur_id"
-  end
-
   create_table "archives", force: :cascade do |t|
     t.datetime "created_at", precision: 6, null: false
-    t.string "job_status", null: false
     t.text "key", null: false
     t.date "month"
+    t.string "status", null: false
     t.string "time_span_type", null: false
     t.datetime "updated_at", precision: 6, null: false
     t.index ["key", "time_span_type", "month"], name: "index_archives_on_key_and_time_span_type_and_month", unique: true
@@ -125,15 +110,12 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.bigint "groupe_instructeur_id"
     t.boolean "instant_email_dossier_notifications_enabled", default: false, null: false
     t.boolean "instant_email_message_notifications_enabled", default: false, null: false
-    t.boolean "instant_expert_avis_email_notifications_enabled", default: false
     t.integer "instructeur_id"
-    t.boolean "manager", default: false
     t.datetime "updated_at"
     t.boolean "weekly_email_notifications_enabled", default: true, null: false
     t.index ["groupe_instructeur_id", "instructeur_id"], name: "unique_couple_groupe_instructeur_instructeur", unique: true
     t.index ["groupe_instructeur_id"], name: "index_assign_tos_on_groupe_instructeur_id"
     t.index ["instructeur_id"], name: "index_assign_tos_on_instructeur_id"
-    t.check_constraint "instant_expert_avis_email_notifications_enabled IS NOT NULL", name: "assign_tos_instant_expert_avis_email_notifications_enabled_null"
   end
 
   create_table "attestation_templates", id: :serial, force: :cascade do |t|
@@ -156,7 +138,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   end
 
   create_table "avis", id: :serial, force: :cascade do |t|
-    t.string "answer"
+    t.text "answer"
     t.integer "claimant_id", null: false
     t.string "claimant_type"
     t.boolean "confidentiel", default: false, null: false
@@ -164,35 +146,12 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.integer "dossier_id"
     t.string "email"
     t.bigint "experts_procedure_id"
-    t.string "introduction"
-    t.boolean "question_answer"
-    t.string "question_label"
-    t.datetime "reminded_at"
+    t.text "introduction"
     t.datetime "revoked_at"
     t.datetime "updated_at", null: false
     t.index ["claimant_id"], name: "index_avis_on_claimant_id"
     t.index ["dossier_id"], name: "index_avis_on_dossier_id"
     t.index ["experts_procedure_id"], name: "index_avis_on_experts_procedure_id"
-  end
-
-  create_table "batch_operations", force: :cascade do |t|
-    t.datetime "created_at", precision: 6, null: false
-    t.bigint "failed_dossier_ids", default: [], null: false, array: true
-    t.datetime "finished_at"
-    t.bigint "instructeur_id", null: false
-    t.string "operation", null: false
-    t.jsonb "payload", default: {}, null: false
-    t.datetime "run_at"
-    t.datetime "seen_at"
-    t.bigint "success_dossier_ids", default: [], null: false, array: true
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
-  create_table "batch_operations_groupe_instructeurs", force: :cascade do |t|
-    t.bigint "batch_operation_id", null: false
-    t.datetime "created_at", precision: 6, null: false
-    t.bigint "groupe_instructeur_id", null: false
-    t.datetime "updated_at", precision: 6, null: false
   end
 
   create_table "bill_signatures", force: :cascade do |t|
@@ -227,10 +186,9 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "external_id"
     t.string "fetch_external_data_exceptions", array: true
     t.bigint "parent_id"
-    t.boolean "prefilled"
     t.boolean "private", default: false, null: false
     t.datetime "rebased_at"
-    t.string "row_id"
+    t.integer "row"
     t.string "type"
     t.integer "type_de_champ_id"
     t.datetime "updated_at"
@@ -240,9 +198,8 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["etablissement_id"], name: "index_champs_on_etablissement_id"
     t.index ["parent_id"], name: "index_champs_on_parent_id"
     t.index ["private"], name: "index_champs_on_private"
-    t.index ["row_id"], name: "index_champs_on_row_id"
-    t.index ["type"], name: "index_champs_on_type"
-    t.index ["type_de_champ_id", "dossier_id", "row_id"], name: "index_champs_on_type_de_champ_id_and_dossier_id_and_row_id", unique: true
+    t.index ["row"], name: "index_champs_on_row"
+    t.index ["type_de_champ_id", "dossier_id", "row"], name: "index_champs_on_type_de_champ_id_and_dossier_id_and_row", unique: true
     t.index ["type_de_champ_id"], name: "index_champs_on_type_de_champ_id"
   end
 
@@ -264,9 +221,11 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.bigint "expert_id"
     t.bigint "instructeur_id"
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index ["dossier_id"], name: "index_commentaires_on_dossier_id"
     t.index ["expert_id"], name: "index_commentaires_on_expert_id"
     t.index ["instructeur_id"], name: "index_commentaires_on_instructeur_id"
+    t.index ["user_id"], name: "index_commentaires_on_user_id"
   end
 
   create_table "delayed_jobs", id: :serial, force: :cascade do |t|
@@ -301,29 +260,20 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["procedure_id"], name: "index_deleted_dossiers_on_procedure_id"
   end
 
-  create_table "dossier_batch_operations", force: :cascade do |t|
-    t.bigint "batch_operation_id", null: false
-    t.datetime "created_at", precision: 6, null: false
-    t.bigint "dossier_id", null: false
-    t.string "state", default: "pending", null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.index ["batch_operation_id"], name: "index_dossier_batch_operations_on_batch_operation_id"
-    t.index ["dossier_id"], name: "index_dossier_batch_operations_on_dossier_id"
-  end
-
   create_table "dossier_operation_logs", force: :cascade do |t|
     t.boolean "automatic_operation", default: false, null: false
     t.bigint "bill_signature_id"
     t.datetime "created_at", null: false
-    t.jsonb "data"
     t.text "digest"
     t.bigint "dossier_id"
     t.datetime "executed_at"
+    t.bigint "instructeur_id"
     t.datetime "keep_until"
     t.string "operation", null: false
     t.datetime "updated_at", null: false
     t.index ["bill_signature_id"], name: "index_dossier_operation_logs_on_bill_signature_id"
     t.index ["dossier_id"], name: "index_dossier_operation_logs_on_dossier_id"
+    t.index ["instructeur_id"], name: "index_dossier_operation_logs_on_instructeur_id"
     t.index ["keep_until"], name: "index_dossier_operation_logs_on_keep_until"
   end
 
@@ -352,10 +302,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   create_table "dossiers", id: :serial, force: :cascade do |t|
     t.string "api_entreprise_job_exceptions", array: true
     t.boolean "archived", default: false
-    t.datetime "archived_at"
-    t.string "archived_by"
     t.boolean "autorisation_donnees"
-    t.bigint "batch_operation_id"
     t.datetime "brouillon_close_to_expiration_notice_sent_at"
     t.interval "conservation_extension", default: "PT0S"
     t.datetime "created_at"
@@ -363,11 +310,10 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "deleted_user_email_never_send"
     t.datetime "depose_at"
     t.bigint "dossier_transfer_id"
-    t.bigint "editing_fork_origin_id"
     t.datetime "en_construction_at"
     t.datetime "en_construction_close_to_expiration_notice_sent_at"
+    t.interval "en_construction_conservation_extension", default: "PT0S"
     t.datetime "en_instruction_at"
-    t.boolean "for_procedure_preview", default: false
     t.bigint "groupe_instructeur_id"
     t.datetime "groupe_instructeur_updated_at"
     t.datetime "hidden_at"
@@ -379,40 +325,30 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.datetime "last_champ_private_updated_at"
     t.datetime "last_champ_updated_at"
     t.datetime "last_commentaire_updated_at"
-    t.boolean "migrated_champ_routage"
     t.text "motivation"
-    t.bigint "parent_dossier_id"
-    t.string "prefill_token"
-    t.boolean "prefilled"
-    t.string "private_search_terms"
+    t.text "private_search_terms"
     t.datetime "processed_at"
     t.bigint "revision_id"
-    t.string "search_terms"
+    t.text "search_terms"
     t.string "state"
     t.datetime "termine_close_to_expiration_notice_sent_at"
     t.datetime "updated_at"
     t.integer "user_id"
     t.index ["archived"], name: "index_dossiers_on_archived"
-    t.index ["batch_operation_id"], name: "index_dossiers_on_batch_operation_id"
     t.index ["dossier_transfer_id"], name: "index_dossiers_on_dossier_transfer_id"
-    t.index ["editing_fork_origin_id"], name: "index_dossiers_on_editing_fork_origin_id"
     t.index ["groupe_instructeur_id"], name: "index_dossiers_on_groupe_instructeur_id"
     t.index ["hidden_at"], name: "index_dossiers_on_hidden_at"
-    t.index ["prefill_token"], name: "index_dossiers_on_prefill_token", unique: true
     t.index ["revision_id"], name: "index_dossiers_on_revision_id"
     t.index ["state"], name: "index_dossiers_on_state"
     t.index ["user_id"], name: "index_dossiers_on_user_id"
   end
 
-  create_table "email_events", force: :cascade do |t|
-    t.datetime "created_at", precision: 6, null: false
-    t.string "message_id"
-    t.string "method", null: false
-    t.datetime "processed_at"
-    t.string "status", null: false
-    t.string "subject", null: false
-    t.string "to", null: false
-    t.datetime "updated_at", precision: 6, null: false
+  create_table "drop_down_lists", id: :serial, force: :cascade do |t|
+    t.datetime "created_at"
+    t.integer "type_de_champ_id"
+    t.datetime "updated_at"
+    t.string "value"
+    t.index ["type_de_champ_id"], name: "index_drop_down_lists_on_type_de_champ_id"
   end
 
   create_table "etablissements", id: :serial, force: :cascade do |t|
@@ -440,7 +376,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "entreprise_effectif_annuel_annee"
     t.decimal "entreprise_effectif_mensuel"
     t.string "entreprise_effectif_mois"
-    t.string "entreprise_etat_administratif"
     t.string "entreprise_forme_juridique"
     t.string "entreprise_forme_juridique_code"
     t.string "entreprise_nom"
@@ -505,7 +440,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   create_table "exports", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "format", null: false
-    t.string "job_status", default: "pending", null: false
     t.text "key", null: false
     t.bigint "procedure_presentation_id"
     t.jsonb "procedure_presentation_snapshot"
@@ -523,11 +457,11 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "flipper_features", force: :cascade do |t|
+  create_table "flipper_features", id: false, force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigserial "id", null: false
     t.string "key", null: false
     t.datetime "updated_at", null: false
-    t.index ["key"], name: "index_flipper_features_on_key", unique: true
   end
 
   create_table "flipper_gates", force: :cascade do |t|
@@ -569,6 +503,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.datetime "merge_token_created_at"
     t.datetime "updated_at", null: false
     t.integer "user_id"
+    t.index ["merge_token"], name: "index_france_connect_informations_on_merge_token"
     t.index ["user_id"], name: "index_france_connect_informations_on_user_id"
   end
 
@@ -585,19 +520,16 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   end
 
   create_table "groupe_instructeurs", force: :cascade do |t|
-    t.boolean "closed", default: false
     t.datetime "created_at", null: false
     t.text "label", null: false
     t.bigint "procedure_id", null: false
-    t.jsonb "routing_rule"
     t.datetime "updated_at", null: false
-    t.index ["closed", "procedure_id"], name: "index_groupe_instructeurs_on_closed_and_procedure_id"
     t.index ["procedure_id", "label"], name: "index_groupe_instructeurs_on_procedure_id_and_label", unique: true
     t.index ["procedure_id"], name: "index_groupe_instructeurs_on_procedure_id"
   end
 
   create_table "individuals", id: :serial, force: :cascade do |t|
-    t.string "birthdate"
+    t.date "birthdate"
     t.datetime "created_at"
     t.integer "dossier_id"
     t.string "gender"
@@ -620,7 +552,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "agent_connect_id"
     t.boolean "bypass_email_login_token", default: false, null: false
     t.datetime "created_at"
-    t.string "encrypted_login_token"
+    t.text "encrypted_login_token"
     t.datetime "login_token_created_at"
     t.datetime "updated_at"
     t.bigint "user_id", null: false
@@ -636,7 +568,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.text "message"
     t.datetime "updated_at"
     t.integer "user_id"
-    t.index ["dossier_id"], name: "index_invites_on_dossier_id"
     t.index ["email", "dossier_id"], name: "index_invites_on_email_and_dossier_id", unique: true
   end
 
@@ -686,7 +617,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.bigint "attestation_template_id"
     t.datetime "created_at", null: false
     t.bigint "dossier_submitted_message_id"
-    t.boolean "migrated_champ_routage"
     t.bigint "procedure_id", null: false
     t.datetime "published_at"
     t.datetime "updated_at", null: false
@@ -697,7 +627,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
 
   create_table "procedures", id: :serial, force: :cascade do |t|
     t.string "aasm_state", default: "brouillon"
-    t.boolean "allow_expert_messaging", default: true, null: false
     t.boolean "allow_expert_review", default: true, null: false
     t.string "api_entreprise_token"
     t.text "api_particulier_scopes", default: [], array: true
@@ -711,17 +640,13 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.datetime "closed_at"
     t.datetime "created_at", null: false
     t.string "declarative_with_state"
-    t.bigint "defaut_groupe_instructeur_id"
     t.string "description"
     t.string "direction"
-    t.datetime "dossiers_count_computed_at"
     t.bigint "draft_revision_id"
     t.integer "duree_conservation_dossiers_dans_ds"
-    t.boolean "duree_conservation_etendue_par_ds", default: false, null: false
+    t.integer "duree_conservation_dossiers_hors_ds"
     t.boolean "durees_conservation_required", default: true
     t.string "encrypted_api_particulier_token"
-    t.integer "estimated_dossiers_count"
-    t.boolean "estimated_duration_visible", default: true, null: false
     t.boolean "euro_flag", default: false
     t.boolean "experts_require_administrateur_invitation", default: false
     t.boolean "for_individual", default: false
@@ -730,25 +655,18 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.boolean "juridique_required", default: true
     t.string "libelle"
     t.string "lien_demarche"
-    t.string "lien_dpo"
     t.string "lien_notice"
     t.string "lien_site_web"
-    t.integer "max_duree_conservation_dossiers_dans_ds", default: 12, null: false
-    t.boolean "migrated_champ_routage"
     t.text "monavis_embed"
-    t.boolean "opendata", default: true
     t.string "organisation"
     t.bigint "parent_procedure_id"
     t.string "path", null: false
-    t.boolean "piece_justificative_multiple", default: true, null: false
-    t.boolean "procedure_expires_when_termine_enabled", default: true
+    t.boolean "procedure_expires_when_termine_enabled", default: false
     t.datetime "published_at"
     t.bigint "published_revision_id"
-    t.bigint "replaced_by_procedure_id"
     t.text "routing_criteria_name", default: "Votre ville"
     t.boolean "routing_enabled"
     t.bigint "service_id"
-    t.text "tags", default: [], array: true
     t.datetime "test_started_at"
     t.datetime "unpublished_at"
     t.datetime "updated_at", null: false
@@ -757,27 +675,15 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.bigint "zone_id"
     t.index ["api_particulier_sources"], name: "index_procedures_on_api_particulier_sources", using: :gin
     t.index ["declarative_with_state"], name: "index_procedures_on_declarative_with_state"
-    t.index ["defaut_groupe_instructeur_id"], name: "index_procedures_on_defaut_groupe_instructeur_id"
     t.index ["draft_revision_id"], name: "index_procedures_on_draft_revision_id"
     t.index ["hidden_at"], name: "index_procedures_on_hidden_at"
-    t.index ["libelle"], name: "index_procedures_on_libelle"
     t.index ["parent_procedure_id"], name: "index_procedures_on_parent_procedure_id"
     t.index ["path", "closed_at", "hidden_at", "unpublished_at"], name: "procedure_path_uniqueness", unique: true
     t.index ["path", "closed_at", "hidden_at"], name: "index_procedures_on_path_and_closed_at_and_hidden_at", unique: true
     t.index ["procedure_expires_when_termine_enabled"], name: "index_procedures_on_procedure_expires_when_termine_enabled"
     t.index ["published_revision_id"], name: "index_procedures_on_published_revision_id"
     t.index ["service_id"], name: "index_procedures_on_service_id"
-    t.index ["tags"], name: "index_procedures_on_tags", using: :gin
     t.index ["zone_id"], name: "index_procedures_on_zone_id"
-  end
-
-  create_table "procedures_zones", id: false, force: :cascade do |t|
-    t.datetime "created_at", precision: 6, null: false
-    t.bigint "procedure_id"
-    t.datetime "updated_at", precision: 6, null: false
-    t.bigint "zone_id"
-    t.index ["procedure_id"], name: "index_procedures_zones_on_procedure_id"
-    t.index ["zone_id"], name: "index_procedures_zones_on_zone_id"
   end
 
   create_table "received_mails", id: :serial, force: :cascade do |t|
@@ -798,24 +704,14 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["procedure_id"], name: "index_refused_mails_on_procedure_id"
   end
 
-  create_table "safe_mailers", force: :cascade do |t|
-    t.datetime "created_at", precision: 6, null: false
-    t.string "forced_delivery_method"
-    t.datetime "updated_at", precision: 6, null: false
-  end
-
   create_table "services", force: :cascade do |t|
     t.bigint "administrateur_id"
     t.text "adresse"
     t.datetime "created_at", null: false
     t.string "email"
-    t.jsonb "etablissement_infos", default: {}
-    t.decimal "etablissement_lat", precision: 10, scale: 6
-    t.decimal "etablissement_lng", precision: 10, scale: 6
     t.text "horaires"
     t.string "nom", null: false
     t.string "organisme"
-    t.string "siret"
     t.string "telephone"
     t.string "type_organisme", null: false
     t.datetime "updated_at", null: false
@@ -853,7 +749,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "last_sign_in_ip"
     t.datetime "locked_at"
     t.boolean "otp_required_for_login"
-    t.string "otp_secret"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
@@ -863,17 +758,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["email"], name: "index_super_admins_on_email", unique: true
     t.index ["reset_password_token"], name: "index_super_admins_on_reset_password_token", unique: true
     t.index ["unlock_token"], name: "index_super_admins_on_unlock_token", unique: true
-  end
-
-  create_table "targeted_user_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", precision: 6, null: false
-    t.string "target_context", null: false
-    t.bigint "target_model_id", null: false
-    t.string "target_model_type", null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.bigint "user_id"
-    t.index ["target_model_id"], name: "index_targeted_user_links_on_target_model_id"
-    t.index ["user_id"], name: "index_targeted_user_links_on_user_id"
   end
 
   create_table "task_records", id: false, force: :cascade do |t|
@@ -895,23 +779,28 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   create_table "trusted_device_tokens", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "instructeur_id"
-    t.string "token"
+    t.string "token", null: false
     t.datetime "updated_at", null: false
     t.index ["instructeur_id"], name: "index_trusted_device_tokens_on_instructeur_id"
   end
 
   create_table "types_de_champ", id: :serial, force: :cascade do |t|
-    t.jsonb "condition"
     t.datetime "created_at"
     t.text "description"
     t.string "libelle"
     t.boolean "mandatory", default: false
+    t.boolean "migrated_parent"
     t.jsonb "options"
+    t.integer "order_place"
+    t.bigint "parent_id"
     t.boolean "private", default: false, null: false
+    t.bigint "revision_id"
     t.bigint "stable_id"
     t.string "type_champ"
     t.datetime "updated_at"
+    t.index ["parent_id"], name: "index_types_de_champ_on_parent_id"
     t.index ["private"], name: "index_types_de_champ_on_private"
+    t.index ["revision_id"], name: "index_types_de_champ_on_revision_id"
     t.index ["stable_id"], name: "index_types_de_champ_on_stable_id"
   end
 
@@ -936,8 +825,7 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.string "reset_password_token"
     t.integer "sign_in_count", default: 0, null: false
     t.string "siret"
-    t.boolean "team_account", default: false
-    t.string "unconfirmed_email"
+    t.text "unconfirmed_email"
     t.string "unlock_token"
     t.datetime "updated_at"
     t.index ["confirmation_token"], name: "index_users_on_confirmation_token", unique: true
@@ -966,15 +854,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["procedure_id"], name: "index_without_continuation_mails_on_procedure_id"
   end
 
-  create_table "zone_labels", force: :cascade do |t|
-    t.datetime "created_at", precision: 6, null: false
-    t.date "designated_on", null: false
-    t.string "name", null: false
-    t.datetime "updated_at", precision: 6, null: false
-    t.bigint "zone_id", null: false
-    t.index ["zone_id"], name: "index_zone_labels_on_zone_id"
-  end
-
   create_table "zones", force: :cascade do |t|
     t.string "acronym", null: false
     t.datetime "created_at", precision: 6, null: false
@@ -983,14 +862,12 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
     t.index ["acronym"], name: "index_zones_on_acronym", unique: true
   end
 
-  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "administrateurs", "users"
   add_foreign_key "administrateurs_instructeurs", "administrateurs"
   add_foreign_key "administrateurs_instructeurs", "instructeurs"
   add_foreign_key "administrateurs_procedures", "administrateurs"
   add_foreign_key "administrateurs_procedures", "procedures"
-  add_foreign_key "api_tokens", "administrateurs"
   add_foreign_key "archives_groupe_instructeurs", "archives"
   add_foreign_key "archives_groupe_instructeurs", "groupe_instructeurs"
   add_foreign_key "assign_tos", "groupe_instructeurs"
@@ -998,21 +875,16 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   add_foreign_key "attestations", "dossiers"
   add_foreign_key "avis", "dossiers"
   add_foreign_key "avis", "experts_procedures"
-  add_foreign_key "batch_operations", "instructeurs"
   add_foreign_key "bulk_messages_groupe_instructeurs", "bulk_messages"
   add_foreign_key "bulk_messages_groupe_instructeurs", "groupe_instructeurs"
   add_foreign_key "champs", "champs", column: "parent_id"
   add_foreign_key "closed_mails", "procedures"
   add_foreign_key "commentaires", "dossiers"
   add_foreign_key "commentaires", "experts"
-  add_foreign_key "commentaires", "instructeurs"
-  add_foreign_key "dossier_batch_operations", "batch_operations"
-  add_foreign_key "dossier_batch_operations", "dossiers"
   add_foreign_key "dossier_operation_logs", "bill_signatures"
+  add_foreign_key "dossier_operation_logs", "instructeurs"
   add_foreign_key "dossier_transfer_logs", "dossiers"
-  add_foreign_key "dossiers", "batch_operations"
   add_foreign_key "dossiers", "dossier_transfers"
-  add_foreign_key "dossiers", "dossiers", column: "parent_dossier_id"
   add_foreign_key "dossiers", "groupe_instructeurs"
   add_foreign_key "dossiers", "procedure_revisions", column: "revision_id"
   add_foreign_key "dossiers", "users"
@@ -1032,7 +904,6 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   add_foreign_key "procedure_revisions", "attestation_templates"
   add_foreign_key "procedure_revisions", "dossier_submitted_messages"
   add_foreign_key "procedure_revisions", "procedures"
-  add_foreign_key "procedures", "groupe_instructeurs", column: "defaut_groupe_instructeur_id"
   add_foreign_key "procedures", "procedure_revisions", column: "draft_revision_id"
   add_foreign_key "procedures", "procedure_revisions", column: "published_revision_id"
   add_foreign_key "procedures", "services"
@@ -1040,10 +911,10 @@ ActiveRecord::Schema.define(version: 2023_05_02_160046) do
   add_foreign_key "received_mails", "procedures"
   add_foreign_key "refused_mails", "procedures"
   add_foreign_key "services", "administrateurs"
-  add_foreign_key "targeted_user_links", "users"
   add_foreign_key "traitements", "dossiers"
   add_foreign_key "trusted_device_tokens", "instructeurs"
+  add_foreign_key "types_de_champ", "procedure_revisions", column: "revision_id"
+  add_foreign_key "types_de_champ", "types_de_champ", column: "parent_id"
   add_foreign_key "users", "users", column: "requested_merge_into_id"
   add_foreign_key "without_continuation_mails", "procedures"
-  add_foreign_key "zone_labels", "zones"
 end

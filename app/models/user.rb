@@ -22,7 +22,7 @@
 #  sign_in_count                :integer          default(0), not null
 #  siret                        :string
 #  team_account                 :boolean          default(FALSE)
-#  unconfirmed_email            :string
+#  unconfirmed_email            :text
 #  unlock_token                 :string
 #  created_at                   :datetime
 #  updated_at                   :datetime
@@ -62,6 +62,7 @@ class User < ApplicationRecord
   accepts_nested_attributes_for :france_connect_information
 
   default_scope { eager_load(:instructeur, :administrateur, :expert) }
+  scope :marked_as_team_account, -> { where('email ilike ?', "%@beta.gouv.fr")}
   before_validation -> { sanitize_email(:email) }
 
   validate :does_not_merge_on_self, if: :requested_merge_into_id_changed?

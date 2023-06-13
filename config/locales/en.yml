@@ -394,7 +394,7 @@ en:
           description: Description of the procedure
           first_name: First Name
           last_name: Last Name
-          birthdate: Date de naissance
+          birthdate: Date of Birth
           complete_data: Please complete your personal information to access the procedure.
           continue: Continue
         merci:

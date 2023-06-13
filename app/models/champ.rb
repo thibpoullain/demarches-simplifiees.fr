@@ -38,6 +38,9 @@ class Champ < ApplicationRecord
 
   delegate :libelle,
     :type_champ,
+    :procedure,
+    :order_place,
+    :mandatory?,
     :description,
     :drop_down_list_options,
     :drop_down_other?,
@@ -98,6 +101,9 @@ class Champ < ApplicationRecord
   before_save :cleanup_if_empty
   before_save :normalize
   after_update_commit :fetch_external_data_later
+
+  #TODO uncomment out when deploying next release (Enterprise API)
+  #validates :type_de_champ_id, uniqueness: { scope: [:dossier_id, :row_id] }
 
   def public?
     !private?
@@ -202,6 +208,10 @@ class Champ < ApplicationRecord
 
   def describedby_id
     "#{html_id}-description" if description.present?
+  end
+
+  def stable_id
+    type_de_champ.stable_id
   end
 
   def log_fetch_external_data_exception(exception)
