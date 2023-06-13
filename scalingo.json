@@ -44,16 +44,16 @@
       "value": "demat-dev.social.gouv.fr"
     },
     "SMTP_ENABLED": {
-      "value": "disabled"
+      "value": "enabled"
     },
     "SMTP_HOST": {
-      "value": "smtp.cegedim.cloud"
+      "value": "tcp-1.osc-fr1.scalingo.com"
     },
     "SMTP_DOMAIN": {
-      "value": "smtp.cegedim.cloud"
+      "value": "tcp-1.osc-fr1.scalingo.com"
     },
     "SMTP_PORT": {
-      "value": "25"
+      "value": "20687"
     },
     "SENTRY_ENABLED": {
       "value": "enabled"
