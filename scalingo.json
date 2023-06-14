@@ -1,29 +1,263 @@
 {
-    "env": {
-      "IS_REVIEW_APP": {
-        "value": "true"
-      },
-      "DEMANDE_INSCRIPTION_ADMIN_PAGE_URL": {
-        "value": "https://demat.social.gouv.fr/commencer/demande-de-creation-de-compte-administrateur"
-      },  
-      "APP_HOST": {
-        "generator": "url",
-        "template": "%URL%"
-      }
+  "env": {
+    "IS_REVIEW_APP": {
+      "value": "false"
+    },  
+    "APP_HOST": {
+      "generator": "url",
+      "template": "%URL%"
     },
-    "addons": [
-      {
-        "plan": "postgresql:postgresql-sandbox"
-      }
-    ],
-    "formation": {
-      "web": {
-        "amount": 1,
-        "size": "M"
-      },
-      "job": {
-        "amount": 1,
-        "size": "S"
-      }
+    "SECRET_KEY_BASE": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "OTP_SECRET_KEY": {
+      "value": "VALEUR_A_RENSEIGNER"      
+    },
+    "DB_DATABASE": {
+      "value": "tps_development"      
+    },
+    "DB_HOST": {
+      "value": "db"
+    },
+    "DB_USERNAME": {
+      "value": "tps_development"
+    },
+    "DB_PASSWORD": {
+      "value": "tps_development"
+    },
+    "S3_ENABLED": {
+      "value": "enabled"
+    },
+    "S3_ENDPOINT": {
+      "value": "https://storage-eb4.cegedim.cloud"
+    },
+    "S3_ACCESS_KEY_ID": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "S3_SECRET_ACCESS_KEY": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "S3_REGION": {
+      "value": "boulogne"
+    },
+    "S3_BUCKET": {
+      "value": "demat-dev.social.gouv.fr"
+    },
+    "SMTP_ENABLED": {
+      "value": "enabled"
+    },
+    "SMTP_HOST": {
+      "value": "tcp-1.osc-fr1.scalingo.com"
+    },
+    "SMTP_DOMAIN": {
+      "value": "tcp-1.osc-fr1.scalingo.com"
+    },
+    "SMTP_PORT": {
+      "value": "20687"
+    },
+    "SENTRY_ENABLED": {
+      "value": "enabled"
+    },
+    "SENTRY_DSN_RAILS": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "SENTRY_DSN_JS": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "SENTRY_CURRENT_ENV": {
+      "value": "development"
+    },
+    "SENTRY_CAPTURE_RATE": {
+      "value": "1"
+    },
+    "ACTIVE_STORAGE_SERVICE": {
+      "value": "s3"
+    },
+    "SAML_IDP_ENABLED": {
+      "value": "disabled"
+    },
+    "MAILCATCHER_ENABLED": {
+      "value": "disabled"
+    },
+    "LOGRAGE_SOURCE": {
+      "value": "tps_local"
+    },
+    "INVISIBLE_CAPTCHA_SECRET": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "CLAMAV_ENABLED": {
+      "value": "disabled"
+    },
+    "DEMAT_CUSTOM_EXPORT_SFTP_CLIENTS": {
+      "value": "spf,cegedim"
+    },
+    "DEMAT_CUSTOM_EXPORT_SFTP_SPF_URL": {
+      "value": "foo@sftp:22/DDS/"
+    },
+    "DEMAT_CUSTOM_EXPORT_SFTP_SPF_KEY_PASSPHRASE": {
+      "value": "quelconque"
+    },
+    "DEMAT_CUSTOM_EXPORT_SFTP_SPF_KEY_DATA": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "DEMAT_CUSTOM_EXPORT_SFTP_CEGEDIM_URL": {
+      "value": "sblanche@80.94.184.44:2222/SIDEMAG/"
+    },
+    "ZONAGE_ENABLED": {
+      "value": "enabled"
+    },
+    "APPLICATION_NAME": {
+      "value": "Dématérialisation des Démarches Sociales"
+    },
+    "APPLICATION_SHORTNAME": {
+      "value": "dds.s.g.fr"
+    },
+    "APPLICATION_BASE_URL": {
+      "value": "https://demat.social.gouv.fr"
+    },
+    "FRANCE_CONNECT_ENABLED": {
+      "value": "enabled"
+    },
+    "RAILS_LOG_TO_STDOUT": {
+      "value": "1"
+    },
+    "BASIC_AUTH_ENABLED": {
+      "value": "disabled"
+    },
+    "CONTACT_EMAIL": {
+      "value": "contact-demat@social.gouv.fr"
+    },
+    "EQUIPE_EMAIL": {
+      "value": "contact-demat@social.gouv.fr"
+    },
+    "NO_REPLY_EMAIL": {
+      "value": "no-reply-demat@social.gouv.fr"
+    },
+    "TECH_EMAIL": {
+      "value": "contact-demat@social.gouv.fr"
+    },
+    "OLD_CONTACT_EMAIL": {
+      "value": "contact-demat@social.gouv.fr"
+    },
+    "CONTACT_ADDRESS": {
+      "value": "Secrétariat général des ministères chargés des affaires sociales - Direction du numérique, 39-43 quai André-Citroën, 75739 Paris Cedex 15"
+    },
+    "DEMANDE_INSCRIPTION_ADMIN_PAGE_URL": {
+      "value": "https://demat.social.gouv.fr/commencer/demande-de-creation-de-compte-administrateur"
+    },
+    "ACCESSIBILITE_URL": {
+      "value": "/Demat-demarches-sociales_accessibilite.pdf"
+    },
+    "FAVICON_16PX_SRC": {
+      "value": "favicons/16x16-dnum.png"
+    },
+    "FAVICON_32PX_SRC": {
+      "value": "favicons/32x32-dnum.png"
+    },
+    "FAVICON_96PX_SRC": {
+      "value": "favicons/96x96-dnum.png"
+    },
+    "HEADER_LOGO_SRC": {
+      "value": "marianne-min-sociaux.png"
+    },
+    "HEADER_LOGO_WIDTH": {
+      "value": "140"
+    },
+    "HEADER_LOGO_HEIGHT": {
+      "value": "135"
+    },
+    "MAILER_LOGO_SRC": {
+      "value": "mailer/instructeur_mailer/logo-demat-social-gouv-fr.png"
+    },
+    "MAILER_FOOTER_LOGO_SRC": {
+      "value": "marianne-min-sociaux.png"
+    },
+    "DOSSIER_PDF_EXPORT_LOGO_SRC": {
+      "value": "app/assets/images/header/logo-demat-social-gouv-fr.png"
+    },
+    "WATERMARK_FILE": {
+      "value": "watermark-demat.png"
+    },
+    "API_ADRESSE_URL": {
+      "value": "https://api-adresse.data.gouv.fr"
+    },
+    "API_GEO_URL": {
+      "value": "https://geo.api.gouv.fr"
+    },
+    "API_EDUCATION_URL": {
+      "value": "https://data.education.gouv.fr/api/records/1.0"
+    },
+    "API_OPENDATASOFT_URL": {
+      "value": "https://arssante.opendatasoft.com/api/records/1.0"
+    },
+    "ANTIVIRUS_ON_FILES": {
+      "value": "disabled"
+    },
+    "SSL_FORCE": {
+      "value": "enabled"
+    },
+    "DEMAT_CONTACT_FORM": {
+      "value": "disabled"
+    },
+    "DEMAT_LOG_LEVEL": {
+      "value": "DEBUG"
+    },
+    "SIGNING_KEY": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "SOURCE": {
+      "value": "tps_local"
+    },
+    "LOGRAGE_ENABLED": {
+      "value": "enabled"
+    },
+    "MATOMO_ENABLED": {
+      "value": "disabled"
+    },
+    "MATOMO_ID": {
+      "value": "73"
+    },
+    "SENDINBLUE_ENABLED": {
+      "value": "disabled"
+    },
+    "CRISP_ENABLED": {
+      "value": "disabled"
+    },
+    "MAILTRAP_ENABLED": {
+      "value": "disabled"
+    },
+    "UNIVERSIGN_API_URL": {
+      "value": "https://ws.universign.eu/tsa/post/"
+    },
+    "SAML_IDP_CERTIFICATE": {
+      "value": "billybop"
+    },
+    "SAML_IDP_SECRET_KEY": {
+      "value": "VALEUR_A_RENSEIGNER"
+    },
+    "SENDINBLUE_LOGIN_URL": {
+      "value": "https://app.sendinblue.com/account/saml/login/truc"
+    },
+    "PASSWORD_MIN_LENGTH": {
+      "value": "12"
+    },
+    "VITE_LEGACY": {
+      "value": "enabled"
     }
+  },
+  "addons": [
+    {
+      "plan": "postgresql:postgresql-starter-512"
+    }
+  ],
+  "formation": {
+    "web": {
+      "amount": 1,
+      "size": "M"
+    },
+    "job": {
+      "amount": 1,
+      "size": "S"
+    }
+  }
 }

@@ -15,12 +15,12 @@
 #  stable_id   :bigint
 #
 class TypeDeChamp < ApplicationRecord
-  #TODO remove class method when deploying next release (Enterprise API)
+  # TODO remove class method when deploying next release (Enterprise API)
   def self.is_db_migrated?
     !TypeDeChamp.column_names.include? :parent_id
   end
 
-  #TODO remove condition when deploying next release (Enterprise API)
+  # TODO remove condition when deploying next release (Enterprise API)
   if self.is_db_migrated?
     self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
   end
@@ -135,7 +135,7 @@ class TypeDeChamp < ApplicationRecord
                  :collapsible_explanation_enabled,
                  :collapsible_explanation_text
 
-  #TODO remove condition when deploying next release (Enterprise API)
+  # TODO remove condition when deploying next release (Enterprise API)
   if !self.is_db_migrated?
     belongs_to :parent, class_name: 'TypeDeChamp', optional: true
     has_many :types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'TypeDeChamp', inverse_of: :parent, dependent: :destroy
@@ -209,7 +209,6 @@ class TypeDeChamp < ApplicationRecord
   after_save if: -> { @remove_piece_justificative_template } do
     piece_justificative_template.purge_later
   end
-
 
   def valid?(context = nil)
     super
