@@ -17,7 +17,7 @@
 class TypeDeChamp < ApplicationRecord
   #TODO remove class method when deploying next release (Enterprise API)
   def self.is_db_migrated?
-    Champ.column_names.include? :parent_id
+    !TypeDeChamp.column_names.include? :parent_id
   end
 
   #TODO remove condition when deploying next release (Enterprise API)
