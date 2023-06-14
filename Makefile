@@ -1,4 +1,4 @@
-.PHONY: build install run setup clean shell dbshell console dbconsole status dump load workers
+.PHONY: build install run setup clean shell dbshell console dbconsole status dump load workers dbcreate dbinit
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
 postgres_dump := production.dump
@@ -131,3 +131,13 @@ restore:
 	docker exec -i data-console /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
 	docker exec -i data-console /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
 	docker exec -i data-console /bin/bash -c "rm ./$(postgres_dump)"
+
+# Drops the current development database and create a new empty one
+# First start database container in a terminal with 'make dbconsole'
+dbcreate:
+	docker exec -i data-console /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
+	docker exec -i data-console /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+
+# Reloads the database schema, runs the migrations, and seeds the database
+dbinit:
+	docker-compose run --name webapp-console -e RAILS_ENV=development --rm  webapp-main /bin/bash -c "bin/rails db:schema:load && bin/rails db:migrate && bin/rails db:seed"
