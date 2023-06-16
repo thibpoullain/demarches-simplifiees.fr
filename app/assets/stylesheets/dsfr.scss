@@ -1,0 +1,68 @@
+@import "colors";
+
+// override default transparent background on inputs & font-size to 16px by default
+input,
+textarea,
+select,
+// FIXME when DSFR is DONE
+.form-ds-fr-white .fr-input {
+  background: $white;
+  font-size: 1em;
+}
+
+// with Marianne font, weight of font is less bolder, so bold it up
+.button.primary {
+  font-weight: bold;
+}
+
+trix-editor.fr-input {
+  max-height: none;
+}
+
+// Fix firefox < 80, Safari < 15.4, Chrome < 83 not supporting "appearance: auto" on inputs
+// This rule was set by DSFR for DSFR design, but broke our legacy forms.
+// scss-lint:disable DuplicateProperty
+input[type="checkbox"] {
+  -moz-appearance: checkbox;
+  -moz-appearance: auto;
+
+  -webkit-appearance: checkbox;
+  -webkit-appearance: auto;
+}
+
+input[type="radio"] {
+  -moz-appearance: radio;
+  -moz-appearance: auto;
+
+  -webkit-appearance: radio;
+  -webkit-appearance: auto;
+}
+// scss-lint:enable DuplicateProperty
+
+// remove pointer cursor on textarea
+textarea {
+  cursor: auto;
+}
+
+fieldset {
+  border: none;
+  padding-left: 0;
+  padding-bottom: 0;
+}
+
+.fr-btn.fr-btn--icon-left[target="_blank"] {
+  &::after {
+    display: none;
+  }
+}
+
+// dans le DSFR il est possible d'avoir un bouton seulement avec une icone mais j'ai du surcharger ici pour eviter d'avoir des marges de l'icone. Je n'ai pas bien compris pourquoi
+.fr-btns-group--sm.fr-btns-group--icon-right .fr-btn[class*=" fr-icon-"].icon-only::after {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.fr-btn.fr-btn--secondary.danger {
+  color: $light-red;
+  box-shadow: 0px 0px 0px 1px $light-red;
+}

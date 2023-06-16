@@ -5,15 +5,7 @@ class ProcedureArchiveService
     @procedure = procedure
   end
 
-  def create_pending_archive(instructeur, type, month = nil)
-    groupe_instructeurs = instructeur
-      .groupe_instructeurs
-      .where(procedure: @procedure)
-
-    Archive.find_or_create_archive(type, month, groupe_instructeurs)
-  end
-
-  def make_and_upload_archive(archive, instructeur)
+  def make_and_upload_archive(archive)
     dossiers = Dossier.visible_by_administration
       .where(groupe_instructeur: archive.groupe_instructeurs)
 
@@ -23,7 +15,7 @@ class ProcedureArchiveService
       dossiers.processed_in_month(archive.month)
     end
 
-    attachments = ActiveStorage::DownloadableFile.create_list_from_dossiers(dossiers)
+    attachments = ActiveStorage::DownloadableFile.create_list_from_dossiers(dossiers, with_bills: true, with_champs_private: true)
 
     DownloadableFileService.download_and_zip(@procedure, attachments, zip_root_folder(archive)) do |zip_filepath|
       ArchiveUploader.new(procedure: @procedure, filename: archive.filename(@procedure), filepath: zip_filepath)
@@ -44,7 +36,12 @@ class ProcedureArchiveService
   private
 
   def zip_root_folder(archive)
-    "procedure-#{@procedure.id}-#{archive.id}"
+    zip_filename = archive.filename(@procedure)
+
+    [
+      File.basename(zip_filename, File.extname(zip_filename)),
+      archive.id
+    ].join("-")
   end
 
   def self.attachments_from_champs_piece_justificative(champs)
@@ -55,10 +52,10 @@ class ProcedureArchiveService
   end
 
   def self.liste_pieces_justificatives_for_archive(dossier)
-    champs_blocs_repetables = dossier.champs
+    champs_blocs_repetables = dossier.champs_public
       .filter { |c| c.type_champ == TypeDeChamp.type_champs.fetch(:repetition) }
       .flat_map(&:champs)
 
-    attachments_from_champs_piece_justificative(champs_blocs_repetables + dossier.champs)
+    attachments_from_champs_piece_justificative(champs_blocs_repetables + dossier.champs_public)
   end
 end

@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,6 +17,7 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::TitreIdentiteChamp < Champ
@@ -32,12 +33,12 @@ class Champs::TitreIdentiteChamp < Champ
     # We don’t know how to search inside documents yet
   end
 
-  def mandatory_and_blank?
+  def mandatory_blank?
     mandatory? && !piece_justificative_file.attached?
   end
 
   def for_export
-    nil
+    piece_justificative_file.attached? ? "présent" : "absent"
   end
 
   def for_api

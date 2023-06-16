@@ -1,42 +1,13 @@
+- if @is_dossier_in_batch_operation
+  = render Dsfr::NoticeComponent.new(closable: false) do |c|
+    - c.with_title do
+      Un traitement de masse est en cours sur ce dossier, vous ne pouvez pas le modifier.
+      = link_to "Recharger la page", instructeur_dossier_path
+      pour voir si l'opération est finie.
+
 .sub-header
-  .container
-    .flex.justify-between
-      %ul.breadcrumbs
-        %li
-          = link_to instructeur_procedure_path(dossier.procedure), title: dossier.procedure.libelle do
-            - if dossier.procedure.brouillon?
-              %span.badge démarche en test
-            = dossier.procedure.libelle.truncate_words(10)
-        %li
-          = "Dossier nº #{dossier.id}"
-
-      .header-actions
-        = render partial: 'instructeurs/dossiers/header_actions', locals: { dossier: dossier }
-
-    = render(partial: 'instructeurs/dossiers/expiration_banner', locals: {dossier: dossier})
-
-    %nav.tabs
-      %ul
-        - notifications_summary = current_instructeur.notifications_for_dossier(dossier)
-
-        = dynamic_tab_item(t('views.instructeurs.dossiers.tab_steps.request'),
-          instructeur_dossier_path(dossier.procedure, dossier),
-          notification: notifications_summary[:demande])
-
-        = dynamic_tab_item(t('views.instructeurs.dossiers.tab_steps.private_annotations'),
-          annotations_privees_instructeur_dossier_path(dossier.procedure, dossier),
-          notification: notifications_summary[:annotations_privees])
-
-        = dynamic_tab_item(t('views.instructeurs.dossiers.tab_steps.external_opinion'),
-          avis_instructeur_dossier_path(dossier.procedure, dossier),
-          notification: notifications_summary[:avis])
-
-        = dynamic_tab_item(t('views.instructeurs.dossiers.tab_steps.messaging'),
-          messagerie_instructeur_dossier_path(dossier.procedure, dossier),
-          notification: notifications_summary[:messagerie])
-
-        = dynamic_tab_item(t('views.instructeurs.dossiers.tab_steps.involved_persons'),
-          personnes_impliquees_instructeur_dossier_path(dossier.procedure, dossier))
+  = render partial: 'instructeurs/dossiers/header_top', locals: { dossier: }
+  = render partial: 'instructeurs/dossiers/header_bottom', locals: { dossier: }
 
 .container
   .print-header

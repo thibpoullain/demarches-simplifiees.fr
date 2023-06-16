@@ -1,0 +1,71 @@
+en:
+  administrateurs:
+    experts_procedures:
+      create:
+        experts_assignment:
+          one: "The expert %{value} was assigned to the procedure n° %{procedure}"
+          other: "The experts %{value} were assigned to the procedure n° %{procedure}"
+    groupe_instructeurs:
+      index:
+        procedures: Procedures
+        instructors_group: Group of instructors
+      add_instructeur:
+        wrong_address:
+          one: "%{emails} is not a valid email address"
+          other: "%{emails} are not valid email addresses"
+        assignment:
+          one: "The instructor %{emails} was assigned to the group « %{groupe} »."
+          other: "The instructors %{emails} were assigned to the group « %{groupe} »."
+      reaffecter_dossiers:
+        existing_groupe:
+          one: "%{count} group exist"
+          other: "%{count} groups exist"
+      instructeurs:
+        assigned_instructeur:
+          one: "%{count} instructor is assigned"
+          other: "%{count} instructors are assigned"
+      edit:
+        routing:
+          title: Label of the groups list
+        group_management:
+          title: Group management
+          delete: delete the group
+          delete_confirmation: Are you sure you want to delete the group "%{group_name}"
+          move_files:
+            zero: move draft files
+            one: move one file
+            other: move the %{count} files
+          move_files_confirmation: Reassign folders to another group so you can delete it
+        add_a_group:
+          title: Add a group
+          notice: This group will be a choice from the list "%{routing_criteria_name}"
+        csv_import:
+          title: CSV Import
+          notice_1_html: The csv file must have 1 column with instructors emails(%{instructeurs_link}). For routed procedures, the csv file must have 2 columns (Group, Email) and be separated by commas (%{groupes_link}). The import does not overwrite existing groups and instructors.
+          notice_2: The size of the file must be less than %{csv_max_size}.
+          import_file: Import file
+          import_file_procedure_not_published: The import of instructors by CSV file is available once the process has been published
+          import_file_alert: Instructors added to the procedure will receive an email. Are you sure you want to continue ?"
+          link_text: file example
+          instructeurs_file_path: /csv/import-instructeurs-test.csv
+          groupes_file_path: /csv/en/import-groupe-test.csv
+        set_up: set up
+        button:
+          add_group: Add group
+          rename: Rename
+        existing_groupe:
+          one: "%{count} group exist"
+          other: "%{count} groups exist"
+      routing:
+        title: Routing
+        notice_html: |
+          Routing is a feature for procedures requiring the sharing of instructions between different groups according to a specific criterion (territory, theme or other).
+          <br><br>
+          This feature makes it possible to route the files to each group, and to no longer need to filter its files among a large quantity of requests. It is therefore particularly suitable for national approaches instructed locally.
+          <br><br>
+          Instructors only see the files that concern them, and therefore do not have access to data outside their scope.
+          <br><br>
+          Routing is activated once there are at least two active instructors   groups
+      instructeurs_self_management:
+        self_managment_notice_html: |
+          Instructor Self-Management allows instructors to self-manage the list of Gait Instructors.

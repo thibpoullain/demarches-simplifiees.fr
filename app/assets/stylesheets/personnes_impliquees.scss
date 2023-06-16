@@ -9,8 +9,8 @@
     margin-left: 16px;
   }
 
-  [data-react-class^="ComboMultiple"] {
-    margin-bottom: $default-fields-spacer;
+  [data-react-component-value^="ComboMultiple"] {
+    margin-bottom: 0;
 
     [data-reach-combobox-token-list] {
       padding: 0.5 * $default-padding;

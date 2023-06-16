@@ -37,4 +37,26 @@ class UserMailer < ApplicationMailer
       subject: subject,
       reply_to: CONTACT_EMAIL)
   end
+
+  def send_archive(administrateur_or_instructeur, procedure, archive)
+    @archive = archive
+    @procedure = procedure
+    @archive_url = case administrateur_or_instructeur
+    when Instructeur then instructeur_archives_url(@procedure)
+    when Administrateur then admin_procedure_archives_url(@procedure)
+    else raise ArgumentError("send_archive expect either an Instructeur or an Administrateur")
+    end
+    @procedure_url = case administrateur_or_instructeur
+    when Instructeur then instructeur_procedure_url(@procedure.id)
+    when Administrateur then admin_procedure_url(@procedure)
+    else raise ArgumentError("send_archive expect either an Instructeur or an Administrateur")
+    end
+    subject = "Votre archive est disponible"
+
+    mail(to: administrateur_or_instructeur.email, subject: subject)
+  end
+
+  def forced_delivery_for_action?
+    ['france_connect_merge_confirmation', "new_account_warning", "ask_for_merge", "invite_instructeur"].include?(action_name)
+  end
 end

@@ -1,15 +1,10 @@
 module Users
   class ProfilController < UserController
     before_action :ensure_update_email_is_authorized, only: :update_email
-    before_action :find_transfers, only: [:show, :renew_api_token]
+    before_action :find_transfers, only: [:show]
 
     def show
-    end
-
-    def renew_api_token
-      @token = current_administrateur.renew_api_token
-      flash.now.notice = 'Votre jeton a été regénéré.'
-      render :show
+      @france_connect_informations = FranceConnectInformation.where(user: current_user)
     end
 
     def update_email
@@ -30,8 +25,14 @@ module Users
     end
 
     def transfer_all_dossiers
-      DossierTransfer.initiate(next_owner_email, current_user.dossiers)
-      flash.notice = t('.new_transfer', count: current_user.dossiers.count, email: next_owner_email)
+      transfer = DossierTransfer.initiate(next_owner_email, current_user.dossiers)
+
+      if transfer.valid?
+        flash.notice = t('.new_transfer', count: current_user.dossiers.count, email: next_owner_email)
+      else
+        flash.alert = transfer.errors.full_messages
+      end
+
       redirect_to profil_path
     end
 
@@ -48,6 +49,17 @@ module Users
       users.update_all(requested_merge_into_id: nil)
 
       flash.notice = 'La fusion a été refusé'
+      redirect_to profil_path
+    end
+
+    def destroy_fci
+      fci = FranceConnectInformation
+        .where(user: current_user)
+        .find(params[:fci_id])
+
+      fci.destroy!
+      flash.notice = "Le compte FranceConnect de « #{fci.full_name} » ne peut plus accéder à vos dossiers"
+
       redirect_to profil_path
     end
 

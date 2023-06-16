@@ -16,29 +16,61 @@ class ProcedureRevisionTypeDeChamp < ApplicationRecord
 
   belongs_to :parent, class_name: 'ProcedureRevisionTypeDeChamp', optional: true
   has_many :revision_types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'ProcedureRevisionTypeDeChamp', inverse_of: :parent, dependent: :destroy
+  has_one :procedure, through: :revision
   scope :root, -> { where(parent: nil) }
-  scope :ordered, -> { order(:position) }
+  scope :ordered, -> { order(:position, :id) }
   scope :revision_ordered, -> { order(:revision_id) }
   scope :public_only, -> { joins(:type_de_champ).where(types_de_champ: { private: false }) }
   scope :private_only, -> { joins(:type_de_champ).where(types_de_champ: { private: true }) }
 
-  before_create :set_position
+  delegate :stable_id, :libelle, :description, :type_champ, :mandatory?, :private?, :to_typed_id, to: :type_de_champ
 
-  def private?
-    type_de_champ.private?
+  def child?
+    parent_id.present?
   end
 
-  private
+  def first?
+    position == 0
+  end
 
-  def set_position
-    self.position ||= begin
-      types_de_champ = (private? ? revision.revision_types_de_champ_private : revision.revision_types_de_champ).filter(&:persisted?)
+  def last?
+    siblings.last == self
+  end
 
-      if types_de_champ.present?
-        types_de_champ.last.position + 1
-      else
-        0
-      end
+  def siblings
+    if parent_id.present?
+      revision.revision_types_de_champ.where(parent_id: parent_id).ordered
+    elsif private?
+      revision.revision_types_de_champ_private
+    else
+      revision.revision_types_de_champ_public
     end
+  end
+
+  def upper_siblings
+    siblings.filter { |s| s.position < position }
+  end
+
+  def siblings_starting_at(offset)
+    siblings.filter { |s| (position + offset) <= s.position }
+  end
+
+  def previous_sibling
+    index = siblings.index(self)
+    if index > 0
+      siblings[index - 1]
+    end
+  end
+
+  def block
+    if child?
+      parent
+    else
+      revision
+    end
+  end
+
+  def used_by_routing_rules?
+    stable_id.in?(procedure.stable_ids_used_by_routing_rules)
   end
 end

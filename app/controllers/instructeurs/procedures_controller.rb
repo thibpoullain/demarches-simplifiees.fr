@@ -1,8 +1,10 @@
 module Instructeurs
   class ProceduresController < InstructeurController
     before_action :ensure_ownership!, except: [:index]
+    before_action :ensure_not_super_admin!, only: [:download_export]
 
     ITEMS_PER_PAGE = 25
+    BATCH_SELECTION_LIMIT = 500
 
     def index
       @procedures = current_instructeur
@@ -55,12 +57,12 @@ module Instructeurs
       @procedure_presentation = procedure_presentation
 
       @current_filters = current_filters
-      @displayed_fields_options, @displayed_fields_selected = procedure_presentation.displayed_fields_for_select
-
+      @displayable_fields_for_select, @displayable_fields_selected = procedure_presentation.displayable_fields_for_select
+      @filterable_fields_for_select = procedure_presentation.filterable_fields_options
       @counts = current_instructeur
         .dossiers_count_summary(groupe_instructeur_ids)
         .symbolize_keys
-      @can_download_dossiers = (@counts[:tous] + @counts[:archives]) > 0
+      @can_download_dossiers = (@counts[:tous] + @counts[:archives]) > 0 && !instructeur_as_manager?
 
       dossiers = Dossier.where(groupe_instructeur_id: groupe_instructeur_ids)
       dossiers_count = @counts[statut.underscore.to_sym]
@@ -76,19 +78,23 @@ module Instructeurs
       @has_termine_notifications = notifications[:termines].present?
       @not_archived_notifications_dossier_ids = notifications[:en_cours] + notifications[:termines]
 
-      filtered_sorted_ids = procedure_presentation.filtered_sorted_ids(dossiers, statut, count: dossiers_count)
+      @filtered_sorted_ids = procedure_presentation.filtered_sorted_ids(dossiers, statut, count: dossiers_count)
 
       page = params[:page].presence || 1
 
-      @dossiers_count = filtered_sorted_ids.size
+      @dossiers_count = @filtered_sorted_ids.size
       @filtered_sorted_paginated_ids = Kaminari
-        .paginate_array(filtered_sorted_ids)
+        .paginate_array(@filtered_sorted_ids)
         .page(page)
         .per(ITEMS_PER_PAGE)
 
       @projected_dossiers = DossierProjectionService.project(@filtered_sorted_paginated_ids, procedure_presentation.displayed_fields)
 
       assign_exports
+      @batch_operations = BatchOperation.joins(:groupe_instructeurs)
+        .where(groupe_instructeurs: current_instructeur.groupe_instructeurs.where(procedure_id: @procedure.id))
+        .where(seen_at: nil)
+        .distinct
     end
 
     def deleted_dossiers
@@ -101,7 +107,7 @@ module Instructeurs
       @a_suivre_count, @suivis_count, @traites_count, @tous_count, @archives_count, @supprimes_recemment_count, @expirant_count = current_instructeur
         .dossiers_count_summary(groupe_instructeur_ids)
         .fetch_values('a_suivre', 'suivis', 'traites', 'tous', 'archives', 'supprimes_recemment', 'expirant')
-      @can_download_dossiers = (@tous_count + @archives_count) > 0
+      @can_download_dossiers = (@tous_count + @archives_count) > 0 && !instructeur_as_manager?
 
       notifications = current_instructeur.notifications_for_groupe_instructeurs(groupe_instructeur_ids)
       @has_en_cours_notifications = notifications[:en_cours].present?
@@ -120,7 +126,7 @@ module Instructeurs
     end
 
     def update_sort
-      procedure_presentation.update_sort(params[:table], params[:column])
+      procedure_presentation.update_sort(params[:table], params[:column], params[:order])
 
       redirect_back(fallback_location: instructeur_procedure_url(procedure))
     end
@@ -129,6 +135,13 @@ module Instructeurs
       procedure_presentation.add_filter(statut, params[:field], params[:value])
 
       redirect_back(fallback_location: instructeur_procedure_url(procedure))
+    end
+
+    def update_filter
+      @statut = statut
+      @procedure = procedure
+      @procedure_presentation = procedure_presentation
+      @field = params[:field]
     end
 
     def remove_filter
@@ -145,23 +158,19 @@ module Instructeurs
       @can_download_dossiers = current_instructeur
         .dossiers
         .visible_by_administration
-        .exists?(groupe_instructeur_id: groupe_instructeur_ids)
+        .exists?(groupe_instructeur_id: groupe_instructeur_ids) && !instructeur_as_manager?
 
-      export = Export.find_or_create_export(export_format, groupe_instructeurs, **export_options)
+      export = Export.find_or_create_export(export_format, groupe_instructeurs, force: force_export?, **export_options)
 
-      if export.ready? && export.old? && force_export?
-        export.destroy
-        export = Export.find_or_create_export(export_format, groupe_instructeurs, **export_options)
-      end
+      @procedure = procedure
+      @statut = export_options[:statut]
+      @dossiers_count = export.count
+      assign_exports
 
-      if export.ready?
+      if export.available?
         respond_to do |format|
-          format.js do
-            @procedure = procedure
-            @statut = export_options[:statut]
-            @dossiers_count = export.count
-            assign_exports
-            flash.notice = "L’export au format \"#{export_format}\" est prêt. Vous pouvez le <a href=\"#{export.file.service_url}\">télécharger</a>"
+          format.turbo_stream do
+            flash.notice = export.flash_message
           end
 
           format.html do
@@ -170,20 +179,13 @@ module Instructeurs
         end
       else
         respond_to do |format|
-          notice_message = "Nous générons cet export. Veuillez revenir dans quelques minutes pour le télécharger."
-
-          format.js do
-            @procedure = procedure
-            @statut = export_options[:statut]
-            @dossiers_count = export.count
-            assign_exports
+          format.turbo_stream do
             if !params[:no_progress_notification]
-              flash.notice = notice_message
+              flash.notice = export.flash_message
             end
           end
-
           format.html do
-            redirect_to instructeur_procedure_url(procedure), notice: notice_message
+            redirect_to instructeur_procedure_url(procedure), notice: export.flash_message
           end
         end
       end
@@ -225,8 +227,8 @@ module Instructeurs
       errors = []
 
       email_usagers_dossiers.each do |dossier|
-        commentaire = CommentaireService.build(current_instructeur, dossier, commentaire_params)
-        if commentaire.save
+        commentaire = CommentaireService.create(current_instructeur, dossier, commentaire_params)
+        if commentaire.errors.empty?
           commentaire.dossier.update!(last_commentaire_updated_at: Time.zone.now)
         else
           errors << dossier.id
@@ -242,6 +244,11 @@ module Instructeurs
         flash[:alert] = "Envoi terminé. Cependant #{errors.count} messages n'ont pas été envoyés"
       end
       redirect_to instructeur_procedure_path(@procedure)
+    end
+
+    def administrateurs
+      @procedure = procedure
+      @administrateurs = procedure.administrateurs
     end
 
     private
@@ -260,7 +267,7 @@ module Instructeurs
 
     def assign_to_params
       params.require(:assign_to)
-        .permit(:instant_email_dossier_notifications_enabled, :instant_email_message_notifications_enabled, :daily_email_notifications_enabled, :weekly_email_notifications_enabled)
+        .permit(:instant_expert_avis_email_notifications_enabled, :instant_email_dossier_notifications_enabled, :instant_email_message_notifications_enabled, :daily_email_notifications_enabled, :weekly_email_notifications_enabled)
     end
 
     def assign_exports

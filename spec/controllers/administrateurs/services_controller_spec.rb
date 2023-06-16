@@ -18,22 +18,28 @@ describe Administrateurs::ServicesController, type: :controller do
             email: 'email@toto.com',
             telephone: '1234',
             horaires: 'horaires',
-            adresse: 'adresse'
+            adresse: 'adresse',
+            siret: "35600082800018"
           },
-          procedure_id: 12
+          procedure_id: procedure.id
         }
       end
 
-      it { expect(flash.alert).to be_nil }
-      it { expect(flash.notice).to eq('super service créé') }
-      it { expect(Service.last.nom).to eq('super service') }
-      it { expect(Service.last.organisme).to eq('organisme') }
-      it { expect(Service.last.type_organisme).to eq(Service.type_organismes.fetch(:association)) }
-      it { expect(Service.last.email).to eq('email@toto.com') }
-      it { expect(Service.last.telephone).to eq('1234') }
-      it { expect(Service.last.horaires).to eq('horaires') }
-      it { expect(Service.last.adresse).to eq('adresse') }
-      it { expect(response).to redirect_to(admin_services_path(procedure_id: 12)) }
+      it do
+        expect(flash.alert).to be_nil
+        expect(flash.notice).to eq('super service créé')
+        expect(Service.last.nom).to eq('super service')
+        expect(Service.last.organisme).to eq('organisme')
+        expect(Service.last.type_organisme).to eq(Service.type_organismes.fetch(:association))
+        expect(Service.last.email).to eq('email@toto.com')
+        expect(Service.last.telephone).to eq('1234')
+        expect(Service.last.horaires).to eq('horaires')
+        expect(Service.last.adresse).to eq('adresse')
+        expect(Service.last.siret).to eq('35600082800018')
+        expect(APIEntreprise::ServiceJob).to have_been_enqueued.with(Service.last.id)
+
+        expect(response).to redirect_to(admin_services_path(procedure_id: procedure.id))
+      end
     end
 
     context 'when submitting an invalid service' do
@@ -47,7 +53,7 @@ describe Administrateurs::ServicesController, type: :controller do
 
   describe '#update' do
     let!(:service) { create(:service, administrateur: admin) }
-    let(:service_params) { { nom: 'nom', type_organisme: Service.type_organismes.fetch(:association) } }
+    let(:service_params) { { nom: 'nom', type_organisme: Service.type_organismes.fetch(:association), siret: "13002526500013" } }
 
     before do
       sign_in(admin.user)
@@ -65,6 +71,7 @@ describe Administrateurs::ServicesController, type: :controller do
       it { expect(Service.last.nom).to eq('nom') }
       it { expect(Service.last.type_organisme).to eq(Service.type_organismes.fetch(:association)) }
       it { expect(response).to redirect_to(admin_services_path(procedure_id: procedure.id)) }
+      it { expect(APIEntreprise::ServiceJob).to have_been_enqueued.with(service.id) }
     end
 
     context 'when updating a service with invalid data' do
@@ -113,13 +120,13 @@ describe Administrateurs::ServicesController, type: :controller do
     context 'when a service has no related procedure' do
       before do
         sign_in(admin.user)
-        delete :destroy, params: { id: service.id, procedure_id: 12 }
+        delete :destroy, params: { id: service.id, procedure_id: procedure.id }
       end
 
       it { expect { service.reload }.to raise_error(ActiveRecord::RecordNotFound) }
       it { expect(flash.alert).to be_nil }
       it { expect(flash.notice).to eq("#{service.nom} est supprimé") }
-      it { expect(response).to redirect_to(admin_services_path(procedure_id: 12)) }
+      it { expect(response).to redirect_to(admin_services_path(procedure_id: procedure.id)) }
     end
 
     context 'when a service still has some related procedures' do
@@ -127,13 +134,27 @@ describe Administrateurs::ServicesController, type: :controller do
 
       before do
         sign_in(admin.user)
-        delete :destroy, params: { id: service.id, procedure_id: 12 }
+        delete :destroy, params: { id: service.id, procedure_id: procedure.id }
       end
 
       it { expect(service.reload).not_to be_nil }
       it { expect(flash.alert).to eq("la démarche #{procedure.libelle} utilise encore le service #{service.nom}. Veuillez l'affecter à un autre service avant de pouvoir le supprimer") }
       it { expect(flash.notice).to be_nil }
-      it { expect(response).to redirect_to(admin_services_path(procedure_id: 12)) }
+      it { expect(response).to redirect_to(admin_services_path(procedure_id: procedure.id)) }
+    end
+
+    context "when a service has some related discarded procedures" do
+      let!(:procedure) { create(:procedure, :discarded, service: service) }
+
+      before do
+        sign_in(admin.user)
+        delete :destroy, params: { id: service.id, procedure_id: procedure.id }
+      end
+
+      it { expect { service.reload }.to raise_error(ActiveRecord::RecordNotFound) }
+      it { expect(flash.alert).to be_nil }
+      it { expect(flash.notice).to eq("#{service.nom} est supprimé") }
+      it { expect(procedure.reload.service_id).to be_nil }
     end
   end
 end

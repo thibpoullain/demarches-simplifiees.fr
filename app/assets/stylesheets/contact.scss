@@ -9,12 +9,15 @@ $contact-padding: $default-space * 2;
     padding-bottom: $contact-padding;
   }
 
-  .hidden {
-    display: none;
+  .recommandations {
+    p {
+      font-size: 1.5rem;
+      font-weight: bold;
+      line-height: 1.5rem;
+    }
   }
 
   ul {
     margin-bottom: $default-space;
   }
-
 }

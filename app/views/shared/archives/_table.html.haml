@@ -1,0 +1,35 @@
+%table.table.hoverable.archive-table
+  %thead
+    %tr
+      %th &nbsp;
+      %th.text-right Nombre de dossiers terminés
+      %th.text-right Poids estimé
+      %th.center Télécharger
+
+  %tbody
+  - count_dossiers_termines_by_month.each do |date, count|
+    - matching_archive = archives.find { |archive| archive.time_span_type == 'monthly' && archive.month == date }
+    - weight = estimate_weight(matching_archive, count, average_dossier_weight)
+
+    %tr
+      %td
+        = I18n.l(date, format: "%B %Y").capitalize
+      %td.text-right
+        = count
+      %td.text-right
+        = number_to_human_size(weight)
+      %td.center
+        - if matching_archive.present?
+          - if matching_archive.available?
+            = link_to url_for(matching_archive.file), class: 'button primary' do
+              %span.icon.download-white
+              = t(:archive_ready_html, scope: [:instructeurs, :procedure], generated_period: time_ago_in_words(matching_archive.updated_at))
+          - else
+            %span.icon.retry
+            = t(:archive_pending_html, scope: [:instructeurs, :procedure], created_period: time_ago_in_words(matching_archive.created_at))
+        - elsif weight.nil? || weight < Archive::MAX_SIZE
+          = link_to create_archive_url(procedure, date), method: :post, class: "button" do
+            %span.icon.new-folder
+            Demander la création
+        - else
+          Archive trop volumineuse

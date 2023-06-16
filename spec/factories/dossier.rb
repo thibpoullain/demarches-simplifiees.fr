@@ -4,7 +4,7 @@ FactoryBot.define do
     state { Dossier.states.fetch(:brouillon) }
 
     user { association :user }
-    groupe_instructeur { procedure.routee? ? nil : procedure.defaut_groupe_instructeur }
+    groupe_instructeur { procedure.routing_enabled? ? nil : procedure.defaut_groupe_instructeur }
     revision { procedure.active_revision }
     individual { association(:individual, :empty, dossier: instance, strategy: :build) if procedure.for_individual? }
 
@@ -18,12 +18,22 @@ FactoryBot.define do
     end
 
     trait :with_entreprise do
-      after(:build) do |dossier, _evaluator|
+      transient do
+        as_degraded_mode { false }
+      end
+
+      after(:build) do |dossier, evaluator|
         if dossier.procedure.for_individual?
           raise 'Inconsistent factory: attempting to create a dossier :with_entreprise on a procedure that is `for_individual?`'
         end
-        etablissement = create(:etablissement, :with_exercices, :with_effectif_mensuel)
-        dossier.etablissement = etablissement
+
+        etablissement = if evaluator.as_degraded_mode
+          Etablissement.new(siret: build(:etablissement).siret)
+        else
+          create(:etablissement, :with_exercices, :with_effectif_mensuel)
+        end
+
+        dossier.update(etablissement:)
       end
     end
 
@@ -43,6 +53,18 @@ FactoryBot.define do
           raise 'Inconsistent factory: attempting to create a dossier :with_individual on a procedure that is not `for_individual?`'
         end
         dossier.individual = build(:individual, dossier: dossier)
+      end
+    end
+
+    trait :with_declarative_accepte do
+      after(:build) do |dossier, _evaluator|
+        dossier.procedure.declarative_with_state = 'accepte'
+      end
+    end
+
+    trait :with_declarative_en_instruction do
+      after(:build) do |dossier, _evaluator|
+        dossier.procedure.declarative_with_state = 'en_instruction'
       end
     end
 
@@ -74,7 +96,7 @@ FactoryBot.define do
         end
 
         # find champ with the type de champ
-        champ = dossier.reload.champs.find do |c|
+        champ = dossier.reload.champs_public.find do |c|
           c.type_de_champ == type_de_champ
         end
 
@@ -91,6 +113,18 @@ FactoryBot.define do
 
     trait :with_commentaires do
       commentaires { [build(:commentaire), build(:commentaire)] }
+    end
+
+    trait :with_invites do
+      invites { [build(:invite)] }
+    end
+
+    trait :with_avis do
+      avis { [build(:avis)] }
+    end
+
+    trait :with_dossier_operation_logs do
+      dossier_operation_logs { [build(:dossier_operation_log)] }
     end
 
     trait :followed do
@@ -188,8 +222,8 @@ FactoryBot.define do
 
     trait :with_attestation do
       after(:build) do |dossier, _evaluator|
-        dossier.revision.attestation_template ||= build(:attestation_template)
-        dossier.association(:attestation_template).target = dossier.revision.attestation_template
+        dossier.procedure.attestation_template ||= build(:attestation_template)
+        dossier.association(:attestation_template).target = dossier.procedure.attestation_template
         dossier.attestation = dossier.build_attestation
       end
     end
@@ -207,20 +241,26 @@ FactoryBot.define do
 
     trait :with_populated_champs do
       after(:create) do |dossier, _evaluator|
-        dossier.champs = dossier.types_de_champ.map do |type_de_champ|
-          build(:"champ_#{type_de_champ.type_champ}", dossier: dossier, type_de_champ: type_de_champ)
+        dossier.champs_to_destroy.where(private: false).destroy_all
+        dossier.types_de_champ.each do |type_de_champ|
+          create(:"champ_#{type_de_champ.type_champ}", dossier:, type_de_champ:)
         end
-        dossier.save!
+        dossier.reload
       end
     end
 
     trait :with_populated_annotations do
       after(:create) do |dossier, _evaluator|
-        dossier.champs_private = dossier.types_de_champ_private.map do |type_de_champ|
-          build(:"champ_#{type_de_champ.type_champ}", private: true, dossier: dossier, type_de_champ: type_de_champ)
+        dossier.champs_to_destroy.where(private: true).destroy_all
+        dossier.types_de_champ_private.each do |type_de_champ|
+          create(:"champ_#{type_de_champ.type_champ}", private: true, dossier:, type_de_champ:)
         end
-        dossier.save!
+        dossier.reload
       end
+    end
+
+    trait :prefilled do
+      prefilled { true }
     end
   end
 end

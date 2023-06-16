@@ -9,7 +9,8 @@
     border-top: 1px solid $border-grey;
   }
 
-  td {
+  td,
+  th[scope="row"] {
     @include vertical-padding($default-spacer);
     vertical-align: middle;
   }
@@ -27,7 +28,7 @@
 
   &.hoverable {
     tbody tr:hover {
-      background: $light-grey;
+      background-color: $light-grey;
     }
   }
 
@@ -46,6 +47,20 @@
       &.header-section {
         color: $blue-france-500;
         font-size: 20px;
+      }
+    }
+  }
+}
+
+.force-table-100 {
+  width: calc(100vw);
+}
+
+.fr-table--bordered {
+  .table {
+    &.hoverable {
+      tbody tr:hover {
+        background-color: $white;
       }
     }
   }

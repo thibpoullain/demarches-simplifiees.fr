@@ -4,8 +4,18 @@ en:
       header:
         banner:
           title: Your file will expire
+          procedure_deleted_title: The procedure linked to your file is deleted
+          procedure_close_title: The procedure linked to your file is closed
+          procedure_deleted_dossier_en_cours_content: You can still consult your file, but it is no longer possible to modify it
+          procedure_deleted_dossier_termine_content: Your file has been processed by the administration, no action is possible
+          procedure_close_content: You can still consult your file, but it will not be processed by the administration
+          new_procedure_link: see the procedure
+          new_procedure_content: "A new procedure is available, consult it here:"
+          contact_service: For more information, please contact the service %{service_name}, available at  %{service_phone_number} or by email %{service_email}
           states:
             brouillon: Your file is still in draft and will soon expire. So it will be deleted soon without being instructed. If you want to pursue your procedure you can submit it now. Otherwise you are able to delay its expiration by clicking on the underneath button.
-            en_construction: Your file is pending for instruction. The maximum delay is 6 months, but you can extend the duration by a month by clicking on the underneath button.
+            en_construction: Your file is pending for instruction. The maximum delay is %{nominal_duration_months} months, but you can extend the duration by clicking on the underneath button.
             termine: Your file had been processed and will soon expire. So it will be deleted soon. If you want to keep it, you can dowload a PDF file of it.
-          button_delay_expiration: "Keep for %{duree_conservation_dossiers_dans_ds} more months"
+          button_delay_expiration:
+            one: "Keep for %{count} more month"
+            other: "Keep for %{count} more months"

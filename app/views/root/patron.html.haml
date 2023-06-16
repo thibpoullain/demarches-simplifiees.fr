@@ -44,10 +44,8 @@
 
     %form.form
       = form_for @dossier, url: '', html: { class: 'form' } do |f|
-        = f.fields_for :champs do |champ_form|
-          - champ = champ_form.object
-          = render partial: "shared/dossiers/editable_champs/editable_champ",
-            locals: { champ: champ, form: champ_form, seen_at: nil }
+        = f.fields_for :champs_public do |champ_form|
+          = render EditableChamp::EditableChampComponent.new champ: champ_form.object, form: champ_form
 
         .editable-champ.editable-champ-text
           %label Mot de passe
@@ -284,7 +282,7 @@
     %section.list-avis
       %h1.title
         Avis des invités
-        %span.count 1
+        %span.fr-badge 1
 
       %ul
         %li.one-avis
@@ -304,3 +302,99 @@
   .container
     %h2.empty-text Aucun dossier
     %p.empty-text-details Vous n’avez commencé aucune démarche pour l’instant.
+
+  .container
+    %h1 Dsfr::CalloutComponent
+    %p= link_to "Documentation DSFR Mis en avant (callout)", "https://www.systeme-de-design.gouv.fr/elements-d-interface/composants/mise-en-avant", **external_link_attributes
+
+    = render Dsfr::CalloutComponent.new(title: "Information minimale") do |c|
+      - c.with_body do
+        %p Ceci est le minimum pour afficher un callout.
+
+    = render Dsfr::CalloutComponent.new(title: "Information importante ou avertissement", theme: :warning) do |c|
+      - c.with_body do
+        Le contenu de cette description est libre.
+      - c.with_bottom do
+        %button.fr-btn Call to action
+
+    = render Dsfr::CalloutComponent.new(title: "Titre d'une information positive", theme: :success, icon: "fr-icon-message-2-fill") do |c|
+      - c.with_body do
+        %p
+          N'importe quelle icône
+          = link_to("du jeu d'icônes", "https://www.systeme-de-design.gouv.fr/elements-d-interface/fondamentaux-techniques/icones", **external_link_attributes)
+          peut être utilisée.
+
+    %h1 Dsfr::CardVerticalComponent
+    %p= link_to "Documentation DSFR Carte", "https://www.systeme-de-design.gouv.fr/elements-d-interface/composants/carte", **external_link_attributes
+
+    .fr-grid-row.fr-grid-row--gutters.fr-py-5w
+      .fr-col-md-6.fr-col-12
+        = render Dsfr::CardVerticalComponent.new(title: "Optional title", desc: "Optional description")
+
+      .fr-col-md-6.fr-col-12
+        = render Dsfr::CardVerticalComponent.new(title: "With footer buttons") do |c|
+          - c.with_footer_button do
+            = link_to "Button 1", "#", class: "fr-btn", **external_link_attributes
+          - c.with_footer_button do
+            = button_tag "Button 2", class: "fr-btn fr-btn--secondary"
+
+    %h1 Dsfr::NoticeComponent
+    %p= link_to "Documentation DSFR Bandeau d'information", "https://www.systeme-de-design.gouv.fr/elements-d-interface/composants/bandeau-d-information-importante", **external_link_attributes
+    .my-3
+      = render Dsfr::NoticeComponent.new(closable: true) do |c|
+        - c.with_title do
+          Titre de cette notice
+          = link_to "avec un lien optionnel.", "#"
+          Des marges verticales ont ici été rajoutées.
+
+
+
+  .container
+    %h1.fr-mt-4w Attachment::EditComponent
+    %span.fr-hint-text Note: direct upload, suppression ne marchent pas comme attendu ici.
+
+    - champ = @dossier.champs_public.first
+    - tdc = @dossier.champs_public.find { _1.type_champ == TypeDeChamp.type_champs.fetch(:piece_justificative) }.type_de_champ
+    - avis = Avis.new
+
+    - if attachment = ActiveStorage::Attachment.last
+      - attachment.update(created_at: 1.second.ago)
+      %h3 New attachment
+      = render Attachment::EditComponent.new(champ:, attached_file: champ.piece_justificative_file, attachment: nil)
+
+      %h3.fr-mt-4w Existing attachment
+      = render Attachment::EditComponent.new(champ:, attached_file: champ.piece_justificative_file, attachment:)
+
+      %h3.fr-mt-4w Existing attachment, user can not destroy
+      = render Attachment::EditComponent.new(champ:, attached_file: champ.piece_justificative_file, attachment:, user_can_destroy: false)
+
+      %h3.fr-mt-4w Existing attachment, antivirus in progress
+      - attachment.blob.metadata[:virus_scan_result] = ActiveStorage::VirusScanner::PENDING
+      - attachment.created_at = Time.zone.now
+      = render Attachment::EditComponent.new(champ:, attached_file: Champ.new.piece_justificative_file, attachment:)
+
+      %h3.fr-mt-4w Existing attachment, antivirus in progress since long time
+      - attachment.blob.metadata[:virus_scan_result] = ActiveStorage::VirusScanner::PENDING
+      - attachment.created_at = 2.minutes.ago
+      = render Attachment::EditComponent.new(champ:, attached_file: Champ.new.piece_justificative_file, attachment:)
+
+      %h3.fr-mt-4w Existing attachment, error
+      - attachment.blob.metadata[:virus_scan_result] = ActiveStorage::VirusScanner::INFECTED
+      = render Attachment::EditComponent.new(champ:, attached_file: Champ.new.piece_justificative_file, attachment:)
+
+
+      %h3.fr-mt-4w New attachment on TypeDeChamp
+      = render Attachment::EditComponent.new(auto_attach_url: "/some-auto-attach-path", attached_file: tdc.piece_justificative_template, attachment: nil)
+
+      %h3.fr-mt-4w Existing attachment on TypeDeChamp, view as link
+      = render Attachment::EditComponent.new(auto_attach_url: "/some-auto-attach-path", attached_file: tdc.piece_justificative_template, attachment: attachment.reload)
+
+      %h3.fr-mt-4w Existing attachment on TypeDeChamp view as download
+      = render Attachment::EditComponent.new(auto_attach_url: "/some-auto-attach-path", attached_file: tdc.piece_justificative_template, attachment: attachment.reload, view_as: :download)
+
+      %h3.fr-mt-4w New attachment on generic object
+      = render Attachment::EditComponent.new(attached_file: avis.introduction_file)
+
+      %h3.fr-mt-4w Existing attachment on generic object, view as download
+      = render Attachment::EditComponent.new(attached_file: avis.introduction_file, attachment: attachment.reload, view_as: :download)
+

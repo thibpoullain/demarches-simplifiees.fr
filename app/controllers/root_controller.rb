@@ -48,6 +48,7 @@ class RootController < ApplicationController
 -- avant l'option C --
             option C"
           champ.value = '["option B", "option C"]'
+          champ.type_de_champ.drop_down_other = "1"
         end
       end
 
@@ -73,7 +74,16 @@ class RootController < ApplicationController
         .each { |champ| champ.value = value }
     end
 
-    @dossier = Dossier.new(champs: all_champs)
+    @dossier = Dossier.new(champs_public: all_champs)
+    @dossier.association(:procedure).target = Procedure.new
+    all_champs.each do |champ|
+      champ.association(:dossier).target = @dossier
+      champ.champs.each do |champ|
+        champ.association(:dossier).target = @dossier
+      end
+    end
+
+    @dossier.association(:revision).target = @dossier.procedure.build_draft_revision
   end
 
   def suivi
@@ -84,7 +94,7 @@ class RootController < ApplicationController
 
     respond_to do |format|
       format.html { redirect_back(fallback_location: root_path) }
-      format.js { render js: helpers.remove_element('#outdated-browser-banner') }
+      format.turbo_stream
     end
   end
 

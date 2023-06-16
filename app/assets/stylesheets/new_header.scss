@@ -1,8 +1,8 @@
 @import "colors";
-@import "common";
+// @import "common";
 @import "constants";
 @import "mixins";
-@import "utils";
+// @import 'utils';
 
 $header-landing-breakpoint: 1040px;
 $header-mobile-breakpoint: 550px;
@@ -17,7 +17,7 @@ $header-mobile-breakpoint: 550px;
 }
 
 .header-inner-content {
-  @extend .container;
+  @extend .container !optional;
   display: flex;
   justify-content: space-between;
   min-height: 72px;
@@ -141,7 +141,7 @@ $header-mobile-breakpoint: 550px;
 .header-search {
   position: relative;
 
-  .form input[type=text] {
+  .form input[type='text'] {
     padding: 9px;
     padding-right: 42px;
     float: right;
@@ -155,7 +155,7 @@ $header-mobile-breakpoint: 550px;
   }
 
   button {
-    @extend %outline;
+    @extend %outline !optional;
 
     padding: 9px;
     border: none;
@@ -191,7 +191,6 @@ $header-mobile-breakpoint: 550px;
   &:hover {
     background: none;
   }
-
 }
 
 .header-menu {
@@ -242,5 +241,13 @@ $header-mobile-breakpoint: 550px;
         background: $light-grey;
       }
     }
+  }
+}
+
+// No drop shadow when a notice is shown.
+.fr-header.fr-header__with-notice-info {
+  &,
+  .fr-header__brand {
+    filter: none;
   }
 }

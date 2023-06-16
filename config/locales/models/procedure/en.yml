@@ -1,0 +1,47 @@
+en:
+  activerecord:
+    models:
+      procedure:
+        one: Procedure
+        other: Procedure
+    attributes:
+      procedure:
+        path: Public link
+        organisation: Service
+        duree_conservation_dossiers_dans_ds: Duration files will be kept
+        max_duree_conservation_dossiers_dans_ds: Max duration allowed to keep files
+        aasm_state:
+          brouillon: Draft
+          publiee: Published
+          close: Closed
+          hidden: Destroyed
+        declarative_with_state/en_instruction: Instruction
+        declarative_with_state/accepte: Accepted
+        api_particulier_token: Token API Particulier
+        lien_dpo: DPO contact
+        routing_criteria_name: Routing criteria name
+        initiated_mail: File sorted for processing notification email
+        received_mail: File submitted notification email
+        closed_mail: File sorted as accepted notification email
+        refused_mail: File sorted as refused notification email
+        without_continuation_mail: File sorted with no further action notification email
+        attestation_template: Attestation template
+        draft_revision: The form
+      procedure_export:
+        id: Id
+        libelle: Libelle
+        published_at: Publication date
+        aasm_state: Status
+        admin_count: Administrators count
+    errors:
+      models:
+        procedure:
+          attributes:
+            api_particulier_token:
+              invalid: 'invalid format'
+            draft_types_de_champ_public:
+              format: 'Public field %{message}'
+            draft_types_de_champ_private:
+              format: 'Private field %{message}'
+            lien_dpo:
+              invalid_uri_or_email: "Fill in with an email or a link"

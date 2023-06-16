@@ -27,8 +27,23 @@ Vous souhaitez y apporter des changements ou des améliorations ? Lisez notre [
 
 - Chrome
 - chromedriver :
-  * Mac : `brew cask install chromedriver`
+  * Mac : `brew install chromedriver`
   * Linux : voir https://sites.google.com/a/chromium.org/chromedriver/downloads
+
+Si l'emplacement d'installation de Chrome n'est pas standard, ou que vous utilisez Brave ou Chromium à la place,
+il peut être nécessaire d'overrider pour votre machine le path vers le binaire Chrome, par exemple :
+
+```ruby
+# create file spec/support/spec_config.local.rb
+
+Selenium::WebDriver::Chrome.path = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+
+# Must exactly match the browser version
+Webdrivers::Chromedriver.required_version = "103.0.5060.53"
+```
+
+Il peut être également pertinent de désactiver la mise à jour automatique du webdriver
+en définissant une variable d'environnement `SKIP_UPDATE_WEBDRIVER` lors de l'exécution de `bin/update`.
 
 ### Création des rôles de la base de données
 
@@ -55,16 +70,9 @@ Afin d'initialiser l'environnement de développement, exécutez la commande suiv
 
 On lance le serveur d'application ainsi :
 
-    bin/rails server
+    bin/dev
 
-L'application tourne alors à l'adresse `http://localhost:3000`, et utilise le mécanisme par défaut de rails pour les tâches asynchrones.
-C'est ce qu'on veut dans la plupart des cas. Une exception: ça ne joue pas les tâches cron.
-
-Pour être une peu plus proche du comportement de production, et jouer les tâches cron, on peut lancer la message queue
-dans un service dédié, et indiquer à rails d'utiliser delayed_job:
-
-    bin/rake jobs:work
-    RAILS_QUEUE_ADAPTER=delayed_job bin/rails server
+L'application tourne alors à l'adresse `http://localhost:3000` avec en parallèle un worker pour les jobs et le bundler vitejs.
 
 ### Lancement de l'application depuis Scalingo
 
@@ -116,6 +124,14 @@ Pour exécuter les tests de l'application, plusieurs possibilités :
 - Lancer un ou des tests systèmes avec un browser
 
         NO_HEADLESS=1 bin/rspec spec/system
+
+- Afficher les logs js en error issus de la console du navigateur `console.error('coucou')`
+
+        JS_LOG=error bin/rspec spec/system
+
+- Augmenter la latence lors de tests end2end pour déceler des bugs récalcitrants
+
+        MAKE_IT_SLOW=1 bin/rspec spec/system
 
 ### Ajout de taches à exécuter au déploiement
 

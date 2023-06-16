@@ -5,13 +5,13 @@ module Mutations
     argument :value, GraphQL::Types::ISO8601DateTime, required: true
 
     def resolve(dossier:, annotation_id:, instructeur:, value:)
-      resolve_with_type(
-        :datetime,
-        dossier,
-        annotation_id,
-        instructeur,
-        value
-      )
+      resolve_with_type(dossier:, annotation_id:, instructeur:, value:)
+    end
+
+    private
+
+    def input_type
+      :datetime
     end
   end
 end

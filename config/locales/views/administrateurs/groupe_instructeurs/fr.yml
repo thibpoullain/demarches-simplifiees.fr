@@ -6,20 +6,22 @@ fr:
           other: "%{value} ne sont pas des adresses emails valides"
       create:
         experts_assignment:
-          one: "L'expert %{value} a été affecté à la démarche n° %{procedure}"
+          one: "L’expert %{value} a été affecté à la démarche n° %{procedure}"
           other: "Les experts %{value} ont été affectés à la démarche n° %{procedure}"
     groupe_instructeurs:
       index:
+        procedures: Démarches
+        instructors_group: Groupe d’instructeurs
         existing_groupe:
           one: "%{count} groupe existe"
           other: "%{count} groupes existent"
       add_instructeur:
         wrong_address:
-          one: "%{value} n’est pas une adresse email valide"
-          other: "%{value} ne sont pas des adresses emails valides"
+          one: "%{emails} n’est pas une adresse email valide"
+          other: "%{emails} ne sont pas des adresses emails valides"
         assignment:
-          one: "L’instructeur %{value} a été affecté au groupe « %{groupe} »."
-          other: "Les instructeurs %{value} ont été affectés au groupe « %{groupe} »."
+          one: "L’instructeur %{emails} a été affecté au groupe « %{groupe} »."
+          other: "Les instructeurs %{emails} ont été affectés au groupe « %{groupe} »."
       reaffecter_dossiers:
         existing_groupe:
           one: "%{count} groupe existe"
@@ -29,19 +31,47 @@ fr:
           one: "%{count} instructeur est affecté"
           other: "%{count} instructeurs sont affectés"
       edit:
+        routing:
+          title: Libellé de la liste de groupes
+        group_management:
+          title: Gestion des Groupes
+          delete: supprimer le groupe
+          delete_confirmation: Êtes-vous sûr de vouloir supprimer le groupe "%{group_name}"
+          move_files:
+            zero: déplacer les dossiers en brouillon
+            one: déplacer un dossier
+            other: déplacer les %{count} dossiers
+          move_files_confirmation: Réaffecter les dossiers à un autre groupe afin de pouvoir le supprimer
+        add_a_group:
+          title: Ajouter un nom de groupe
+          notice: Ce groupe sera un choix de la liste "%{routing_criteria_name}"
+        csv_import:
+          title: Importer par CSV
+          notice_1_html: |
+            Pour une procédure standard, le fichier csv doit comporter 1 seule colonne (Email) avec une adresse email d'instructeur par ligne (%{instructeurs_link}).
+            Pour une procédure routée, le fichier doit comporter 2 colonnes (Groupe, Email) et être séparé par des virgules (%{groupes_link}).
+          notice_2: L’import n’écrase pas les instructeurs existants. Il permet uniquement d'en ajouter. Pour supprimer un instructeur, cliquez sur le bouton « retirer ». Le poids du fichier doit être inférieur %{csv_max_size}.
+          import_file: Importer le fichier
+          import_file_procedure_not_published: L’import d’instructeurs par fichier CSV est disponible une fois la démarche publiée
+          import_file_alert: Tous les instructeurs ajoutés à la procédure vont être notifiés par email. Voulez-vous continuer ?
+          link_text: exemple de fichier
+          instructeurs_file_path: /csv/import-instructeurs-test.csv
+          groupes_file_path: /csv/fr/import-groupe-test.csv
+        view: voir
+        set_up: paramétrer
+        button:
+          add_group: Ajouter le groupe
+          rename: Renommer
         existing_groupe:
           one: "%{count} groupe existe"
           other: "%{count} groupes existent"
       routing:
+        title: Routage
         notice_html: |
-          Le routage est une fonctionnalité pour les démarches nécessitant le partage de l’instruction entre différents groupes en fonction d’un critère précis (territoire, thématique ou autre).
-          <br><br>
-          Cette fonctionnalité permet d’acheminer les dossier vers chaque groupe, et de ne plus avoir besoin de filtrer ses dossiers parmi une grande quantité de demandes. Elle est donc particulièrement adaptée pour les démarches nationales instruites localement.
-          <br><br>
-          Les instructeurs ne voient que les dossiers les concernant, et n’ont donc pas accès aux données extérieures à leur périmètre.
+          Le routage permet d’acheminer les dossiers vers différents groupes d’instructeurs. Il s’active automatiquement dès qu’une démarche compte au moins deux groupes actifs.
+        button:
+          self_managment_toggle: Activer l’autogestion des instructeurs
+          add_group: Ajouter le groupe
+      instructeurs_self_management:
         self_managment_notice_html: |
           L’autogestion des instructeurs permet aux instructeurs de gérer eux-mêmes la liste des instructeurs de la démarche.
-        button:
-          routing_enable: Activer le routage
-          routing_disable: Désactiver le routage
-          self_managment_toggle: Activer l’autogestion des instructeurs

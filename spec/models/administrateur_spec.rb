@@ -3,20 +3,6 @@ describe Administrateur, type: :model do
 
   describe 'associations' do
     it { is_expected.to have_and_belong_to_many(:instructeurs) }
-    it { is_expected.to have_and_belong_to_many(:procedures) }
-  end
-
-  describe "#renew_api_token" do
-    let!(:administrateur) { create(:administrateur) }
-    let!(:token) { administrateur.renew_api_token }
-
-    it { expect(BCrypt::Password.new(administrateur.encrypted_token)).to eq(token) }
-
-    context 'when it s called twice' do
-      let!(:new_token) { administrateur.renew_api_token }
-
-      it { expect(new_token).not_to eq(token) }
-    end
   end
 
   describe "#can_be_deleted?" do
@@ -74,6 +60,15 @@ describe Administrateur, type: :model do
       expect(Service.find_by(id: procedure.service.id)).not_to be_nil
       expect(Administrateur.find_by(id: administrateur.id)).to be_nil
     end
+
+    context "proedure without service" do
+      let!(:procedure) { create(:procedure, :draft, administrateurs: [administrateur, autre_administrateur]) }
+
+      it "delete procedure without service" do
+        administrateur.delete_and_transfer_services
+        expect(Administrateur.find_by(id: administrateur.id)).to be_nil
+      end
+    end
   end
 
   describe '#merge' do
@@ -90,16 +85,17 @@ describe Administrateur, type: :model do
 
     context 'when the old admin has a procedure' do
       let(:procedure) { create(:procedure) }
+      let(:discarded_procedure) { create(:procedure, :discarded) }
 
       before do
-        old_admin.procedures << procedure
+        old_admin.procedures << procedure << discarded_procedure
         subject
         [new_admin, old_admin].map(&:reload)
       end
 
       it 'transfers the procedure' do
-        expect(new_admin.procedures).to match_array(procedure)
-        expect(old_admin.procedures).to be_empty
+        expect(new_admin.procedures.with_discarded).to match_array([procedure, discarded_procedure])
+        expect(old_admin.procedures.with_discarded).to be_empty
       end
     end
 
@@ -132,6 +128,29 @@ describe Administrateur, type: :model do
       end
     end
 
+    context 'when both admins have a service with the same name' do
+      let!(:service_1) { create(:service, nom: 'S', administrateur: old_admin) }
+      let!(:service_2) { create(:service, nom: 'S', administrateur: new_admin) }
+      let!(:procedure_1) { create(:procedure, service: service_1) }
+
+      it 'removes the service from the old one' do
+        subject
+        [new_admin, old_admin, service_2].map(&:reload)
+
+        expect(old_admin.services).to be_empty
+        expect(service_2.procedures).to include(procedure_1)
+      end
+
+      context 'and a discarded procedure use this service' do
+        let!(:procedure_1) { create(:procedure, :discarded, service: service_1) }
+        let!(:procedure_2) { create(:procedure, :discarded, service: service_1) }
+
+        it 'transfers old service to targeted_administrateur' do
+          expect { subject }.not_to raise_error
+        end
+      end
+    end
+
     context 'when the old admin has an instructeur' do
       let(:instructeur) { create(:instructeur) }
 
@@ -161,6 +180,47 @@ describe Administrateur, type: :model do
         expect(new_admin.instructeurs).to match_array(instructeur)
         expect(old_admin.instructeurs).to be_empty
       end
+    end
+  end
+
+  describe 'unused' do
+    subject { Administrateur.unused }
+
+    let(:new_admin) { create(:administrateur) }
+    let(:unused_admin) { create(:administrateur) }
+
+    before do
+      new_admin.user.update(last_sign_in_at: (6.months - 1.day).ago)
+      unused_admin.user.update(last_sign_in_at: (6.months + 1.day).ago)
+    end
+
+    it { is_expected.to match([unused_admin]) }
+
+    context 'with a hidden procedure' do
+      let(:procedure) { create(:procedure, hidden_at: 1.month.ago) }
+
+      before { unused_admin.procedures << procedure }
+
+      it { is_expected.to be_empty }
+    end
+
+    context 'with a service' do
+      let(:service) { create(:service) }
+
+      before { unused_admin.services << service }
+
+      it { is_expected.to be_empty }
+    end
+  end
+
+  describe 'zones' do
+    let(:admin) { create(:administrateur) }
+    let(:zone1) { create(:zone) }
+    let(:zone2) { create(:zone) }
+    let!(:procedure) { create(:procedure, administrateurs: [admin], zones: [zone1, zone2]) }
+
+    it 'return zones of procedures that the admin is associated' do
+      expect(admin.zones).to eq [zone1, zone2]
     end
   end
 end

@@ -10,6 +10,7 @@ describe 'Publishing a procedure', js: true do
       :with_path,
       :with_type_de_champ,
       :with_service,
+      :with_zone,
       instructeurs: instructeurs,
       administrateur: administrateur)
   end
@@ -47,17 +48,15 @@ describe 'Publishing a procedure', js: true do
     end
 
     context 'when the procedure has invalid champs' do
-      let(:empty_repetition) { build(:type_de_champ_repetition, types_de_champ: [], libelle: 'Enfants') }
-      let(:empty_drop_down) { build(:type_de_champ_drop_down_list, :without_selectable_values, libelle: 'Civilité') }
-
       let!(:procedure) do
         create(:procedure,
                :with_path,
                :with_service,
+               :with_zone,
                instructeurs: instructeurs,
                administrateur: administrateur,
-               types_de_champ: [empty_repetition],
-               types_de_champ_private: [empty_drop_down])
+               types_de_champ_public: [{ type: :repetition, libelle: 'Enfants', children: [] }, { type: :drop_down_list, libelle: 'Civilité', options: [] }],
+               types_de_champ_private: [{ type: :drop_down_list, libelle: 'Civilité', options: [] }])
       end
 
       scenario 'an error message prevents the publication' do
@@ -98,10 +97,11 @@ describe 'Publishing a procedure', js: true do
     end
   end
 
-  context 'when a procedure is de-published' do
+  context 'when a procedure is closed with revision changes' do
+    let!(:tdc) { { type_champ: :text, libelle: 'nouveau champ' } }
     let!(:procedure) do
       create(:procedure_with_dossiers,
-        :unpublished,
+        :closed,
         :with_path,
         :with_type_de_champ,
         :with_service,
@@ -109,17 +109,51 @@ describe 'Publishing a procedure', js: true do
         administrateur: administrateur)
     end
 
+    before do
+      Flipper.enable(:procedure_revisions, procedure)
+      procedure.draft_revision.add_type_de_champ(tdc)
+    end
+
     scenario 'an admin can publish it again' do
       visit admin_procedures_path(statut: "archivees")
       click_on procedure.libelle
       find('#publish-procedure-link').click
 
+      expect(page).to have_text('Les modifications suivantes seront appliquées')
       expect(find_field('procedure_path').value).to eq procedure.path
       fill_in 'lien_site_web', with: 'http://some.website'
-      click_on 'Publier'
+      find('#publish').click
 
       expect(page).to have_text('Démarche publiée')
       expect(page).to have_selector('#preview-procedure')
+    end
+  end
+
+  context 'when a procedure has dubious champs' do
+    let(:dubious_champs) do
+      [
+        { libelle: 'NIR' },
+        { libelle: 'carte bancaire' }
+      ]
+    end
+    let(:not_dubious_champs) do
+      [{ libelle: 'Prénom' }]
+    end
+    let!(:procedure) do
+      create(:procedure,
+               :with_service,
+               instructeurs: instructeurs,
+               administrateur: administrateur,
+               types_de_champ_public: not_dubious_champs + dubious_champs)
+    end
+
+    scenario 'an admin can publish it, but a warning appears' do
+      visit admin_procedures_path(statut: "brouillons")
+      click_on procedure.libelle
+      find('#publish-procedure-link').click
+
+      expect(page).to have_content("Attention, certains champs ne peuvent être demandé par l'administration.")
+      expect(page).to have_selector(".dubious-champs", count: dubious_champs.size)
     end
   end
 end

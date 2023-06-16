@@ -1,15 +1,17 @@
 %ul.footer-row.footer-bottom-line.footer-site-links
   %li.footer-link-accessibilite>
-    = link_to t("links.footer.accessibilite.label"), t("links.footer.accessibilite.url"), title: t("links.footer.accessibilite.title"), class: "footer-link", target: "_blank", rel: "noopener noreferrer"
+    = link_to t("links.footer.accessibilite.label"), ACCESSIBILITE_URL, title: t("links.footer.accessibilite.title"), class: "footer-link", rel: "noopener noreferrer"
   %li.footer-link-cgu>
     = link_to t("links.footer.cgu.usager.label"), t("links.footer.cgu.usager.url"), title: t("links.footer.cgu.usager.title"), class: "footer-link", target: "_blank", rel: "noopener noreferrer"
   %li.footer-link-cgu>
     = link_to t("links.footer.cgu.agent.label"), t("links.footer.cgu.agent.url"), title: t("links.footer.cgu.agent.title"), class: "footer-link", target: "_blank", rel: "noopener noreferrer"
   %li.footer-link-mentions-legales>
-    = link_to t("links.footer.mentions_legales.label"), t("links.footer.mentions_legales.url"), title: t("links.footer.mentions_legales.title"), class: "footer-link", target: "_blank", rel: "noopener noreferrer"
+    = link_to t("links.footer.mentions_legales.label"), MENTIONS_LEGALES_URL, title: t("links.footer.mentions_legales.title"), class: "footer-link", rel: "noopener noreferrer"
   %li.footer-link-doc>
     = link_to t("links.footer.doc.label"), t("links.footer.doc.url"), title: t("links.footer.doc.title"), class: "footer-link", target: "_blank", rel: "noopener noreferrer"
-  %li.footer-link-contact>
-    = contact_link t("links.footer.contact_technique.label"), dossier_id: dossier&.id, title: t("links.footer.contact_technique.title"), class: "footer-link"
+  /%li.footer-link-contact>
+  /  = contact_link t("links.footer.contact_technique.label"), dossier_id: dossier&.id, title: t("links.footer.contact_technique.title"), class: "footer-link"
   %li.footer-link-aide>
     = link_to t("links.footer.aide.label"), t("links.footer.aide.url"), title: t("links.footer.aide.title"), class: "footer-link", target: "_blank", rel: "noopener noreferrer"
+  %li.footer-link-cookies>
+    = link_to t("links.footer.cookies.label"), suivi_path, title: t("links.footer.cookies.title"), class: "footer-link"

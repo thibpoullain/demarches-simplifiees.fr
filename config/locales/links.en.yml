@@ -1,26 +1,70 @@
 en:
   links:
     provider:
-      name: "DINUM"
+      # provided_by: "la DINUM"
+      title: "Direction Interministérielle au Numérique"
       url: "https://numerique.gouv.fr"
+      name: 'to-be-defined'
+    common:
+      faq:
+        label: "FAQ"
+        title: "Frequently Asked Questions"
+        url: "https://faq.demarches-simplifiees.fr"
+        autosave_url: "https://faq.demarches-simplifiees.fr/article/77-enregistrer-mon-formulaire-pour-le-reprendre-plus-tard?preview=5ec28ca1042863474d1aee00"
+        comment_trouver_ma_demarche_url: "https://faq.demarches-simplifiees.fr/article/59-comment-trouver-ma-demarche"
+        confirmer_compte_chaque_connexion_url: "https://faq.demarches-simplifiees.fr/article/34-je-dois-confirmer-mon-compte-a-chaque-connexion"
+        contacter_service_en_charge_url: "https://faq.demarches-simplifiees.fr/article/12-contacter-le-service-en-charge-de-ma-demarche"
+        email_non_recu_url: "https://faq.demarches-simplifiees.fr/article/79-je-ne-recois-pas-demail"
+        erreur_siret_url: "https://faq.demarches-simplifiees.fr/article/4-erreur-siret"
+        ou_en_est_mon_dossier_url: "https://faq.demarches-simplifiees.fr/article/11-je-veux-savoir-ou-en-est-linstruction-de-ma-demarche"
     footer:
-      accessibilite:
-        label: "Accessibility: not compliant"
-        title: "Accessibility: not compliant"
-        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_accessibilite.pdf"
+      # top_labels:
+      #   communication: Communication
+      #   legals: Legal information
+      #   resources: Resources
+      #   diagnostic: Diagnostic
       aide:
         label: "Help"
         title: "Frequently Asked Questions"
         url: "https://faq.demarches-simplifiees.fr"
-      cgu:
-        usager:
-          label: "ToS User"
-          title: "Terms of Service - User"
-          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf"
-        agent:
-          label: "ToS Agent"
-          title: "Terms of Service - Agent"
-          url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf"
+      aide_admin:
+        label: 'to-be-defined'
+        title: 'to-be-defined'
+        url: 'to-be-defined'
+      # description_1: Démarches simplifiées is powered by
+      # link_1_label: the interdepartmental direction of digital (DINUM).
+      # link_1_url: "https://www.numerique.gouv.fr/dinum/"
+      # link_2_label: The source code
+      # description_2: is available under a free license.
+      copy_html: "Unless otherwise stated, all content on this site is %{link}"
+      license: "licensed under etalab 2.0"
+      accessibilite:
+        label: "Accessibility: partially compliant"
+        title: "Accessibility declaration"
+        url: "https://demat.social.gouv.fr/Demat-demarches-sociales_accessibilite.pdf"
+      # api_doc:
+      #   label: "API Documentation"
+      #   title: "API Documentation"
+      #   url: "https://doc.demarches-simplifiees.fr/pour-aller-plus-loin/graphql"
+      # betagouv:
+      #   title: "The Beta.gouv.fr website — First Minister"
+      #   url: "https://beta.gouv.fr"
+      # code:
+      #   label: "Source code"
+      #   title: "Our Source code is open source"
+      #   url: "https://github.com/demarches-simplifiees/demarches-simplifiees.fr"
+      # cgu:
+      #   label: "ToS"
+      #   title: "Terms of Service"
+      #   url: "https://doc.demarches-simplifiees.fr/cgu"
+      #   usager:
+      #     label: "ToS User"
+      #     title: "Terms of Service - User"
+      #     url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf"
+      #   agent:
+      #     label: "ToS Agent"
+      #     title: "Terms of Service - Agent"
+      #     url: "https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf"
       confidentialite:
         label: "Confidentiality declaration"
         title: "Confidentiality declaration"
@@ -33,23 +77,11 @@ en:
         title: "Technical contact"
       doc:
         label: "Documentation"
-        title: "Documentation"
+        title: "Our Documentation"
         url: "https://doc.demarches-simplifiees.fr"
-      doc_nouveautes:
-        label: "News"
-        title: "News"
-        url: "https://doc.demarches-simplifiees.fr/nouveautes"
-      faq:
-        label: "FAQ"
-        title: "Frequently Asked Questions"
-        url: "https://faq.demarches-simplifiees.fr"
-      faq_admin:
-        label: "FAQ"
-        title: "Frequently Asked Questions"
-        url: "https:///faq.demarches-simplifiees.fr/collection/1-administrateur-creation-dun-formulaire"
       mentions_legales:
+        title: "Legal notices regarding our platform"
         label: "Legal notices"
-        title: "Legal notices"
         url: "https://demat.social.gouv.fr/Demat-demarches-sociales_Mentions-legales.pdf"
       stats:
         label: "Statistics"
@@ -57,3 +89,24 @@ en:
         label: "Online workshop registration"
         title: "Online workshop registration"
         url: "https://app.livestorm.co/demarches-simplifiees"
+      # releases:
+      #   label: "Releases notes"
+      #   title: "Our last updates"
+      #   url: "https://github.com/demarches-simplifiees/demarches-simplifiees.fr/releases"
+      # security:
+      #   label: "Security"
+      #   title: "Security policy"
+      #   url: "https://github.com/betagouv/demarches-simplifiees.fr/blob/main/SECURITY.md"
+      # status_page:
+      #   label: "Disponibility"
+      #   title: "Disponibility and availability"
+      #   url: "https://status.demarches-simplifiees.fr"
+      # suivi:
+      #   label: "Audience tracking and privacy"
+      #   title: "Tracking and privacy of demarches-simplifiees"
+      cookies:
+        label: Cookies
+        title: Cookies
+      contact:
+        label: Contact
+        title: Contact

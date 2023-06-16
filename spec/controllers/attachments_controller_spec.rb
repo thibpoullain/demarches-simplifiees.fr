@@ -1,6 +1,6 @@
 describe AttachmentsController, type: :controller do
   let(:user) { create(:user) }
-  let(:attachment) { champ.piece_justificative_file.attachment }
+  let(:attachment) { champ.piece_justificative_file.attachments.first }
   let(:dossier) { create(:dossier, user: user) }
   let(:champ) { create(:champ_piece_justificative, dossier_id: dossier.id) }
   let(:signed_id) { attachment.blob.signed_id }
@@ -8,24 +8,24 @@ describe AttachmentsController, type: :controller do
   describe '#show' do
     render_views
 
-    let(:format) { :js }
+    let(:format) { :turbo_stream }
 
     subject do
       request.headers['HTTP_REFERER'] = dossier_url(dossier)
-      get :show, params: { id: attachment.id, signed_id: signed_id }, format: format, xhr: (format == :js)
+      get :show, params: { id: attachment.id, signed_id: signed_id }, format: format
     end
 
     context 'when authenticated' do
       before { sign_in(user) }
 
-      context 'when requesting Javascript' do
-        let(:format) { :js }
+      context 'when requesting turbo_stream' do
+        let(:format) { :turbo_stream }
 
         it { is_expected.to have_http_status(200) }
 
-        it 'renders JS that replaces the attachment HTML' do
+        it 'renders turbo_stream that replaces the attachment HTML' do
           subject
-          expect(response.body).to have_text(".attachment-link[data-attachment-id=\"#{attachment.id}\"]")
+          expect(response.body).to include(ActionView::RecordIdentifier.dom_id(attachment, :show))
         end
       end
 
@@ -45,13 +45,13 @@ describe AttachmentsController, type: :controller do
   describe '#destroy' do
     render_views
 
-    let(:attachment) { champ.piece_justificative_file.attachment }
+    let(:attachment) { champ.piece_justificative_file.attachments.first }
     let(:dossier) { create(:dossier, user: user) }
     let(:champ) { create(:champ_piece_justificative, dossier_id: dossier.id) }
     let(:signed_id) { attachment.blob.signed_id }
 
     subject do
-      delete :destroy, params: { id: attachment.id, signed_id: signed_id }, format: :js
+      delete :destroy, params: { id: attachment.id, signed_id: signed_id }, format: :turbo_stream
     end
 
     context "when authenticated" do

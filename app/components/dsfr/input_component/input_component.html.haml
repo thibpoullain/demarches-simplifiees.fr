@@ -1,0 +1,38 @@
+= content_tag(:div, input_group_opts) do
+  = @form.label @attribute, label_opts do
+    - capture do
+      = label
+      - if @required
+        %span.mandatory  *
+        - if hint?
+          %span.fr-hint-text= hint
+
+  = @form.public_send(@input_type, @attribute, input_opts)
+
+  - if errors_on_attribute?
+    - if error_messages.size == 1
+      %p.fr-error-text{ id: describedby_id }= error_messages.first
+    - else
+      .fr-error-text{ id: describedby_id }
+        %ul.list-style-type-none.fr-pl-0
+          - error_messages.map do |error_message|
+            %li= error_message
+
+  - elsif describedby.present?
+    = describedby
+
+  - if password?
+    .fr-password__checkbox.fr-checkbox-group.fr-checkbox-group--sm
+      %input{ id: show_password_id, "aria-label" => t('.show_password.aria_label'), type: "checkbox" }/
+      %label.fr--password__checkbox.fr-label{ for: show_password_id }= t('.show_password.label')
+
+  - if email?
+    .suspect-email.hidden{ data: { "email-input-target": 'ariaRegion'}, aria: { live: 'off' } }
+      = render Dsfr::AlertComponent.new(title: t('.email_suggest.wanna_say'), state: :info, heading_level: :div) do |c|
+        - c.body do
+          %p{ data: { "email-input-target": 'suggestion'} } exemple@gmail.com &nbsp;?
+          %p
+            = button_tag type: 'button', class: 'fr-btn fr-btn--sm fr-mr-3w', data: { action: 'click->email-input#accept'} do
+              = t('utils.yes')
+            = button_tag type: 'button', class: 'fr-btn fr-btn--sm', data: { action: 'click->email-input#discard'} do
+              = t('utils.no')

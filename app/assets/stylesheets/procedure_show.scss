@@ -1,5 +1,4 @@
 @import "colors";
-@import "common";
 @import "constants";
 
 .procedure-header {
@@ -23,6 +22,7 @@
   .dossiers-table {
     margin-top: $default-spacer;
     margin-bottom: 3 * $default-spacer;
+    overflow: visible; // remove DSFR hidden overflow because of dropdown
   }
 
   .procedure-actions {
@@ -32,11 +32,6 @@
     .dropdown-items li {
       min-width: 150px;
     }
-  }
-
-  .afficher-dossiers-supprimes {
-    display: flex;
-    justify-content: flex-end;
   }
 
   .filter {
@@ -57,12 +52,7 @@
     display: inline-block;
   }
 
-  .explication-onglet {
-    margin-bottom: 3 * $default-spacer;
-    text-align: center;
-  }
-
-  [data-react-class^="ComboMultiple"] {
+  [data-react-component-value^="ComboMultiple"] {
     margin-bottom: $default-fields-spacer;
 
     [data-reach-combobox-token-list] {
@@ -103,16 +93,9 @@
       border-color: $blue-france-500;
     }
   }
-}
 
-ul.revision-changes {
-  list-style: none;
-
-  ul {
-    list-style: none;
-
-    li {
-      padding-top: 0.25 * $default-padding;
-    }
+  // fix/dsfr
+  .fr-checkbox-group.fix-dsfr-notified-toggle-component {
+    margin-top: -0.5rem;
   }
 }

@@ -44,7 +44,7 @@ describe 'fetch API Particulier Data', js: true do
 
   context 'when an administrateur is logged in' do
     let(:procedure) do
-      create(:procedure, :with_service, :with_instructeur,
+      create(:procedure, :with_service, :with_instructeur, :with_zone,
              aasm_state: :brouillon,
              administrateurs: [administrateur],
              libelle: 'libellé de la procédure',
@@ -178,16 +178,16 @@ describe 'fetch API Particulier Data', js: true do
       within('#mesri-inscriptions') do
         check('statut')
         check('régime')
-        check("date de début d'inscription")
-        check("date de fin d'inscription")
+        check("date de début d’inscription")
+        check("date de fin d’inscription")
         check("code de la commune")
       end
 
       within('#mesri-admissions') do
         check('statut')
         check('régime')
-        check("date de début d'admission")
-        check("date de fin d'admission")
+        check("date de début d’admission")
+        check("date de fin d’admission")
         check("code de la commune")
       end
 
@@ -219,8 +219,8 @@ describe 'fetch API Particulier Data', js: true do
       visit champs_admin_procedure_path(procedure)
 
       add_champ
-      select('Données de la Caisse nationale des allocations familiales', from: 'champ-0-type_champ')
-      fill_in 'champ-0-libelle', with: 'libellé de champ'
+      select('Données de la Caisse nationale des allocations familiales', from: 'Type de champ')
+      fill_in 'Libellé du champ', with: 'libellé de champ'
       blur
       expect(page).to have_content('Formulaire enregistré')
 
@@ -246,12 +246,17 @@ describe 'fetch API Particulier Data', js: true do
     let(:api_particulier_token) { '29eb50b65f64e8e00c0847a8bbcbd150e1f847' }
 
     let(:procedure) do
-      create(:procedure, :for_individual, :with_service, :with_cnaf, :with_dgfip, :with_pole_emploi, :with_mesri, :published,
+      create(:procedure, :for_individual, :with_service, :published,
              libelle: 'libellé de la procédure',
              path: 'libelle-de-la-procedure',
              instructeurs: [instructeur],
              api_particulier_sources: expected_sources,
-             api_particulier_token: api_particulier_token)
+             api_particulier_token: api_particulier_token).tap do |p|
+               p.active_revision.add_type_de_champ(type_champ: :cnaf, libelle: 'cnaf')
+               p.active_revision.add_type_de_champ(type_champ: :dgfip, libelle: 'dgfip')
+               p.active_revision.add_type_de_champ(type_champ: :pole_emploi, libelle: 'pole_emploi')
+               p.active_revision.add_type_de_champ(type_champ: :mesri, libelle: 'mesri')
+             end
     end
 
     before { login_as user, scope: :user }
@@ -269,21 +274,23 @@ describe 'fetch API Particulier Data', js: true do
 
         fill_in 'Le numéro d’allocataire CAF', with: numero_allocataire
         fill_in 'Le code postal', with: 'wrong_code'
-
-        blur
-        expect(page).to have_css('span', text: 'Brouillon enregistré', visible: true)
+        wait_for_autosave
 
         dossier = Dossier.last
-        expect(dossier.champs.first.code_postal).to eq('wrong_code')
+        cnaf_champ = dossier.champs_public.find(&:cnaf?)
+
+        wait_until { cnaf_champ.reload.code_postal == 'wrong_code' }
 
         click_on 'Déposer le dossier'
-        expect(page).to have_content(/code postal doit posséder 5 caractères/)
-
-        fill_in 'Le code postal', with: code_postal
+        expect(page).to have_content(/Le champ « Champs public code postal » doit posséder 5 caractères/)
 
         VCR.use_cassette('api_particulier/success/composition_familiale') do
-          perform_enqueued_jobs { click_on 'Déposer le dossier' }
+          fill_in 'Le code postal', with: code_postal
+          wait_for_autosave
+          click_on 'Déposer le dossier'
+          perform_enqueued_jobs
         end
+        expect(page).to have_current_path(merci_dossier_path(Dossier.last))
 
         visit demande_dossier_path(dossier)
         expect(page).to have_content(/Des données.*ont été reçues depuis la CAF/)
@@ -322,20 +329,23 @@ describe 'fetch API Particulier Data', js: true do
         click_button('Continuer')
 
         fill_in "Identifiant", with: 'wrong code'
-
-        blur
-        expect(page).to have_css('span', text: 'Brouillon enregistré', visible: true)
+        wait_for_autosave
 
         dossier = Dossier.last
-        pole_emploi_champ = dossier.champs.third
+        pole_emploi_champ = dossier.champs_public.find(&:pole_emploi?)
 
-        expect(pole_emploi_champ.identifiant).to eq('wrong code')
+        wait_until { pole_emploi_champ.reload.identifiant == 'wrong code' }
 
-        fill_in "Identifiant", with: identifiant
+        clear_enqueued_jobs
+        pole_emploi_champ.update(external_id: nil, identifiant: nil)
 
         VCR.use_cassette('api_particulier/success/situation_pole_emploi') do
-          perform_enqueued_jobs { click_on 'Déposer le dossier' }
+          fill_in "Identifiant", with: identifiant
+          wait_until { pole_emploi_champ.reload.external_id.present? }
+          click_on 'Déposer le dossier'
+          perform_enqueued_jobs
         end
+        expect(page).to have_current_path(merci_dossier_path(Dossier.last))
 
         visit demande_dossier_path(dossier)
         expect(page).to have_content(/Des données.*ont été reçues depuis Pôle emploi/)
@@ -390,20 +400,22 @@ describe 'fetch API Particulier Data', js: true do
         click_button('Continuer')
 
         fill_in "INE", with: 'wrong code'
-
-        blur
-        expect(page).to have_css('span', text: 'Brouillon enregistré', visible: true)
+        wait_for_autosave
 
         dossier = Dossier.last
-        mesri_champ = dossier.champs.fourth
+        mesri_champ = dossier.champs_public.find(&:mesri?)
 
-        expect(mesri_champ.ine).to eq('wrong code')
-
-        fill_in "INE", with: ine
+        wait_until { mesri_champ.reload.ine == 'wrong code' }
+        clear_enqueued_jobs
+        mesri_champ.update(external_id: nil, ine: nil)
 
         VCR.use_cassette('api_particulier/success/etudiants') do
-          perform_enqueued_jobs { click_on 'Déposer le dossier' }
+          fill_in "INE", with: ine
+          wait_until { mesri_champ.reload.external_id.present? }
+          click_on 'Déposer le dossier'
+          perform_enqueued_jobs
         end
+        expect(page).to have_current_path(merci_dossier_path(Dossier.last))
 
         visit demande_dossier_path(dossier)
         expect(page).to have_content(/Des données.*ont été reçues depuis le MESRI/)
@@ -422,14 +434,14 @@ describe 'fetch API Particulier Data', js: true do
 
         expect(page).to have_content('statut inscrit')
         expect(page).to have_content('régime formation continue')
-        expect(page).to have_content("date de début d'inscription 1 septembre 2022")
-        expect(page).to have_content("date de fin d'inscription 31 août 2023")
+        expect(page).to have_content("date de début d’inscription 1 septembre 2022")
+        expect(page).to have_content("date de fin d’inscription 31 août 2023")
         expect(page).to have_content('code de la commune 75106')
 
         expect(page).to have_content('statut admis')
         expect(page).to have_content('régime formation continue')
-        expect(page).to have_content("date de début d'admission 1 septembre 2021")
-        expect(page).to have_content("date de fin d'admission 31 août 2022")
+        expect(page).to have_content("date de début d’admission 1 septembre 2021")
+        expect(page).to have_content("date de fin d’admission 31 août 2022")
         expect(page).to have_content('code de la commune 75106')
 
         expect(page).to have_content('UAI 0751722P')
@@ -437,68 +449,72 @@ describe 'fetch API Particulier Data', js: true do
       end
     end
 
-    scenario 'it can fill a DGFiP field' do
-      visit commencer_path(path: procedure.path)
-      click_on 'Commencer la démarche'
+    context 'DGFiP' do
+      scenario 'it can fill a DGFiP field' do
+        visit commencer_path(path: procedure.path)
+        click_on 'Commencer la démarche'
 
-      choose 'Madame'
-      fill_in 'individual_nom',    with: 'FERRI'
-      fill_in 'individual_prenom', with: 'Karine'
+        choose 'Madame'
+        fill_in 'individual_nom',    with: 'FERRI'
+        fill_in 'individual_prenom', with: 'Karine'
 
-      click_button('Continuer')
+        click_button('Continuer')
 
-      fill_in 'Le numéro fiscal', with: numero_fiscal
-      fill_in "La référence d'avis d'imposition", with: 'wrong_code'
+        fill_in 'Le numéro fiscal', with: numero_fiscal
+        fill_in "La référence d’avis d’imposition", with: 'wrong_code'
+        wait_for_autosave
 
-      blur
-      expect(page).to have_css('span', text: 'Brouillon enregistré', visible: true)
+        dossier = Dossier.last
+        dgfip_champ = dossier.champs_public.find(&:dgfip?)
 
-      dossier = Dossier.last
-      expect(dossier.champs.second.reference_avis).to eq('wrong_code')
+        wait_until { dgfip_champ.reload.reference_avis == 'wrong_code' }
 
-      click_on 'Déposer le dossier'
-      expect(page).to have_content(/reference avis doit posséder 13 ou 14 caractères/)
+        click_on 'Déposer le dossier'
+        expect(page).to have_content(/Le champ « Champs public reference avis » doit posséder 13 ou 14 caractères/)
 
-      fill_in "La référence d'avis d'imposition", with: reference_avis
+        VCR.use_cassette('api_particulier/success/avis_imposition') do
+          fill_in "La référence d’avis d’imposition", with: reference_avis
+          wait_for_autosave
+          click_on 'Déposer le dossier'
+          perform_enqueued_jobs
+        end
+        expect(page).to have_current_path(merci_dossier_path(Dossier.last))
 
-      VCR.use_cassette('api_particulier/success/avis_imposition') do
-        perform_enqueued_jobs { click_on 'Déposer le dossier' }
+        visit demande_dossier_path(dossier)
+        expect(page).to have_content(/Des données.*ont été reçues depuis la DGFiP/)
+
+        log_out
+
+        login_as instructeur.user, scope: :user
+
+        visit instructeur_dossier_path(procedure, dossier)
+
+        expect(page).to have_content('nom FERRI')
+        expect(page).to have_content('nom de naissance FERRI')
+        expect(page).to have_content('prénoms Karine')
+        expect(page).to have_content('date de naissance 12/08/1978')
+
+        expect(page).to have_content('date de recouvrement 09/10/2020')
+        expect(page).to have_content("date d’établissement 07/07/2020")
+
+        expect(page).to have_content('année 2020')
+        expect(page).to have_content("adresse fiscale de l’année passée 13 rue de la Plage 97615 Pamanzi")
+        expect(page).to have_content('nombre de parts 1')
+        expect(page).to have_content('situation familiale Célibataire')
+        expect(page).to have_content('nombre de personnes à charge 0')
+
+        expect(page).to have_content('revenu brut global 38814')
+        expect(page).to have_content('revenu imposable 38814')
+        expect(page).to have_content('impôt sur le revenu net avant correction 38814')
+        expect(page).to have_content("montant de l’impôt 38814")
+        expect(page).to have_content('revenu fiscal de référence 38814')
+        expect(page).to have_content("année d’imposition 2020")
+        expect(page).to have_content('année des revenus 2020')
+
+        expect(page).to have_content('situation partielle SUP DOM')
+
+        expect(page).not_to have_content('erreur correctif')
       end
-
-      visit demande_dossier_path(dossier)
-      expect(page).to have_content(/Des données.*ont été reçues depuis la DGFiP/)
-
-      log_out
-
-      login_as instructeur.user, scope: :user
-
-      visit instructeur_dossier_path(procedure, dossier)
-
-      expect(page).to have_content('nom FERRI')
-      expect(page).to have_content('nom de naissance FERRI')
-      expect(page).to have_content('prénoms Karine')
-      expect(page).to have_content('date de naissance 12/08/1978')
-
-      expect(page).to have_content('date de recouvrement 09/10/2020')
-      expect(page).to have_content("date d’établissement 07/07/2020")
-
-      expect(page).to have_content('année 2020')
-      expect(page).to have_content("adresse fiscale de l’année passée 13 rue de la Plage 97615 Pamanzi")
-      expect(page).to have_content('nombre de parts 1')
-      expect(page).to have_content('situation familiale Célibataire')
-      expect(page).to have_content('nombre de personnes à charge 0')
-
-      expect(page).to have_content('revenu brut global 38814')
-      expect(page).to have_content('revenu imposable 38814')
-      expect(page).to have_content('impôt sur le revenu net avant correction 38814')
-      expect(page).to have_content("montant de l’impôt 38814")
-      expect(page).to have_content('revenu fiscal de référence 38814')
-      expect(page).to have_content("année d’imposition 2020")
-      expect(page).to have_content('année des revenus 2020')
-
-      expect(page).to have_content('situation partielle SUP DOM')
-
-      expect(page).not_to have_content('erreur correctif')
     end
   end
 end

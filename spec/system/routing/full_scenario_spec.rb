@@ -1,6 +1,6 @@
 describe 'The routing', js: true do
   let(:password) { 'a very complicated password' }
-  let(:procedure) { create(:procedure, :with_type_de_champ, :with_service, :for_individual) }
+  let(:procedure) { create(:procedure, :with_type_de_champ, :with_service, :for_individual, :with_zone) }
   let(:administrateur) { create(:administrateur, procedures: [procedure]) }
   let(:scientifique_user) { create(:user, password: password) }
   let(:litteraire_user) { create(:user, password: password) }
@@ -12,40 +12,44 @@ describe 'The routing', js: true do
 
   scenario 'works' do
     login_as administrateur.user, scope: :user
-
     visit admin_procedure_path(procedure.id)
     find('#groupe-instructeurs').click
 
-    # rename routing criteria to spécialité
-    fill_in 'Libellé du routage', with: 'spécialité'
-    click_on 'Renommer'
-    expect(page).to have_text('Le libellé est maintenant « spécialité ».')
-    expect(page).to have_field('Libellé du routage', with: 'spécialité')
-
-    # rename defaut groupe to littéraire
-    click_on 'voir'
-    fill_in 'Nom du groupe', with: 'littéraire'
-    click_on 'Renommer'
-    expect(page).to have_text('Le nom est à présent « littéraire ».')
-    expect(page).to have_field('Nom du groupe', with: 'littéraire')
+    # add littéraire groupe
+    fill_in 'Ajouter un nom de groupe', with: 'littéraire'
+    click_on 'Ajouter le groupe'
+    expect(page).to have_text('Le groupe d’instructeurs « littéraire » a été créé et le routage a été activé.')
 
     # add victor to littéraire groupe
     fill_in 'Emails', with: 'victor@inst.com'
     perform_enqueued_jobs { click_on 'Affecter' }
-    expect(page).to have_text("L’instructeur victor@inst.com a été affecté au groupe « littéraire »")
+    expect(page).to have_text("L’instructeur victor@inst.com a été affecté")
 
     victor = User.find_by(email: 'victor@inst.com').instructeur
 
     # add superwoman to littéraire groupe
     fill_in 'Emails', with: 'superwoman@inst.com'
     perform_enqueued_jobs { click_on 'Affecter' }
-    expect(page).to have_text("L’instructeur superwoman@inst.com a été affecté au groupe « littéraire »")
+    expect(page).to have_text("L’instructeur superwoman@inst.com a été affecté")
 
     superwoman = User.find_by(email: 'superwoman@inst.com').instructeur
 
+    # rename routing criteria to spécialité
+    click_on 'Groupes d’instructeurs'
+    fill_in 'Libellé de la liste de groupes', with: 'spécialité'
+    click_on 'Renommer'
+    expect(page).to have_text('Le libellé est maintenant « spécialité ».')
+    expect(page).to have_field('Libellé de la liste de groupes', with: 'spécialité')
+
+    # add inactive groupe
+    fill_in 'Ajouter un nom de groupe', with: 'non visible car inactif'
+    click_on 'Ajouter le groupe'
+    check "Groupe inactif"
+    click_on 'Modifier'
+
     # add scientifique groupe
     click_on 'Groupes d’instructeurs'
-    fill_in 'Ajouter un groupe', with: 'scientifique'
+    fill_in 'Ajouter un nom de groupe', with: 'scientifique'
     click_on 'Ajouter le groupe'
     expect(page).to have_text('Le groupe d’instructeurs « scientifique » a été créé.')
 
@@ -77,11 +81,11 @@ describe 'The routing', js: true do
 
     # the search only show litteraires dossiers
     fill_in 'q', with: scientifique_user.email
-    click_on 'Rechercher'
+    find('.fr-search-bar .fr-btn').click
     expect(page).to have_text('0 dossier trouvé')
 
     fill_in 'q', with: litteraire_user.email
-    click_on 'Rechercher'
+    find('.fr-search-bar .fr-btn').click
     expect(page).to have_text('1 dossier trouvé')
 
     ## and the result is clickable
@@ -112,8 +116,9 @@ describe 'The routing', js: true do
     click_on litteraire_user.dossiers.first.id.to_s
     click_on 'Modifier mon dossier'
 
-    fill_in litteraire_user.dossiers.first.champs.first.libelle, with: 'some value'
-    click_on 'Enregistrer les modifications du dossier'
+    fill_in litteraire_user.dossiers.first.champs_public.first.libelle, with: 'some value'
+    wait_for_autosave(false)
+
     log_out
 
     # the litteraires instructeurs should have a notification
@@ -191,6 +196,7 @@ describe 'The routing', js: true do
     click_button('Continuer')
 
     select(groupe, from: 'dossier_groupe_instructeur_id')
+    wait_for_autosave
 
     click_on 'Déposer le dossier'
     expect(page).to have_text('Merci')
@@ -203,9 +209,12 @@ describe 'The routing', js: true do
     visit dossiers_path
     click_on user.dossiers.first.id.to_s
     click_on "Modifier mon dossier"
+    expect(page).to have_selector("option", text: "scientifique")
+    expect(page).not_to have_selector("option", text: "Groupe inactif")
 
     select(new_group, from: 'dossier_groupe_instructeur_id')
-    click_on "Enregistrer les modifications du dossier"
+    wait_for_autosave(false)
+
     expect(page).to have_text(new_group)
 
     log_out

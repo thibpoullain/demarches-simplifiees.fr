@@ -15,7 +15,7 @@ module Types
           else
             Types::Champs::TextChampType
           end
-        when ::Champs::EngagementChamp, ::Champs::YesNoChamp, ::Champs::CheckboxChamp
+        when ::Champs::YesNoChamp, ::Champs::CheckboxChamp
           Types::Champs::CheckboxChampType
         when ::Champs::DateChamp
           Types::Champs::DateChampType
@@ -28,6 +28,24 @@ module Types
         when ::Champs::CommuneChamp
           if context.has_fragment?(:CommuneChamp)
             Types::Champs::CommuneChampType
+          else
+            Types::Champs::TextChampType
+          end
+        when ::Champs::DepartementChamp
+          if context.has_fragment?(:DepartementChamp)
+            Types::Champs::DepartementChampType
+          else
+            Types::Champs::TextChampType
+          end
+        when ::Champs::RegionChamp
+          if context.has_fragment?(:RegionChamp)
+            Types::Champs::RegionChampType
+          else
+            Types::Champs::TextChampType
+          end
+        when ::Champs::PaysChamp
+          if context.has_fragment?(:PaysChamp)
+            Types::Champs::PaysChampType
           else
             Types::Champs::TextChampType
           end
@@ -53,6 +71,8 @@ module Types
           Types::Champs::CiviliteChampType
         when ::Champs::TitreIdentiteChamp
           Types::Champs::TitreIdentiteChampType
+        when ::Champs::EpciChamp
+          Types::Champs::EpciChampType
         else
           Types::Champs::TextChampType
         end

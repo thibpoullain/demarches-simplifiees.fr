@@ -1,7 +1,7 @@
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to('Démarches', admin_procedures_path),
-                    link_to(@procedure.libelle, admin_procedure_path(@procedure)),
-                    'Modifications'] }
+  locals: { steps: [['Démarches', admin_procedures_back_path(@procedure)],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Modifications']] }
 .container
   %h1.page-title
     Historique des modifications du formulaire
@@ -11,8 +11,22 @@
   - @procedure.revisions.each do |revision|
     - if previous_revision.present? && !revision.draft?
       - changes = previous_revision.compare(revision)
-      - if changes.present?
-        .card.mb-4
-          %h2.card-title= "Modifications publiées le #{l(revision.published_at, format: '%d %B %Y à %R')}"
-          = render partial: 'revision_changes', locals: { changes: changes }
+      - dossiers = revision.dossiers.visible_by_administration
+      - dossiers_en_construction_count = dossiers.state_en_construction.count
+      - dossiers_en_instruction_count = dossiers.state_en_instruction.count
+      .card.mb-4
+        %h2.card-title= "Modifications publiées le #{l(revision.published_at, format: '%d %B %Y à %R')}"
+        - if !dossiers_en_construction_count.zero? && !dossiers_en_instruction_count.zero?
+          %p
+            - if dossiers_en_construction_count == 1
+              = t('.dossier_en_construction_and_dossiers_en_instruction', count: dossiers_en_instruction_count)
+            - elsif dossiers_en_instruction_count == 1
+              = t('.dossier_en_instruction_and_dossiers_en_construction', count: dossiers_en_construction_count)
+            - else
+              = t('.dossiers_en_construction_and_dossiers_en_instruction', en_construction_count: dossiers_en_construction_count, en_instruction_count: dossiers_en_instruction_count)
+        - elsif !dossiers_en_construction_count.zero?
+          %p= t('.dossiers_en_construction', count: dossiers_en_construction_count)
+        - elsif !dossiers_en_instruction_count.zero?
+          %p= t('.dossiers_en_instruction', count: dossiers_en_instruction_count)
+        = render Procedure::RevisionChangesComponent.new changes:, previous_revision:
     - previous_revision = revision

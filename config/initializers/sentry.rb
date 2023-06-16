@@ -8,6 +8,7 @@ Sentry.init do |config|
   config.environment = secrets[:environment] || Rails.env
   config.enabled_environments = ['production', secrets[:environment].presence].compact
   config.breadcrumbs_logger = [:active_support_logger]
+
   config.traces_sample_rate = secrets[:enabled] ? BigDecimal(ENV['SENTRY_CAPTURE_RATE']) : nil
   config.delayed_job.report_after_job_retries = true
 end

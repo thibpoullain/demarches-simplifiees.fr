@@ -23,7 +23,7 @@ RSpec.describe GeoArea, type: :model do
     it { expect(geo_area.location).to eq("46°32'19\"N 2°25'42\"E") }
   end
 
-  describe '#rgeo_geometry' do
+  describe '#geometry' do
     let(:geo_area) { build(:geo_area, :polygon, champ: nil) }
     let(:polygon) do
       {
@@ -47,9 +47,9 @@ RSpec.describe GeoArea, type: :model do
 
     context 'polygon_with_extra_coordinate' do
       let(:geo_area) { build(:geo_area, :polygon_with_extra_coordinate, champ: nil) }
+      before { geo_area.valid? }
 
-      it { expect(geo_area.geometry).not_to eq(polygon) }
-      it { expect(geo_area.safe_geometry).to eq(polygon) }
+      it { expect(geo_area.geometry).to eq(polygon) }
     end
   end
 
@@ -109,6 +109,39 @@ RSpec.describe GeoArea, type: :model do
       let(:geo_area) { build(:geo_area, properties: nil, champ: nil) }
 
       it { expect(geo_area.description).to be_nil }
+    end
+  end
+
+  describe "#label" do
+    context "when geo is a line" do
+      let(:geo_area) { build(:geo_area, :selection_utilisateur, :line_string, champ: nil) }
+      it "should return the label" do
+        expect(geo_area.label).to eq("Une ligne longue de 21,2 m")
+      end
+
+      it "should return unknown length" do
+        geo_area.geometry["coordinates"] = []
+        expect(geo_area.label).to eq("Une ligne de longueur inconnue")
+      end
+    end
+
+    context "when geo is a polygon" do
+      let(:geo_area) { build(:geo_area, :selection_utilisateur, :polygon, champ: nil) }
+      it "should return the label" do
+        expect(geo_area.label).to eq("Une aire de surface 103,6 m²")
+      end
+
+      it "should return unknown surface" do
+        geo_area.geometry["coordinates"] = []
+        expect(geo_area.label).to eq("Une aire de surface inconnue")
+      end
+    end
+
+    context "when geo is a cadastre parcelle" do
+      let(:geo_area) { build(:geo_area, :selection_utilisateur, :cadastre, champ: nil) }
+      it "should return the label" do
+        expect(geo_area.label).to eq("Parcelle n° 42 - Feuille 000 A11 - 123 m² – commune 75127")
+      end
     end
   end
 end

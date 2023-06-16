@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,6 +17,7 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::CnafChamp < Champs::TextChamp
@@ -49,5 +50,17 @@ class Champs::CnafChamp < Champs::TextChamp
     if numero_allocataire.present? && code_postal.present?
       { code_postal: code_postal, numero_allocataire: numero_allocataire }.to_json
     end
+  end
+
+  def numero_allocataire_input_id
+    "#{input_id}-numero_alocataire"
+  end
+
+  def code_postal_input_id
+    "#{input_id}-code_postal"
+  end
+
+  def focusable_input_id
+    numero_allocataire_input_id
   end
 end

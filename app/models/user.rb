@@ -21,6 +21,7 @@
 #  reset_password_token         :string
 #  sign_in_count                :integer          default(0), not null
 #  siret                        :string
+#  team_account                 :boolean          default(FALSE)
 #  unconfirmed_email            :text
 #  unlock_token                 :string
 #  created_at                   :datetime
@@ -38,12 +39,14 @@ class User < ApplicationRecord
 
   # Include default devise modules. Others available are:
   # :confirmable, :lockable, :timeoutable and :omniauthable
-  devise :database_authenticatable, :registerable, :async,
+  devise :database_authenticatable, :registerable,
     :recoverable, :rememberable, :trackable, :validatable, :confirmable, :lockable
 
-  self.ignored_columns = [:administrateur_id, :instructeur_id, :expert_id]
-
-  has_many :dossiers, dependent: :destroy
+  # We should never cascade delete dossiers. In normal case we call delete_and_keep_track_dossiers
+  # before deleting a user (which dissociate dossiers from the user).
+  # Destroying a user with dossier is always a mistake.
+  has_many :dossiers, dependent: :restrict_with_exception
+  has_many :targeted_user_links, dependent: :destroy
   has_many :invites, dependent: :destroy
   has_many :dossiers_invites, through: :invites, source: :dossier
   has_many :deleted_dossiers
@@ -59,7 +62,7 @@ class User < ApplicationRecord
   accepts_nested_attributes_for :france_connect_information
 
   default_scope { eager_load(:instructeur, :administrateur, :expert) }
-
+  scope :marked_as_team_account, -> { where('email ilike ?', "%@beta.gouv.fr") }
   before_validation -> { sanitize_email(:email) }
 
   validate :does_not_merge_on_self, if: :requested_merge_into_id_changed?
@@ -78,6 +81,7 @@ class User < ApplicationRecord
 
     # Make our procedure_after_confirmation available to the Mailer
     opts[:procedure_after_confirmation] = CurrentConfirmation.procedure_after_confirmation
+    opts[:prefill_token] = CurrentConfirmation.prefill_token
 
     send_devise_notification(:confirmation_instructions, @raw_confirmation_token, opts)
   end
@@ -91,12 +95,12 @@ class User < ApplicationRecord
     dossier.user_id == id
   end
 
-  def invite?(dossier_id)
-    invites.pluck(:dossier_id).include?(dossier_id.to_i)
+  def invite?(dossier)
+    invites.exists?(dossier:)
   end
 
   def owns_or_invite?(dossier)
-    owns?(dossier) || invite?(dossier.id)
+    owns?(dossier) || invite?(dossier)
   end
 
   def invite!
@@ -183,7 +187,7 @@ class User < ApplicationRecord
     !administrateur? && !instructeur? && !expert?
   end
 
-  def delete_and_keep_track_dossiers(administration)
+  def delete_and_keep_track_dossiers_also_delete_user(super_admin)
     if !can_be_deleted?
       raise "Cannot delete this user because they are also instructeur, expert or administrateur"
     end
@@ -192,6 +196,14 @@ class User < ApplicationRecord
       # delete invites
       Invite.where(dossier: dossiers).destroy_all
 
+      delete_and_keep_track_dossiers(super_admin)
+
+      destroy!
+    end
+  end
+
+  def delete_and_keep_track_dossiers(super_admin)
+    transaction do
       # delete dossiers brouillon
       dossiers.state_brouillon.each do |dossier|
         dossier.hide_and_keep_track!(dossier.user, :user_removed)
@@ -209,16 +221,16 @@ class User < ApplicationRecord
         dossier.hide_and_keep_track!(dossier.user, :user_removed)
       end
       dossiers.update_all(deleted_user_email_never_send: email, user_id: nil, dossier_transfer_id: nil)
-
-      destroy!
     end
   end
 
   def merge(old_user)
+    raise "Merging same user, no way" if old_user.id == self.id
     transaction do
       old_user.dossiers.update_all(user_id: id)
       old_user.invites.update_all(user_id: id)
       old_user.merge_logs.update_all(user_id: id)
+      old_user.targeted_user_links.update_all(user_id: id)
 
       # Move or merge old user's roles to the user
       [
@@ -247,6 +259,10 @@ class User < ApplicationRecord
     else
       return false
     end
+  end
+
+  def send_devise_notification(notification, *args)
+    devise_mailer.send(notification, self, *args).deliver_later
   end
 
   private

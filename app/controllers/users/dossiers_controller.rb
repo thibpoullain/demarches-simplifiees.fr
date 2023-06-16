@@ -1,19 +1,18 @@
 module Users
   class DossiersController < UserController
     include DossierHelper
+    include TurboChampsConcern
 
     layout 'procedure_context', only: [:identite, :update_identite, :siret, :update_siret]
 
     ACTIONS_ALLOWED_TO_ANY_USER = [:index, :recherche, :new, :transferer_all]
-    ACTIONS_ALLOWED_TO_OWNER_OR_INVITE = [:show, :demande, :messagerie, :brouillon, :update_brouillon, :modifier, :update, :create_commentaire]
-    ACTIONS_ALLOWED_TO_OWNER_OR_INVITE_HIDDEN = [:restore]
+    ACTIONS_ALLOWED_TO_OWNER_OR_INVITE = [:show, :destroy, :demande, :messagerie, :brouillon, :update_brouillon, :submit_brouillon, :modifier, :update, :create_commentaire, :papertrail, :restore]
 
-    before_action :ensure_ownership!, except: ACTIONS_ALLOWED_TO_ANY_USER + ACTIONS_ALLOWED_TO_OWNER_OR_INVITE + ACTIONS_ALLOWED_TO_OWNER_OR_INVITE_HIDDEN
+    before_action :ensure_ownership!, except: ACTIONS_ALLOWED_TO_ANY_USER + ACTIONS_ALLOWED_TO_OWNER_OR_INVITE
     before_action :ensure_ownership_or_invitation!, only: ACTIONS_ALLOWED_TO_OWNER_OR_INVITE
-    before_action :ensure_ownership_or_invitation_hidden!, only: ACTIONS_ALLOWED_TO_OWNER_OR_INVITE_HIDDEN
-    before_action :ensure_dossier_can_be_updated, only: [:update_identite, :update_brouillon, :modifier, :update]
-    before_action :forbid_invite_submission!, only: [:update_brouillon]
-    before_action :forbid_closed_submission!, only: [:update_brouillon]
+    before_action :ensure_dossier_can_be_updated, only: [:update_identite, :update_brouillon, :submit_brouillon, :modifier, :update]
+    before_action :forbid_invite_submission!, only: [:submit_brouillon]
+    before_action :forbid_closed_submission!, only: [:submit_brouillon]
     before_action :show_demarche_en_test_banner
     before_action :store_user_location!, only: :new
 
@@ -27,11 +26,7 @@ module Users
       @dossiers_invites = current_user.dossiers_invites.merge(dossiers_visibles)
       @dossiers_supprimes_recemment = current_user.dossiers.hidden_by_user.merge(dossiers)
       @dossiers_supprimes_definitivement = current_user.deleted_dossiers.order_by_updated_at.page(page)
-      @dossier_transfers = DossierTransfer
-        .includes(dossiers: :user)
-        .with_dossiers
-        .where(email: current_user.email)
-        .page(page)
+      @dossier_transfers = DossierTransfer.for_email(current_user.email).page(page)
       @statut = statut(@user_dossiers, @dossiers_traites, @dossiers_invites, @dossiers_supprimes_recemment, @dossiers_supprimes_definitivement, @dossier_transfers, @dossiers_close_to_expiration, params[:statut])
     end
 
@@ -67,6 +62,11 @@ module Users
         flash.notice = t('.no_longer_available')
         redirect_to dossier_path(dossier)
       end
+    end
+
+    def papertrail
+      raise ActionController::BadRequest if dossier.brouillon?
+      @dossier = dossier
     end
 
     def identite
@@ -109,11 +109,20 @@ module Users
       end
 
       sanitized_siret = siret_model.siret
-      begin
-        etablissement = APIEntrepriseService.create_etablissement(@dossier, sanitized_siret, current_user.id)
-      rescue APIEntreprise::API::Error::RequestFailed, APIEntreprise::API::Error::BadGateway, APIEntreprise::API::Error::TimedOut, APIEntreprise::API::Error::ServiceUnavailable
-        return render_siret_error(t('errors.messages.siret_network_error'))
-      end
+      etablissement = begin
+                        APIEntrepriseService.create_etablissement(@dossier, sanitized_siret, current_user.id)
+                      rescue => error
+                        if error.try(:network_error?) && !APIEntrepriseService.api_up?
+                          # TODO: notify ops
+                          APIEntrepriseService.create_etablissement_as_degraded_mode(@dossier, sanitized_siret, current_user.id)
+                        else
+                          Sentry.capture_exception(error, extra: { dossier_id: @dossier.id, siret: })
+
+                          # probably random error, invite user to retry
+                          return render_siret_error(t('errors.messages.siret_network_error'))
+                        end
+                      end
+
       if etablissement.nil?
         return render_siret_error(t('errors.messages.siret_unknown'))
       end
@@ -135,7 +144,10 @@ module Users
     end
 
     def brouillon
+      session.delete(:prefill_token)
+      session.delete(:prefill_params)
       @dossier = dossier_with_champs
+      @dossier.valid?(context: :prefilling)
 
       # TODO: remove when the champs are unifed
       if !@dossier.autorisation_donnees
@@ -147,29 +159,26 @@ module Users
       end
     end
 
-    # FIXME:
-    # - delegate draft save logic to champ ?
-    def update_brouillon
-      @dossier = dossier_with_champs
+    def submit_brouillon
+      @dossier = dossier_with_champs(pj_template: false)
+      errors = submit_dossier_and_compute_errors
 
-      errors = update_dossier_and_compute_errors
-
-      if passage_en_construction? && errors.blank?
+      if errors.blank?
         @dossier.passer_en_construction!
+        @dossier.process_declarative!
         NotificationMailer.send_en_construction_notification(@dossier).deliver_later
         @dossier.groupe_instructeur.instructeurs.with_instant_email_dossier_notifications.each do |instructeur|
           DossierMailer.notify_new_dossier_depose_to_instructeur(@dossier, instructeur.email).deliver_later
         end
-        return redirect_to(merci_dossier_path(@dossier))
-      elsif errors.present?
-        flash.now.alert = errors
-      else
-        flash.now.notice = t('.draft_saved')
-      end
 
-      respond_to do |format|
-        format.html { render :brouillon }
-        format.js { render :brouillon }
+        redirect_to merci_dossier_path(@dossier)
+      else
+        flash.now.alert = errors
+
+        respond_to do |format|
+          format.html { render :brouillon }
+          format.turbo_stream
+        end
       end
     end
 
@@ -183,16 +192,33 @@ module Users
       @dossier = dossier_with_champs
     end
 
-    def update
+    def update_brouillon
       @dossier = dossier_with_champs
+      update_dossier_and_compute_errors
 
+      respond_to do |format|
+        format.html { render :brouillon }
+        format.turbo_stream do
+          @to_show, @to_hide, @to_update = champs_to_turbo_update(champs_public_params.fetch(:champs_public_all_attributes), dossier.champs_public_all)
+
+          render(:update, layout: false)
+        end
+      end
+    end
+
+    def update
+      @dossier = dossier_with_champs(pj_template: false)
       errors = update_dossier_and_compute_errors
 
       if errors.present?
         flash.now.alert = errors
-        render :modifier
-      else
-        redirect_to demande_dossier_path(@dossier)
+      end
+
+      respond_to do |format|
+        format.html { render :modifier }
+        format.turbo_stream do
+          @to_show, @to_hide, @to_update = champs_to_turbo_update(champs_public_params.fetch(:champs_public_all_attributes), dossier.champs_public_all)
+        end
       end
     end
 
@@ -201,9 +227,9 @@ module Users
     end
 
     def create_commentaire
-      @commentaire = CommentaireService.build(current_user, dossier, commentaire_params)
+      @commentaire = CommentaireService.create(current_user, dossier, commentaire_params)
 
-      if @commentaire.save
+      if @commentaire.errors.empty?
         @commentaire.dossier.update!(last_commentaire_updated_at: Time.zone.now)
         dossier.followers_instructeurs
           .with_instant_email_message_notifications
@@ -218,9 +244,13 @@ module Users
       end
     end
 
-    def delete_dossier
+    def destroy
       if dossier.can_be_deleted_by_user?
-        dossier.hide_and_keep_track!(current_user, :user_request)
+        if current_user.owns?(dossier)
+          dossier.hide_and_keep_track!(current_user, :user_request)
+        elsif current_user.invite?(dossier)
+          current_user.invites.where(dossier:).destroy_all
+        end
         flash.notice = t('users.dossiers.ask_deletion.soft_deleted_dossier')
         redirect_to dossiers_path
       else
@@ -271,6 +301,7 @@ module Users
       )
       dossier.build_default_individual
       dossier.save!
+      DossierMailer.with(dossier:).notify_new_draft.deliver_later
 
       if dossier.procedure.for_individual
         redirect_to identite_dossier_path(dossier)
@@ -293,9 +324,19 @@ module Users
     end
 
     def restore
-      hidden_dossier.restore(current_user)
+      dossier.restore(current_user)
       flash.notice = t('users.dossiers.restore')
       redirect_to dossiers_path
+    end
+
+    def clone
+      cloned_dossier = @dossier.clone
+      DossierMailer.with(dossier: cloned_dossier).notify_new_draft.deliver_later
+      flash.notice = t('users.dossiers.cloned_success')
+      redirect_to brouillon_dossier_path(cloned_dossier)
+    rescue ActiveRecord::RecordInvalid => e
+      flash.alert = e.record.errors.full_messages
+      redirect_to dossier_path(@dossier)
     end
 
     private
@@ -348,26 +389,33 @@ module Users
       [params[:page].to_i, 1].max
     end
 
-    # FIXME: require(:dossier) when all the champs are united
-    def champs_params
-      params.permit(dossier: {
-        champs_attributes: [
-          :id, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :identifiant, :numero_fiscal, :reference_avis, :ine, :piece_justificative_file, :departement, :code_departement, value: [],
-          champs_attributes: [:id, :_destroy, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :identifiant, :numero_fiscal, :reference_avis, :ine, :piece_justificative_file, :departement, :code_departement, value: []]
-        ]
-      })
+    def champs_public_params
+      champs_params = params.require(:dossier).permit(champs_public_attributes: [
+        :id, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :identifiant, :numero_fiscal, :reference_avis, :ine, :piece_justificative_file, :code_departement, value: [],
+        champs_attributes: [:id, :_destroy, :value, :value_other, :external_id, :primary_value, :secondary_value, :numero_allocataire, :code_postal, :identifiant, :numero_fiscal, :reference_avis, :ine, :piece_justificative_file, :departement, :code_departement, value: []]
+      ])
+      champs_params[:champs_public_all_attributes] = champs_params.delete(:champs_public_attributes) || {}
+      champs_params
+    end
+
+    def dossier_scope
+      if action_name == 'update_brouillon'
+        Dossier.visible_by_user.or(Dossier.for_procedure_preview)
+      elsif action_name == 'restore'
+        Dossier.hidden_by_user
+      else
+        Dossier.visible_by_user
+      end
     end
 
     def dossier
-      @dossier ||= Dossier.visible_by_user.find(params[:id] || params[:dossier_id])
+      @dossier ||= dossier_scope.find(params[:id] || params[:dossier_id]).tap do
+        set_sentry_dossier(_1)
+      end
     end
 
-    def hidden_dossier
-      @hidden_dossier ||= Dossier.hidden_by_user.find(params[:id] || params[:dossier_id])
-    end
-
-    def dossier_with_champs
-      Dossier.with_champs.visible_by_user.find(params[:id])
+    def dossier_with_champs(pj_template: true)
+      DossierPreloader.load_one(dossier, pj_template:)
     end
 
     def should_change_groupe_instructeur?
@@ -389,7 +437,7 @@ module Users
     end
 
     def should_fill_groupe_instructeur?
-      !@dossier.procedure.routee? && @dossier.groupe_instructeur_id.nil?
+      !@dossier.procedure.routing_enabled? && @dossier.groupe_instructeur_id.nil?
     end
 
     def defaut_groupe_instructeur
@@ -399,34 +447,42 @@ module Users
     def update_dossier_and_compute_errors
       errors = []
 
-      if champs_params[:dossier]
-        @dossier.assign_attributes(champs_params[:dossier])
-        # FIXME: in some cases a removed repetition bloc row is submitted.
-        # In this case it will be treated as a new record, and the action will fail.
-        @dossier.champs.filter(&:repetition?).each do |champ|
-          champ.champs = champ.champs.filter(&:persisted?)
-        end
-        if @dossier.champs.any?(&:changed_for_autosave?)
-          @dossier.last_champ_updated_at = Time.zone.now
-        end
-
-        if !@dossier.save(**validation_options)
-          errors += @dossier.errors.full_messages
-        elsif should_change_groupe_instructeur?
-          @dossier.assign_to_groupe_instructeur(groupe_instructeur_from_params)
-        end
+      @dossier.assign_attributes(champs_public_params)
+      if @dossier.champs_public_all.any?(&:changed_for_autosave?)
+        @dossier.last_champ_updated_at = Time.zone.now
       end
+      if !@dossier.save(**validation_options)
+        errors += @dossier.errors.full_messages
+      end
+
+      if should_change_groupe_instructeur?
+        @dossier.assign_to_groupe_instructeur(groupe_instructeur_from_params)
+      end
+
+      if @dossier.procedure.feature_enabled?(:routing_rules)
+        RoutingEngine.compute(@dossier)
+      end
+
+      if dossier.en_construction?
+        errors += @dossier.check_mandatory_and_visible_champs
+      end
+
+      errors
+    end
+
+    def submit_dossier_and_compute_errors
+      errors = []
+
+      @dossier.valid?(**submit_validation_options)
+      errors += @dossier.errors.full_messages
+      errors += @dossier.check_mandatory_and_visible_champs
 
       if should_fill_groupe_instructeur?
         @dossier.assign_to_groupe_instructeur(defaut_groupe_instructeur)
       end
 
-      if !save_draft?
-        errors += @dossier.check_mandatory_champs
-
-        if @dossier.groupe_instructeur.nil?
-          errors << "Le champ « #{@dossier.procedure.routing_criteria_name} » doit être rempli"
-        end
+      if @dossier.groupe_instructeur.nil?
+        errors << "Le champ « #{@dossier.procedure.routing_criteria_name} » doit être rempli"
       end
 
       errors
@@ -444,20 +500,14 @@ module Users
       end
     end
 
-    def ensure_ownership_or_invitation_hidden!
-      if !current_user.owns_or_invite?(hidden_dossier)
-        forbidden!
-      end
-    end
-
     def forbid_invite_submission!
-      if passage_en_construction? && !current_user.owns?(dossier)
+      if !current_user.owns?(dossier)
         forbidden!
       end
     end
 
     def forbid_closed_submission!
-      if passage_en_construction? && !dossier.can_transition_to_en_construction?
+      if !dossier.can_transition_to_en_construction?
         forbidden!
       end
     end
@@ -484,22 +534,18 @@ module Users
       params.require(:commentaire).permit(:body, :piece_jointe)
     end
 
-    def passage_en_construction?
-      dossier.brouillon? && !save_draft?
-    end
-
-    def save_draft?
-      dossier.brouillon? && !params[:submit_draft]
+    def submit_validation_options
+      # rubocop:disable Lint/BooleanSymbol
+      # Force ActiveRecord to re-validate associated records.
+      { context: :false }
+      # rubocop:enable Lint/BooleanSymbol
     end
 
     def validation_options
-      if save_draft?
+      if dossier.brouillon?
         { context: :brouillon }
       else
-        # rubocop:disable Lint/BooleanSymbol
-        # Force ActiveRecord to re-validate associated records.
-        { context: :false }
-        # rubocop:enable Lint/BooleanSymbol
+        submit_validation_options
       end
     end
   end

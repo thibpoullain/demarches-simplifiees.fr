@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,6 +17,7 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::LinkedDropDownListChamp < Champ
@@ -83,13 +84,21 @@ class Champs::LinkedDropDownListChamp < Champ
     [primary_value, secondary_value]
   end
 
+  def has_secondary_options_for_primary?
+    primary_value.present? && secondary_options[primary_value]&.any?(&:present?)
+  end
+
+  def in?(options)
+    options.include?(primary_value) || options.include?(secondary_value)
+  end
+
+  def remove_option(options)
+    update_column(:value, nil)
+  end
+
   private
 
   def pack_value(primary, secondary)
     self.value = JSON.generate([primary, secondary])
-  end
-
-  def has_secondary_options_for_primary?
-    primary_value.present? && secondary_options[primary_value]&.any?(&:present?)
   end
 end

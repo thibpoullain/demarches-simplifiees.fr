@@ -1,10 +1,11 @@
 describe PiecesJustificativesService do
   describe '.liste_documents' do
-    let(:for_expert) { false }
+    let(:with_champs_private) { true }
+    let(:with_bills) { true }
 
     subject do
       PiecesJustificativesService
-        .liste_documents(Dossier.where(id: dossier.id), for_expert)
+        .liste_documents(Dossier.where(id: dossier.id), with_bills:, with_champs_private:)
         .map(&:first)
     end
 
@@ -13,20 +14,31 @@ describe PiecesJustificativesService do
       let(:dossier) { create(:dossier, procedure: procedure) }
       let(:witness) { create(:dossier, procedure: procedure) }
 
-      let(:pj_champ) { -> (d) { d.champs.find { |c| c.type == 'Champs::PieceJustificativeChamp' } } }
+      let(:pj_champ) { -> (d) { d.champs_public.find { |c| c.type == 'Champs::PieceJustificativeChamp' } } }
 
       before do
         attach_file_to_champ(pj_champ.call(dossier))
         attach_file_to_champ(pj_champ.call(witness))
       end
 
-      it { expect(subject).to match_array([pj_champ.call(dossier).piece_justificative_file.attachment]) }
+      context 'with a single attachment' do
+        it { expect(subject).to match_array(pj_champ.call(dossier).piece_justificative_file.attachments) }
+      end
+
+      context 'with a multiple attachments' do
+        before do
+          attach_file_to_champ(pj_champ.call(dossier))
+        end
+
+        it { expect(subject.count).to eq(2) }
+        it { expect(subject).to match_array(pj_champ.call(dossier).piece_justificative_file.attachments) }
+      end
     end
 
     context 'with a pj not safe on a champ' do
       let(:procedure) { create(:procedure, :with_piece_justificative) }
       let(:dossier) { create(:dossier, procedure: procedure) }
-      let(:pj_champ) { -> (d) { d.champs.find { |c| c.type == 'Champs::PieceJustificativeChamp' } } }
+      let(:pj_champ) { -> (d) { d.champs_public.find { |c| c.type == 'Champs::PieceJustificativeChamp' } } }
 
       before { attach_file_to_champ(pj_champ.call(dossier), safe = false) }
 
@@ -46,10 +58,10 @@ describe PiecesJustificativesService do
         attach_file_to_champ(private_pj_champ.call(witness))
       end
 
-      it { expect(subject).to match_array([private_pj_champ.call(dossier).piece_justificative_file.attachment]) }
+      it { expect(subject).to match_array(private_pj_champ.call(dossier).piece_justificative_file.attachments) }
 
-      context 'for expert' do
-        let(:for_expert) { true }
+      context 'without private champ' do
+        let(:with_champs_private) { false }
 
         it { expect(subject).to be_empty }
       end
@@ -60,7 +72,7 @@ describe PiecesJustificativesService do
       let(:dossier) { create(:dossier, procedure: procedure) }
       let(:witness) { create(:dossier, procedure: procedure) }
 
-      let(:champ_identite) { dossier.champs.find { |c| c.type == 'Champs::TitreIdentiteChamp' } }
+      let(:champ_identite) { dossier.champs_public.find { |c| c.type == 'Champs::TitreIdentiteChamp' } }
 
       before { attach_file_to_champ(champ_identite) }
 
@@ -160,8 +172,8 @@ describe PiecesJustificativesService do
         expect(subject).to match_array([dossier_bs.serialized.attachment, dossier_bs.signature.attachment])
       end
 
-      context 'for expert' do
-        let(:for_expert) { true }
+      context 'without bills' do
+        let(:with_bills) { false }
 
         it { expect(subject).to be_empty }
       end
@@ -181,8 +193,8 @@ describe PiecesJustificativesService do
 
       it { expect(subject).to match_array(dol.serialized.attachment) }
 
-      context 'for expert' do
-        let(:for_expert) { true }
+      context 'without bills' do
+        let(:with_bills) { false }
 
         it { expect(subject).to be_empty }
       end
@@ -190,12 +202,26 @@ describe PiecesJustificativesService do
   end
 
   describe '.generate_dossier_export' do
-    let(:dossier) { create(:dossier) }
+    let(:procedure) { create(:procedure, types_de_champ_public: [{ type: :repetition, children: [{ type: :piece_justificative }] }]) }
+    let(:dossier) { create(:dossier, :with_populated_champs, procedure: procedure) }
 
-    subject { PiecesJustificativesService.generate_dossier_export(dossier) }
+    subject { PiecesJustificativesService.generate_dossier_export(Dossier.where(id: dossier.id)) }
 
     it "doesn't update dossier" do
       expect { subject }.not_to change { dossier.updated_at }
+    end
+
+    context 'when given an expert' do
+      let!(:expert) { create(:expert) }
+      let!(:confidentiel_avis) { create(:avis, :confidentiel, dossier: dossier) }
+      let!(:not_confidentiel_avis) { create(:avis, :not_confidentiel, dossier: dossier) }
+      let!(:expert_avis) { create(:avis, :confidentiel, dossier: dossier, expert: expert) }
+
+      subject { PiecesJustificativesService.generate_dossier_export(Dossier.where(id: dossier.id), include_avis_for_expert: expert) }
+      it "includes avis not confidentiel as well as expert's avis" do
+        expect_any_instance_of(Dossier).to receive(:avis_for_expert).with(expert).and_return([])
+        subject
+      end
     end
   end
 

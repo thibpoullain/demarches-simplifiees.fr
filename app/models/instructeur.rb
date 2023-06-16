@@ -15,14 +15,15 @@ class Instructeur < ApplicationRecord
   has_and_belongs_to_many :administrateurs
 
   has_many :assign_to, dependent: :destroy
-  has_many :groupe_instructeurs, through: :assign_to
-  has_many :procedures, -> { distinct }, through: :groupe_instructeurs
-
+  has_many :groupe_instructeurs, -> { order(:label) }, through: :assign_to
+  has_many :unordered_groupe_instructeurs, through: :assign_to, source: :groupe_instructeur
+  has_many :procedures, -> { distinct }, through: :unordered_groupe_instructeurs
+  has_many :batch_operations, dependent: :nullify
   has_many :assign_to_with_email_notifications, -> { with_email_notifications }, class_name: 'AssignTo', inverse_of: :instructeur
   has_many :groupe_instructeur_with_email_notifications, through: :assign_to_with_email_notifications, source: :groupe_instructeur
 
-  has_many :commentaires
-  has_many :dossiers, -> { state_not_brouillon }, through: :groupe_instructeurs
+  has_many :commentaires, inverse_of: :instructeur, dependent: :nullify
+  has_many :dossiers, -> { state_not_brouillon }, through: :unordered_groupe_instructeurs
   has_many :follows, -> { active }, inverse_of: :instructeur
   has_many :previous_follows, -> { inactive }, class_name: 'Follow', inverse_of: :instructeur
   has_many :followed_dossiers, through: :follows, source: :dossier
@@ -41,10 +42,28 @@ class Instructeur < ApplicationRecord
     includes(:assign_to).where(assign_tos: { instant_email_dossier_notifications_enabled: true })
   }
 
+  scope :with_instant_expert_avis_email_notifications_enabled, -> {
+    includes(:assign_to).where(assign_tos: { instant_expert_avis_email_notifications_enabled: true })
+  }
+
   default_scope { eager_load(:user) }
 
   def self.by_email(email)
-    Instructeur.eager_load(:user).find_by(users: { email: email })
+    find_by(users: { email: email })
+  end
+
+  def self.find_all_by_identifier(ids: [], emails: [])
+    find_all_by_identifier_with_emails(ids:, emails:).first
+  end
+
+  def self.find_all_by_identifier_with_emails(ids: [], emails: [])
+    valid_emails, invalid_emails = emails.partition { URI::MailTo::EMAIL_REGEXP.match?(_1) }
+
+    [
+      where(id: ids).or(where(users: { email: valid_emails })).distinct(:id),
+      valid_emails,
+      invalid_emails
+    ]
   end
 
   def email
@@ -81,7 +100,7 @@ class Instructeur < ApplicationRecord
     end
   end
 
-  NOTIFICATION_SETTINGS = [:daily_email_notifications_enabled, :instant_email_dossier_notifications_enabled, :instant_email_message_notifications_enabled, :weekly_email_notifications_enabled]
+  NOTIFICATION_SETTINGS = [:daily_email_notifications_enabled, :instant_email_dossier_notifications_enabled, :instant_email_message_notifications_enabled, :weekly_email_notifications_enabled, :instant_expert_avis_email_notifications_enabled]
 
   def notification_settings(procedure_id)
     assign_to
@@ -119,11 +138,11 @@ class Instructeur < ApplicationRecord
 
   def notifications_for_dossier(dossier)
     follow = Follow
-      .includes(dossier: [:champs, :avis, :commentaires])
+      .includes(dossier: [:champs_public, :champs_private, :avis, :commentaires])
       .find_by(instructeur: self, dossier: dossier)
 
     if follow.present?
-      demande = follow.dossier.champs.updated_since?(follow.demande_seen_at).any? ||
+      demande = follow.dossier.champs_public.updated_since?(follow.demande_seen_at).any? ||
         follow.dossier.groupe_instructeur_updated_at&.>(follow.demande_seen_at) ||
         dossier.identity_updated_at&.>(follow.demande_seen_at) ||
         false
@@ -302,9 +321,12 @@ class Instructeur < ApplicationRecord
     admin_with_new_instructeur.each do |admin|
       admin.instructeurs.delete(old_instructeur)
     end
-
     old_instructeur.commentaires.update_all(instructeur_id: id)
     old_instructeur.bulk_messages.update_all(instructeur_id: id)
+
+    Avis
+      .where(claimant_id: old_instructeur.id, claimant_type: Instructeur.name)
+      .update_all(claimant_id: id)
   end
 
   private

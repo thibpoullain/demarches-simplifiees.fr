@@ -1,0 +1,16 @@
+.editable-champ{ html_options }
+  - if @champ.block?
+    %h3.header-subsection= @champ.libelle
+    - if @champ.description.present?
+      .notice= render SimpleFormatComponent.new(@champ.description, allow_a: true)
+
+  - elsif has_label?(@champ)
+    = render EditableChamp::ChampLabelComponent.new form: @form, champ: @champ, seen_at: @seen_at
+  - if @champ.titre_identite?
+    %p.notice= t('.titre_identite_notice')
+  - elsif @champ.datetime?
+    %p.notice= t('.datetime_notice')
+
+  = @form.hidden_field :id, value: @champ.id
+
+  = render component_class.new(form: @form, champ: @champ, seen_at: @seen_at)

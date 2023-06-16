@@ -11,7 +11,6 @@
   // The procedure description can still be read from the /commencer
   // pages.
   @media (max-width: $two-columns-breakpoint) {
-    .procedure-preview,
     .agent-intro {
       display: none;
     }
@@ -19,10 +18,6 @@
 
   .column {
     padding-top: $default-spacer;
-  }
-
-  h1 {
-    margin-bottom: $default-spacer;
   }
 
   .form label {

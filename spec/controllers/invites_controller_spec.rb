@@ -121,6 +121,15 @@ describe InvitesController, type: :controller do
             it { expect(flash[:alert]).to be_present }
           end
 
+          context "when user does'nt give any email" do
+            subject { post :create, params: { dossier_id: dossier.id } }
+            before do
+              subject
+            end
+            it { expect { subject }.not_to change(Invite, :count) }
+            it { expect(flash[:alert]).to be_present }
+          end
+
           context 'when email is already used' do
             let!(:invite) { create(:invite, dossier: dossier) }
 
@@ -254,18 +263,20 @@ describe InvitesController, type: :controller do
   end
 
   describe '#DELETE destroy' do
-    let!(:invite) { create :invite, email: email, dossier: dossier }
-    let(:signed_in_profile) { dossier.user }
+    render_views
+    let(:invite) { create(:invite, email: email, dossier: dossier) }
 
     before do
-      sign_in signed_in_profile
+      invite
+      sign_in dossier.user
     end
 
-    subject { delete :destroy, params: { id: invite.id } }
+    subject { delete :destroy, params: { id: invite.id }, format: :turbo_stream }
 
     context 'when user is signed in' do
       it "destroy invites" do
         expect { subject }.to change { Invite.count }.from(1).to(0)
+        expect(response.body).to include(".invite-user-action")
       end
     end
 
@@ -275,6 +286,7 @@ describe InvitesController, type: :controller do
       it 'does not destroy invite' do
         sign_in another_user
         expect { subject }.not_to change { Invite.count }
+        expect(response.body).not_to include(".invite-user-action")
       end
     end
   end

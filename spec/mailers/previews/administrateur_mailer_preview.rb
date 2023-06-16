@@ -1,7 +1,19 @@
 class AdministrateurMailerPreview < ActionMailer::Preview
   def activate_before_expiration
-    administrateur = Administrateur.new(reset_password_sent_at: Time.zone.now)
+    user = User.new(reset_password_sent_at: Time.zone.now)
 
-    AdministrateurMailer.activate_before_expiration(administrateur, "a4d4e4f4b4d445")
+    AdministrateurMailer.activate_before_expiration(user, "a4d4e4f4b4d445")
+  end
+
+  def notify_procedure_expires_when_termine_forced
+    email = Administrateur.first.email
+    procedure = Procedure.first
+    AdministrateurMailer.notify_procedure_expires_when_termine_forced(email, procedure)
+  end
+
+  def api_token_expiration
+    user = User.last
+    tokens = [APIToken.last, APIToken.last]
+    AdministrateurMailer.api_token_expiration(user, tokens)
   end
 end

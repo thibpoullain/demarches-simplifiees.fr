@@ -3,29 +3,21 @@ fr:
     shared:
       dossiers:
         identite_entreprise:
-          warning_for_private_info: "L’établissement %{etablissement} a exercé son droit à la non publication des informations relatives à son identité. Les informations ne seront donc visibles que de la part des services instructeurs"
+          warning_for_private_info: "L’établissement SIRET %{siret} a exercé son droit à la non publication des informations relatives à son identité. Les informations ne seront donc visibles que de la part des services instructeurs."
       avis:
         demande_envoyee_le: "Demande d’avis envoyée le %{date}"
         demande_revoquee_le: "Demande d’avis révoquée le %{date}"
+        relance_effectuee_le: "Relance effectuée le %{date}"
         reponse_donnee_le: "Réponse donnée le %{date}"
         en_attente: "En attente de réponse"
       france_connect_login:
-        title: 'Avec FranceConnect'
+        title: 'Se créer un compte avec FranceConnect'
         description: "FranceConnect est la solution proposée par l’État pour sécuriser et simplifier la connexion aux services en ligne."
-        login_button: "S’identifier avec FranceConnect"
+        login_button: "S’identifier avec"
         help_link: "Qu’est-ce que FranceConnect ?"
         separator: 'ou'
       account:
         already_user_question: 'Vous avez déjà un compte ?'
         already_user: 'J’ai déjà un compte'
         create: 'Créer un compte'
-        signin: 'Connexion'
-      commentaires:
-        destroy:
-          button: 'Supprimer le message'
-          confirm: "Êtes-vous sûr de vouloir supprimer ce message ?"
-          deleted_body: Message supprimé
-          notice: 'Votre message a été supprimé'
-          alert_reasons:
-            acl: "Impossible de supprimer le message, celui ci ne vous appartient pas"
-            already_discarded: "Ce message a déjà été supprimé"
+        signin: 'Se connecter'

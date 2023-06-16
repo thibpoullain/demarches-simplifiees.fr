@@ -6,18 +6,22 @@ class ProcedureSerializer < ActiveModel::Serializer
   attributes :id,
     :description,
     :organisation,
-    :direction,
     :archived_at,
     :geographic_information,
     :total_dossier,
     :link,
-    :state
+    :state,
+    :direction
 
   has_one :geographic_information, serializer: ModuleAPICartoSerializer
   has_many :types_de_champ, serializer: TypeDeChampSerializer
   has_many :types_de_champ_private, serializer: TypeDeChampSerializer
   has_many :types_de_piece_justificative
   belongs_to :service, serializer: ServiceSerializer
+
+  def direction
+    ""
+  end
 
   def archived_at
     object.closed_at&.in_time_zone('UTC')
@@ -44,7 +48,11 @@ class ProcedureSerializer < ActiveModel::Serializer
   end
 
   def types_de_champ
-    object.types_de_champ.reject { |c| c.old_pj.present? }
+    object.active_revision.types_de_champ_public.reject { |c| c.old_pj.present? }
+  end
+
+  def types_de_champ_private
+    object.active_revision.types_de_champ_private
   end
 
   def types_de_piece_justificative

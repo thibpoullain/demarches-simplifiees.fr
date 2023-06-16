@@ -8,7 +8,7 @@ class ProcedureDashboard < Administrate::BaseDashboard
   # which determines how the attribute is displayed
   # on pages throughout the dashboard.
   ATTRIBUTE_TYPES = {
-    published_types_de_champ: TypesDeChampCollectionField,
+    published_types_de_champ_public: TypesDeChampCollectionField,
     published_types_de_champ_private: TypesDeChampCollectionField,
     path: ProcedureLinkField,
     dossiers: Field::HasMany,
@@ -16,10 +16,9 @@ class ProcedureDashboard < Administrate::BaseDashboard
     id: Field::Number.with_options(searchable: true),
     libelle: Field::String,
     description: Field::String,
-    zone: Field::BelongsTo,
+    zones: Field::HasMany,
     lien_site_web: Field::String, # TODO: use Field::Url when administrate-v0.12 will be released
     organisation: Field::String,
-    direction: Field::String,
     created_at: Field::DateTime,
     updated_at: Field::DateTime,
     for_individual: Field::Boolean,
@@ -36,7 +35,12 @@ class ProcedureDashboard < Administrate::BaseDashboard
     refused_mail_template: MailTemplateField,
     without_continuation_mail_template: MailTemplateField,
     attestation_template: AttestationTemplateField,
-    procedure_expires_when_termine_enabled: Field::Boolean
+    procedure_expires_when_termine_enabled: Field::Boolean,
+    duree_conservation_dossiers_dans_ds: Field::Number,
+    max_duree_conservation_dossiers_dans_ds: Field::Number,
+    estimated_duration_visible: Field::Boolean,
+    piece_justificative_multiple: Field::Boolean,
+    tags: Field::Text
   }.freeze
 
   # COLLECTION_ATTRIBUTES
@@ -48,7 +52,7 @@ class ProcedureDashboard < Administrate::BaseDashboard
     :id,
     :created_at,
     :libelle,
-    :zone,
+    :zones,
     :service,
     :dossiers,
     :published_at,
@@ -63,10 +67,10 @@ class ProcedureDashboard < Administrate::BaseDashboard
     :administrateurs,
     :libelle,
     :description,
+    :tags,
     :lien_site_web,
     :organisation,
-    :direction,
-    :zone,
+    :zones,
     :service,
     :created_at,
     :updated_at,
@@ -74,7 +78,7 @@ class ProcedureDashboard < Administrate::BaseDashboard
     :whitelisted_at,
     :hidden_at,
     :closed_at,
-    :published_types_de_champ,
+    :published_types_de_champ_public,
     :published_types_de_champ_private,
     :for_individual,
     :auto_archive_on,
@@ -84,14 +88,22 @@ class ProcedureDashboard < Administrate::BaseDashboard
     :refused_mail_template,
     :without_continuation_mail_template,
     :attestation_template,
-    :procedure_expires_when_termine_enabled
+    :procedure_expires_when_termine_enabled,
+    :duree_conservation_dossiers_dans_ds,
+    :max_duree_conservation_dossiers_dans_ds,
+    :estimated_duration_visible,
+    :piece_justificative_multiple
   ].freeze
 
   # FORM_ATTRIBUTES
   # an array of attributes that will be displayed
   # on the model's form (`new` and `edit`) pages.
   FORM_ATTRIBUTES = [
-    :procedure_expires_when_termine_enabled
+    :procedure_expires_when_termine_enabled,
+    :duree_conservation_dossiers_dans_ds,
+    :max_duree_conservation_dossiers_dans_ds,
+    :estimated_duration_visible,
+    :piece_justificative_multiple
   ].freeze
 
   # Overwrite this method to customize how procedures are displayed

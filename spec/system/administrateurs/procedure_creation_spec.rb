@@ -21,7 +21,6 @@ describe 'Creating a new procedure', js: true do
     fill_in 'procedure_duree_conservation_dossiers_dans_ds', with: '3'
     click_on 'Créer la démarche'
 
-    expect(page).to have_text('Libelle doit être rempli')
     fill_in_dummy_procedure_details
     click_on 'Créer la démarche'
 
@@ -35,12 +34,13 @@ describe 'Creating a new procedure', js: true do
       visit champs_admin_procedure_path(procedure)
 
       add_champ(remove_flash_message: true)
-      fill_in 'champ-0-libelle', with: 'libelle de champ'
+      fill_in 'Libellé du champ', with: 'libelle de champ'
       blur
       expect(page).to have_content('Formulaire enregistré')
+      expect(page).to have_selector('select > optgroup', count: 8)
 
       add_champ
-      expect(page).to have_selector('#champ-1-libelle')
+      expect(page).to have_selector('.type-de-champ', count: 1)
 
       click_on Procedure.last.libelle
 
@@ -56,15 +56,15 @@ describe 'Creating a new procedure', js: true do
 
       # Add an empty repetition type de champ
       add_champ(remove_flash_message: true)
-      select('Bloc répétable', from: 'champ-0-type_champ')
-      fill_in 'champ-0-libelle', with: 'libellé de champ'
+      select('Bloc répétable', from: 'Type de champ')
+      fill_in 'Libellé du champ', with: 'libellé de champ'
       blur
       expect(page).to have_content('Formulaire enregistré')
 
       click_link procedure.libelle
       expect(page).to have_current_path(admin_procedure_path(procedure))
 
-      champs_card = find('.card-admin', text: 'Champs du formulaire')
+      champs_card = find('.fr-tile', text: 'Champs du formulaire')
       expect(champs_card).to have_selector('.icon.refuse')
       expect(champs_card).to have_content('À modifier')
     end

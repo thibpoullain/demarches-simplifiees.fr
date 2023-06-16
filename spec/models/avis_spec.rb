@@ -45,35 +45,6 @@ RSpec.describe Avis, type: :model do
     end
   end
 
-  describe '.avis_exists_and_email_belongs_to_avis?' do
-    let(:dossier) { create(:dossier) }
-    let(:invited_email) { 'invited@avis.com' }
-    let!(:avis) { create(:avis, email: invited_email, dossier: dossier) }
-
-    subject { Avis.avis_exists_and_email_belongs_to_avis?(avis_id, email) }
-
-    context 'when the avis is unknown' do
-      let(:avis_id) { 666 }
-      let(:email) { 'unknown@mystery.com' }
-
-      it { is_expected.to be false }
-    end
-
-    context 'when the avis is known' do
-      let(:avis_id) { avis.id }
-
-      context 'when the email belongs to the invitation' do
-        let(:email) { invited_email }
-        it { is_expected.to be true }
-      end
-
-      context 'when the email is unknown' do
-        let(:email) { 'unknown@mystery.com' }
-        it { is_expected.to be false }
-      end
-    end
-  end
-
   describe "email sanitization" do
     let(:expert) { create(:expert) }
     let(:procedure) { create(:procedure) }
@@ -176,6 +147,18 @@ RSpec.describe Avis, type: :model do
         expect(avis.revokable_by?(another_expert)).to be_falsy
         expect(avis.revokable_by?(another_instructeur)).to be_truthy
       end
+    end
+  end
+
+  describe "question_label cleanup" do
+    it "nullify empty" do
+      avis = create(:avis, question_label: " ")
+      expect(avis.question_label).to be_nil
+    end
+
+    it "strip" do
+      avis = create(:avis, question_label: "my question ")
+      expect(avis.question_label).to eq("my question")
     end
   end
 end

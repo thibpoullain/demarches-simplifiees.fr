@@ -16,6 +16,14 @@ class UserMailerPreview < ActionMailer::Preview
     UserMailer.france_connect_merge_confirmation('new.exemple.fr', '123456', 15.minutes.from_now)
   end
 
+  def send_archive
+    UserMailer.send_archive(Instructeur.first, Procedure.first, Archive.first)
+  end
+
+  def invite_instructeur
+    UserMailer.invite_instructeur(user, 'aedfa0d0')
+  end
+
   private
 
   def user

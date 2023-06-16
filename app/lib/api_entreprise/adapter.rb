@@ -1,9 +1,14 @@
 class APIEntreprise::Adapter
   UNAVAILABLE = 'Donnée indisponible'
 
-  def initialize(siret, procedure_id)
+  def initialize(siret, procedure_id, depreciated = false)
     @siret = siret
     @procedure_id = procedure_id
+    @depreciated = depreciated
+  end
+
+  def api(procedure_id = nil)
+    APIEntreprise::API.new(procedure_id)
   end
 
   def data_source

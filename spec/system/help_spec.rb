@@ -1,7 +1,7 @@
 describe 'Getting help:' do
   scenario 'a Help button is visible on public pages' do
     visit '/'
-    within('.new-header') do
+    within('.fr-header') do
       expect(page).to have_help_button
     end
   end
@@ -12,14 +12,14 @@ describe 'Getting help:' do
     scenario 'a Help menu provides administration contacts and a link to the FAQ' do
       visit commencer_path(path: procedure.path)
 
-      within('.new-header') do
+      within('.fr-header') do
         expect(page).to have_help_menu
       end
 
       within('.help-dropdown') do
         expect(page).to have_content(procedure.service.email)
         expect(page).to have_content(procedure.service.telephone)
-        expect(page).to have_link(nil, href: FAQ_URL)
+        expect(page).to have_link(nil, href: I18n.t("links.common.faq.url"))
       end
     end
   end
@@ -34,7 +34,7 @@ describe 'Getting help:' do
 
     scenario 'a Help button is visible on signed-in pages' do
       visit dossiers_path
-      within('.new-header') do
+      within('.fr-header') do
         expect(page).to have_help_button
       end
     end
@@ -45,14 +45,14 @@ describe 'Getting help:' do
       scenario 'a Help menu provides administration contacts and a link to the FAQ' do
         visit dossier_path(dossier)
 
-        within('.new-header') do
+        within('.fr-header') do
           expect(page).to have_help_menu
         end
 
         within('.help-dropdown') do
           expect(page).to have_content(dossier.procedure.service.email)
           expect(page).to have_content(dossier.procedure.service.telephone)
-          expect(page).to have_link(nil, href: FAQ_URL)
+          expect(page).to have_link(nil, href: I18n.t("links.common.faq.url"))
         end
       end
     end
@@ -63,13 +63,13 @@ describe 'Getting help:' do
       scenario 'a Help menu provides links to the Messagerie and to the FAQ' do
         visit dossier_path(dossier)
 
-        within('.new-header') do
+        within('.fr-header') do
           expect(page).to have_help_menu
         end
 
         within('.help-dropdown') do
           expect(page).to have_link(nil, href: messagerie_dossier_path(dossier))
-          expect(page).to have_link(nil, href: FAQ_URL)
+          expect(page).to have_link(nil, href: I18n.t("links.common.faq.url"))
         end
       end
     end
@@ -84,14 +84,14 @@ describe 'Getting help:' do
 
     scenario 'a Help menu is visible on signed-in pages' do
       visit instructeur_procedures_path
-      within('.new-header') do
+      within('.fr-header') do
         expect(page).to have_help_menu
       end
     end
   end
 
   def have_help_button
-    have_link('Aide', href: FAQ_URL)
+    have_link('Aide', href: I18n.t("links.common.faq.url"))
   end
 
   def have_help_menu

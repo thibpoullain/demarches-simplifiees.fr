@@ -1,0 +1,11 @@
+- case error
+- when :invalid
+  %p.pt-1
+    Le numéro RNA doit commencer par un W majuscule suivi de 9 chiffres
+- when :not_found
+  %p.pt-1= t('.not_found')
+- when :network_error
+  %p.pt-1= t('.network_error')
+- else
+  - if champ.value.present?
+    %p.pt-1= t('.data_fetched', title: champ.title)

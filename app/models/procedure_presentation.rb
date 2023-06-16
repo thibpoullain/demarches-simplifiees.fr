@@ -18,6 +18,8 @@ class ProcedurePresentation < ApplicationRecord
 
   TABLE = 'table'
   COLUMN = 'column'
+  ORDER = 'order'
+
   SLASH = '/'
   TYPE_DE_CHAMP = 'type_de_champ'
   TYPE_DE_CHAMP_PRIVATE = 'type_de_champ_private'
@@ -35,54 +37,76 @@ class ProcedurePresentation < ApplicationRecord
   validate :check_allowed_filter_columns
   validate :check_filters_max_length
 
-  def fields
-    fields = [
-      field_hash('self', 'created_at'),
-      field_hash('self', 'en_construction_at'),
-      field_hash('self', 'depose_at'),
-      field_hash('self', 'updated_at'),
-      field_hash('user', 'email'),
-      field_hash('followers_instructeurs', 'email'),
-      field_hash('groupe_instructeur', 'label')
+  def self_fields
+    [
+      field_hash('self', 'created_at', type: :date),
+      field_hash('self', 'updated_at', type: :date),
+      field_hash('self', 'depose_at', type: :date),
+      field_hash('self', 'en_construction_at', type: :date),
+      field_hash('self', 'en_instruction_at', type: :date),
+      field_hash('self', 'processed_at', type: :date),
+      field_hash('self', 'updated_since', type: :date, virtual: true),
+      field_hash('self', 'depose_since', type: :date, virtual: true),
+      field_hash('self', 'en_construction_since', type: :date, virtual: true),
+      field_hash('self', 'en_instruction_since', type: :date, virtual: true),
+      field_hash('self', 'processed_since', type: :date, virtual: true),
+      field_hash('self', 'state', type: :enum, scope: 'instructeurs.dossiers.filterable_state', virtual: true)
     ]
+  end
+
+  def fields
+    fields = self_fields
+
+    fields.push(
+      field_hash('user', 'email', type: :text),
+      field_hash('followers_instructeurs', 'email', type: :text),
+      field_hash('groupe_instructeur', 'id', type: :enum)
+    )
 
     if procedure.for_individual
       fields.push(
-        field_hash("individual", "prenom"),
-        field_hash("individual", "nom"),
-        field_hash("individual", "gender")
+        field_hash("individual", "prenom", type: :text),
+        field_hash("individual", "nom", type: :text),
+        field_hash("individual", "gender", type: :text)
       )
     end
 
     if !procedure.for_individual
       fields.push(
-        field_hash('etablissement', 'entreprise_siren'),
-        field_hash('etablissement', 'entreprise_forme_juridique'),
-        field_hash('etablissement', 'entreprise_nom_commercial'),
-        field_hash('etablissement', 'entreprise_raison_sociale'),
-        field_hash('etablissement', 'entreprise_siret_siege_social'),
-        field_hash('etablissement', 'entreprise_date_creation')
+        field_hash('etablissement', 'entreprise_siren', type: :text),
+        field_hash('etablissement', 'entreprise_forme_juridique', type: :text),
+        field_hash('etablissement', 'entreprise_nom_commercial', type: :text),
+        field_hash('etablissement', 'entreprise_raison_sociale', type: :text),
+        field_hash('etablissement', 'entreprise_siret_siege_social', type: :text),
+        field_hash('etablissement', 'entreprise_date_creation', type: :date)
       )
 
       fields.push(
-        field_hash('etablissement', 'siret'),
-        field_hash('etablissement', 'libelle_naf'),
-        field_hash('etablissement', 'code_postal')
+        field_hash('etablissement', 'siret', type: :text),
+        field_hash('etablissement', 'libelle_naf', type: :text),
+        field_hash('etablissement', 'code_postal', type: :text)
       )
     end
 
     fields.concat procedure.types_de_champ_for_procedure_presentation
-      .pluck(:libelle, :private, :stable_id)
-      .map { |(libelle, is_private, stable_id)| field_hash(is_private ? TYPE_DE_CHAMP_PRIVATE : TYPE_DE_CHAMP, stable_id.to_s, label: libelle) }
+      .pluck(:type_champ, :libelle, :private, :stable_id)
+      .map { |(type_champ, libelle, is_private, stable_id)| field_hash(is_private ? TYPE_DE_CHAMP_PRIVATE : TYPE_DE_CHAMP, stable_id.to_s, label: libelle, type: (TypeDeChamp.options_for_select?(type_champ) ? :enum : :text)) }
 
     fields
   end
 
-  def displayed_fields_for_select
+  def displayable_fields_for_select
     [
-      fields.map { |field| [field['label'], field_id(field)] },
+      fields.reject { |field| field['virtual'] }
+        .map { |field| [field['label'], field_id(field)] },
       displayed_fields.map { |field| field_id(field) }
     ]
+  end
+
+  def filterable_fields_options
+    fields.map do |field|
+      [field['label'], field_id(field)]
+    end
   end
 
   def displayed_fields_for_headers
@@ -145,14 +169,21 @@ class ProcedurePresentation < ApplicationRecord
   end
 
   def filtered_ids(dossiers, statut)
-    filters[statut].group_by { |filter| filter.values_at(TABLE, COLUMN) } .map do |(table, column), filters|
+    filters.fetch(statut)
+      .group_by { |filter| filter.values_at(TABLE, COLUMN) }
+      .map do |(table, column), filters|
       values = filters.pluck('value')
       case table
       when 'self'
-        dates = values
-          .filter_map { |v| Time.zone.parse(v).beginning_of_day rescue nil }
+        field = self_fields.find { |h| h['column'] == column }
+        if field['type'] == :date
+          dates = values
+            .filter_map { |v| Time.zone.parse(v).beginning_of_day rescue nil }
 
-        dossiers.filter_by_datetimes(column, dates)
+          dossiers.filter_by_datetimes(column, dates)
+        else
+          dossiers.where("dossiers.#{column} IN (?)", values)
+        end
       when TYPE_DE_CHAMP
         dossiers.with_type_de_champ(column)
           .filter_ilike(:champs, :value, values)
@@ -183,9 +214,16 @@ class ProcedurePresentation < ApplicationRecord
           .includes(table)
           .filter_ilike(table, column, values)
       when 'groupe_instructeur'
-        dossiers
-          .joins(:groupe_instructeur)
-          .filter_ilike(table, column, values)
+        assert_supported_column(table, column)
+        if column == 'label'
+          dossiers
+            .joins(:groupe_instructeur)
+            .filter_ilike(table, column, values)
+        else
+          dossiers
+            .joins(:groupe_instructeur)
+            .where(groupe_instructeur_id: values)
+        end
       end.pluck(:id)
     end.reduce(:&)
   end
@@ -195,16 +233,20 @@ class ProcedurePresentation < ApplicationRecord
     dossiers_sorted_ids = self.sorted_ids(dossiers_by_statut, count || dossiers_by_statut.size)
 
     if filters[statut].present?
-      filtered_ids(dossiers_by_statut, statut).intersection(dossiers_sorted_ids)
+      dossiers_sorted_ids.intersection(filtered_ids(dossiers_by_statut, statut))
     else
       dossiers_sorted_ids
     end
   end
 
   def human_value_for_filter(filter)
-    case filter[TABLE]
-    when TYPE_DE_CHAMP, TYPE_DE_CHAMP_PRIVATE
+    if [TYPE_DE_CHAMP, TYPE_DE_CHAMP_PRIVATE].include?(filter[TABLE])
       find_type_de_champ(filter[COLUMN]).dynamic_type.filter_to_human(filter['value'])
+    elsif filter['column'] == 'state'
+      Dossier.human_attribute_name("state.#{filter['value']}")
+    elsif filter['table'] == 'groupe_instructeur' && filter['column'] == 'id'
+      instructeur.groupe_instructeurs
+        .find { _1.id == filter['value'].to_i }&.label || "Groupe Instucteur #{filter['value']}"
     else
       filter['value']
     end
@@ -257,22 +299,61 @@ class ProcedurePresentation < ApplicationRecord
     end
   end
 
-  def update_sort(table, column)
-    order = if sort.values_at(TABLE, COLUMN) == [table, column]
-      sort['order'] == 'asc' ? 'desc' : 'asc'
-    else
-      'asc'
-    end
-
+  def update_sort(table, column, order)
     update!(sort: {
       TABLE => table,
       COLUMN => column,
-      'order' => order
+      ORDER => order.presence || opposite_order_for(table, column)
     })
+  end
+
+  def opposite_order_for(table, column)
+    if sort.values_at(TABLE, COLUMN) == [table, column]
+      sort['order'] == 'asc' ? 'desc' : 'asc'
+    elsif [table, column] == ["notifications", "notifications"]
+      'desc' # default order for notifications
+    else
+      'asc'
+    end
   end
 
   def snapshot
     slice(:filters, :sort, :displayed_fields)
+  end
+
+  def field_type(field_id)
+    find_field(*field_id.split(SLASH))['type']
+  end
+
+  def field_enum(field_id)
+    field = find_field(*field_id.split(SLASH))
+    if field['scope'].present?
+      I18n.t(field['scope']).map(&:to_a).map(&:reverse)
+    elsif field['table'] == 'groupe_instructeur'
+      instructeur.groupe_instructeurs.filter_map do
+        if _1.procedure_id == procedure.id
+          [_1.label, _1.id]
+        end
+      end
+    else
+      find_type_de_champ(field['column']).options_for_select
+    end
+  end
+
+  def sortable?(field)
+    sort['table'] == field['table'] && sort['column'] == field['column']
+  end
+
+  def aria_sort(order, field)
+    if sortable?(field)
+      if order == 'asc'
+        { "aria-sort": "ascending" }
+      elsif order == 'desc'
+        { "aria-sort": "descending" }
+      end
+    else
+      {}
+    end
   end
 
   private
@@ -286,7 +367,11 @@ class ProcedurePresentation < ApplicationRecord
   end
 
   def find_type_de_champ(column)
-    TypeDeChamp.order(:revision_id).find_by(stable_id: column)
+    TypeDeChamp
+      .joins(:revision_types_de_champ)
+      .where(revision_types_de_champ: { revision_id: procedure.revisions })
+      .order(:created_at)
+      .find_by(stable_id: column)
   end
 
   def check_allowed_displayed_fields
@@ -331,12 +416,15 @@ class ProcedurePresentation < ApplicationRecord
     end
   end
 
-  def field_hash(table, column, label: nil, classname: '')
+  def field_hash(table, column, label: nil, classname: '', virtual: false, type: :text, scope: '')
     {
       'label' => label || I18n.t(column, scope: [:activerecord, :attributes, :procedure_presentation, :fields, table]),
       TABLE => table,
       COLUMN => column,
-      'classname' => classname
+      'classname' => classname,
+      'virtual' => virtual,
+      'type' => type,
+      'scope' => scope
     }
   end
 
@@ -372,6 +460,9 @@ class ProcedurePresentation < ApplicationRecord
   def assert_supported_column(table, column)
     if table == 'followers_instructeurs' && column != 'email'
       raise ArgumentError, 'Table `followers_instructeurs` only supports the `email` column.'
+    end
+    if table == 'groupe_instructeur' && (column != 'label' && column != 'id')
+      raise ArgumentError, 'Table `groupe_instructeur` only supports the `label` or `id` column.'
     end
   end
 end

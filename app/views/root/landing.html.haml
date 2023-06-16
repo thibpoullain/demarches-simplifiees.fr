@@ -26,11 +26,11 @@
           %h2.role-panel-title Vous souhaitez effectuer une demande auprès d’une administration ?
           %p.role-panel-explanation Réalisez vos demandes en toute simplicité et retrouvez vos dossiers en ligne
 
-          = link_to "Comment trouver ma démarche ?",
-            COMMENT_TROUVER_MA_DEMARCHE_URL,
-            target: "_blank",
-            rel: "noopener noreferrer",
-            class: "role-panel-button-primary"
+          / = link_to "Comment trouver ma démarche ?",
+          /   COMMENT_TROUVER_MA_DEMARCHE_URL,
+          /   target: "_blank",
+          /   rel: "noopener noreferrer",
+          /   class: "role-panel-button-primary"
 
           = link_to "Se connecter",
             new_user_session_path,
@@ -70,10 +70,10 @@
           %h2.cta-panel-title Une question, un problème ?
           %p.cta-panel-explanation La réponse est dans l’aide en ligne
         %div
-          = link_to "Accéder à l’aide en ligne", FAQ_URL,
-            class: "cta-panel-button-white",
-            target: "_blank",
-            rel: "noopener noreferrer"
+          / = link_to "Accéder à l’aide en ligne", FAQ_URL,
+          /   class: "cta-panel-button-white",
+          /   target: "_blank",
+          /   rel: "noopener noreferrer"
         -#   We temporarily disable the link to the contact page on the homepage
         -#   %p.cta-panel-explanation Notre équipe est disponible pour vous renseigner et vous aider
         -# %div
@@ -82,12 +82,3 @@
         -#     class: "cta-panel-button-white",
         -#     target: "_blank",
         -#     rel: "noopener noreferrer"
-
-  .landing-panel
-    .container
-      .cta-panel-wrapper
-        %div
-          %h2.cta-panel-title Votre administration est prête pour dématérialiser
-          %p.cta-panel-explanation.grey Créez un premier formulaire de test en quelques minutes
-        %div
-          = link_to "Créer votre compte administrateur", DEMANDE_INSCRIPTION_ADMIN_PAGE_URL, class: "role-panel-button-secondary"

@@ -9,7 +9,7 @@ class TypesDeChamp::LinkedDropDownListTypeDeChamp < TypesDeChamp::TypeDeChampBas
     stable_id = @type_de_champ.stable_id
     tags.push(
       {
-        libelle: "#{libelle}/primaire",
+        libelle: "#{TagsSubstitutionConcern::TagsParser.normalize(libelle)}/primaire",
         id: "tdc#{stable_id}/primaire",
         description: "#{description} (menu primaire)",
         lambda: -> (champs) {
@@ -19,7 +19,7 @@ class TypesDeChamp::LinkedDropDownListTypeDeChamp < TypesDeChamp::TypeDeChampBas
     )
     tags.push(
       {
-        libelle: "#{libelle}/secondaire",
+        libelle: "#{TagsSubstitutionConcern::TagsParser.normalize(libelle)}/secondaire",
         id: "tdc#{stable_id}/secondaire",
         description: "#{description} (menu secondaire)",
         lambda: -> (champs) {
@@ -30,10 +30,15 @@ class TypesDeChamp::LinkedDropDownListTypeDeChamp < TypesDeChamp::TypeDeChampBas
     tags
   end
 
+  def add_blank_option_when_not_mandatory(options)
+    return options if mandatory
+    options.unshift('')
+  end
+
   def primary_options
     primary_options = unpack_options.map(&:first)
     if primary_options.present?
-      primary_options.unshift('')
+      primary_options = add_blank_option_when_not_mandatory(primary_options)
     end
     primary_options
   end
@@ -53,7 +58,7 @@ class TypesDeChamp::LinkedDropDownListTypeDeChamp < TypesDeChamp::TypeDeChampBas
     chunked = options.slice_before(PRIMARY_PATTERN)
     chunked.map do |chunk|
       primary, *secondary = chunk
-      secondary.unshift('')
+      secondary = add_blank_option_when_not_mandatory(secondary)
       [PRIMARY_PATTERN.match(primary)&.[](1), secondary]
     end
   end

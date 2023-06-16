@@ -4,6 +4,61 @@ module TagsSubstitutionConcern
   include Rails.application.routes.url_helpers
   include ActionView::Helpers::UrlHelper
 
+  module TagsParser
+    include Parsby::Combinators
+    extend self
+
+    def parse(io)
+      doc.parse io
+    end
+
+    def self.normalize(str)
+      str
+        .sub(/^[[:space:]]+/, '')
+        .sub(/[[:space:]]+$/, '')
+        .gsub(/[[:space:]]/, ' ')
+        .gsub('&nbsp;', ' ')
+    end
+
+    define_combinator :doc do
+      many(tag | text) < eof
+    end
+
+    define_combinator :text do
+      join(many(any_char.that_fail(tag))).fmap do |str|
+        { text: str.force_encoding('utf-8').encode }
+      end
+    end
+
+    define_combinator :tag do
+      between(tag_delimiter, tag_delimiter, tag_text).fmap do |tag|
+        { tag: TagsParser.normalize(tag) }
+      end
+    end
+
+    define_combinator :tag_delimiter do
+      lit('--')
+    end
+
+    define_combinator :tag_text_first_char do
+      any_char.that_fail(lit('-') | tag_delimiter | eol)
+    end
+
+    define_combinator :tag_text_char do
+      any_char.that_fail(tag_delimiter | eol)
+    end
+
+    define_combinator :tag_text do
+      join(single(tag_text_first_char) + many(tag_text_char)).fmap do |str|
+        str.force_encoding('utf-8').encode.gsub(/[[:space:]]/, ' ')
+      end
+    end
+
+    define_combinator :eol do
+      lit("\r\n") | lit("\n")
+    end
+  end
+
   DOSSIER_TAGS = [
     {
       libelle: 'motivation',
@@ -134,10 +189,12 @@ module TagsSubstitutionConcern
     {
       libelle: 'groupe instructeur',
       description: 'Le groupe instructeur en charge du dossier',
-      lambda: -> (d) { d.groupe_instructeur.label },
+      lambda: -> (d) { d.groupe_instructeur&.label },
       available_for_states: Dossier::SOUMIS
     }
   ]
+
+  SHARED_TAG_LIBELLES = (DOSSIER_TAGS + DOSSIER_TAGS_FOR_MAIL + INDIVIDUAL_TAGS + ENTREPRISE_TAGS + ROUTAGE_TAGS).map { |tag| tag[:libelle] }
 
   def tags
     if procedure.for_individual?
@@ -147,11 +204,27 @@ module TagsSubstitutionConcern
     end
 
     routage_tags = []
-    if procedure.routee?
+    if procedure.routing_enabled?
       routage_tags = ROUTAGE_TAGS
     end
 
     filter_tags(identity_tags + dossier_tags + champ_public_tags + champ_private_tags + routage_tags)
+  end
+
+  def used_type_de_champ_tags(text)
+    used_tags_and_libelle_for(text).filter_map do |(tag, libelle)|
+      if !tag.in?(SHARED_TAG_LIBELLES)
+        if tag.start_with?('tdc')
+          [libelle, tag.gsub('tdc', '').to_i]
+        else
+          [tag]
+        end
+      end
+    end
+  end
+
+  def used_tags_for(text)
+    used_tags_and_libelle_for(text).map { |(tag, _)| tag }
   end
 
   private
@@ -197,12 +270,12 @@ module TagsSubstitutionConcern
   end
 
   def champ_public_tags(dossier: nil)
-    types_de_champ = (dossier || procedure.active_revision).types_de_champ
+    types_de_champ = (dossier || procedure.active_revision).types_de_champ_public.filter { !_1.condition? }
     types_de_champ_tags(types_de_champ, Dossier::SOUMIS)
   end
 
   def champ_private_tags(dossier: nil)
-    types_de_champ = (dossier || procedure.active_revision).types_de_champ_private
+    types_de_champ = (dossier || procedure.active_revision).types_de_champ_private.filter { !_1.condition? }
     types_de_champ_tags(types_de_champ, Dossier::INSTRUCTION_COMMENCEE)
   end
 
@@ -219,60 +292,77 @@ module TagsSubstitutionConcern
       return ''
     end
 
-    text = normalize_tags(text)
+    tokens = parse_tags(text)
 
     tags_and_datas = [
-      [champ_public_tags(dossier: dossier), dossier.champs],
+      [champ_public_tags(dossier: dossier), dossier.champs_public],
       [champ_private_tags(dossier: dossier), dossier.champs_private],
       [dossier_tags, dossier],
       [ROUTAGE_TAGS, dossier],
       [INDIVIDUAL_TAGS, dossier.individual],
       [ENTREPRISE_TAGS, dossier.etablissement&.entreprise]
-    ]
+    ].filter_map do |(tags, data)|
+      data && [filter_tags(tags).index_by { _1[:id].presence || _1[:libelle] }, data]
+    end
 
-    tags_and_datas
-      .map { |(tags, data)| [filter_tags(tags), data] }
-      .reduce(text) { |acc, (tags, data)| replace_tags_with_values_from_data(acc, tags, data) }
-  end
-
-  def replace_tags_with_values_from_data(text, tags, data)
-    if data.present?
-      tags.reduce(text) do |acc, tag|
-        replace_tag(acc, tag, data)
+    tags_and_datas.reduce(tokens) do |tokens, (tags, data)|
+      # Replace tags with their value
+      tokens.map do |token|
+        case token
+        in { tag: _, id: id } if tags.key?(id)
+          { text: replace_tag(tags.fetch(id), data) }
+        in { tag: tag } if tags.key?(tag)
+          { text: replace_tag(tags.fetch(tag), data) }
+        else
+          token
+        end
       end
-    else
-      text
-    end
+    end.map do |token|
+      # Get tokens text representation
+      case token
+      in { tag: tag }
+        "--#{tag}--"
+      in { text: text }
+        text
+      end
+    end.join('')
   end
 
-  def replace_tag(text, tag, data)
-    libelle = Regexp.quote(tag[:id].presence || tag[:libelle])
-
-    # allow any kind of space (non-breaking or other) in the tag’s libellé to match any kind of space in the template
-    # (the '\\ |' is there because plain ASCII spaces were escaped by preceding Regexp.quote)
-    libelle.gsub!(/\\ |[[:blank:]]/, "[[:blank:]]")
-
+  def replace_tag(tag, data)
     if tag.key?(:target)
-      value = data.send(tag[:target])
+      data.public_send(tag[:target])
     else
-      value = instance_exec(data, &tag[:lambda])
+      instance_exec(data, &tag[:lambda])
     end
-
-    text.gsub(/--#{libelle}--/, value.to_s)
   end
 
-  def normalize_tags(text)
-    tags = types_de_champ_tags(procedure.types_de_champ_for_tags, Dossier::SOUMIS) + types_de_champ_tags(procedure.types_de_champ_private_for_tags, Dossier::INSTRUCTION_COMMENCEE)
-    filter_tags(tags).reduce(text) { |text, tag| normalize_tag(text, tag) }
+  def procedure_types_de_champ_tags
+    filter_tags(types_de_champ_tags(procedure.types_de_champ_public_for_tags, Dossier::SOUMIS) + types_de_champ_tags(procedure.types_de_champ_private_for_tags, Dossier::INSTRUCTION_COMMENCEE))
   end
 
-  def normalize_tag(text, tag)
-    libelle = Regexp.quote(tag[:libelle])
+  def parse_tags(text)
+    tags = procedure_types_de_champ_tags.index_by { _1[:libelle] }
 
-    # allow any kind of space (non-breaking or other) in the tag’s libellé to match any kind of space in the template
-    # (the '\\ |' is there because plain ASCII spaces were escaped by preceding Regexp.quote)
-    libelle.gsub!(/\\ |[[:blank:]]/, "[[:blank:]]")
+    TagsParser.parse(text).map do |token|
+      case token
+      in { tag: tag } if tags.key?(tag)
+        { tag: tag, id: tags.fetch(tag).fetch(:id) }
+      else
+        token
+      end
+    end
+  end
 
-    text.gsub(/--#{libelle}--/, "--#{tag[:id]}--")
+  def used_tags_and_libelle_for(text)
+    parse_tags(text).filter_map do |token|
+      case token
+      in { tag: tag, id: id }
+        [id, tag]
+      in { tag: tag }
+        [tag]
+      else
+        nil
+      end
+    end
   end
 end

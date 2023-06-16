@@ -29,16 +29,8 @@ module DossierHelper
     new_dossier_url(procedure_id: revision.procedure.id, brouillon: revision.draft? ? true : nil)
   end
 
-  def dossier_form_class(dossier)
-    classes = ['form']
-    if autosave_available?(dossier)
-      classes << 'autosave-enabled'
-    end
-    classes.join(' ')
-  end
-
-  def autosave_available?(dossier)
-    dossier.brouillon?
+  def commencer_dossier_vide_for_revision_path(revision)
+    revision.draft? ? commencer_dossier_vide_test_path(path: revision.procedure.path) : commencer_dossier_vide_path(path: revision.procedure.path)
   end
 
   def dossier_submission_is_closed?(dossier)
@@ -68,10 +60,26 @@ module DossierHelper
     end
   end
 
-  def status_badge(state)
+  def class_badge_state(state)
+    case state
+    when Dossier.states.fetch(:en_construction), Dossier.states.fetch(:en_instruction)
+      'fr-badge--info'
+    when Dossier.states.fetch(:accepte)
+      'fr-badge--success'
+    when Dossier.states.fetch(:refuse)
+      'fr-badge--warning'
+    when Dossier.states.fetch(:sans_suite)
+      'fr-badge--new'
+    when Dossier.states.fetch(:brouillon)
+      ''
+    else
+      ''
+    end
+  end
+
+  def status_badge(state, alignment_class = '')
     status_text = dossier_display_state(state, lower: true)
-    status_class = state.tr('_', '-')
-    tag.span(status_text, class: "label #{status_class} ")
+    tag.span(status_text, class: "fr-badge #{class_badge_state(state)} fr-badge--no-icon #{alignment_class}", role: 'status')
   end
 
   def deletion_reason_badge(reason)
@@ -102,29 +110,21 @@ module DossierHelper
     l(dossier.expiration_date, format: '%d/%m/%Y')
   end
 
-  def annuaire_link(siren)
+  def annuaire_link(siren_or_siret = nil)
     base_url = "https://annuaire-entreprises.data.gouv.fr"
-    return base_url if siren.blank?
-    "#{base_url}/entreprise/#{siren}"
+    return base_url if siren_or_siret.blank?
+    "#{base_url}/rechercher?terme=#{siren_or_siret}"
   end
 
-  def exports_list(exports, statut = nil)
-    if statut
-      Export::FORMATS.map do |item|
-        export = exports
-          .fetch(item.fetch(:format))
-          .fetch(:statut)
-          .fetch(statut, nil)
-        item.merge(export: export)
-      end
+  def france_connect_informations(user_information)
+    if user_information.full_name.empty?
+      t("shared.dossiers.france_connect_informations.details_no_name")
+    elsif user_information.updated_at.present?
+      t("shared.dossiers.france_connect_informations.details_updated",
+          name: user_information.full_name,
+          date: l(user_information.updated_at.to_date, format: :default))
     else
-      Export::FORMATS_WITH_TIME_SPAN.map do |item|
-        export = exports
-          .fetch(item.fetch(:format))
-          .fetch(:time_span_type)
-          .fetch(item.fetch(:time_span_type), nil)
-        item.merge(export: export)
-      end
+      t("shared.dossiers.france_connect_informations.details", name: user_information.full_name)
     end
   end
 end

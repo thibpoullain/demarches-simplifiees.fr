@@ -5,14 +5,14 @@ FactoryBot.define do
     sequence(:libelle) { |n| "Procedure #{n}" }
     description { "Demande de subvention à l'intention des associations" }
     organisation { "Orga DINUM" }
-    direction { "direction DINUM" }
     cadre_juridique { "un cadre juridique important" }
     published_at { nil }
     duree_conservation_dossiers_dans_ds { 3 }
+    max_duree_conservation_dossiers_dans_ds { Procedure::OLD_MAX_DUREE_CONSERVATION }
+    estimated_duration_visible { true }
     ask_birthday { false }
     lien_site_web { "https://mon-site.gouv" }
     path { SecureRandom.uuid }
-    association :zone
 
     groupe_instructeurs { [association(:groupe_instructeur, :default, procedure: instance, strategy: :build)] }
     administrateurs { administrateur.present? ? [administrateur] : [association(:administrateur)] }
@@ -20,17 +20,28 @@ FactoryBot.define do
     transient do
       administrateur {}
       instructeurs { [] }
-      types_de_champ { [] }
+      types_de_champ_public { [] }
       types_de_champ_private { [] }
       updated_at { nil }
-      attestation_template { nil }
       dossier_submitted_message { nil }
     end
 
     after(:build) do |procedure, evaluator|
-      initial_revision = build(:procedure_revision, procedure: procedure, attestation_template: evaluator.attestation_template, dossier_submitted_message: evaluator.dossier_submitted_message)
-      add_types_de_champs(evaluator.types_de_champ, to: initial_revision, scope: :public)
-      add_types_de_champs(evaluator.types_de_champ_private, to: initial_revision, scope: :private)
+      initial_revision = build(:procedure_revision, procedure: procedure, dossier_submitted_message: evaluator.dossier_submitted_message)
+
+      if evaluator.types_de_champ_public.present?
+        if !evaluator.types_de_champ_public.first.is_a?(Hash)
+          raise "types_de_champ_public must be an array of hashes"
+        end
+        build_types_de_champ(evaluator.types_de_champ_public, revision: initial_revision, scope: :public)
+      end
+
+      if evaluator.types_de_champ_private.present?
+        if !evaluator.types_de_champ_private.first.is_a?(Hash)
+          raise "types_de_champ_private must be an array of hashes"
+        end
+        build_types_de_champ(evaluator.types_de_champ_private, revision: initial_revision, scope: :private)
+      end
 
       if procedure.brouillon?
         procedure.draft_revision = initial_revision
@@ -38,6 +49,14 @@ FactoryBot.define do
         procedure.published_revision = initial_revision
         procedure.published_revision.published_at = Time.zone.now
         procedure.draft_revision = build(:procedure_revision, from_original: initial_revision)
+      end
+    end
+
+    before(:create) do |procedure, _evaluator|
+      procedure.revisions.each do |revision|
+        revision.association(:types_de_champ).reset
+        revision.association(:types_de_champ_public).reset
+        revision.association(:types_de_champ_private).reset
       end
     end
 
@@ -98,6 +117,15 @@ FactoryBot.define do
       end
     end
 
+    trait :with_zone do
+      zones {
+        [
+          create(:zone, labels:
+                 [{ designated_on: Time.zone.now, name: "Ministère 1" }])
+        ]
+      }
+    end
+
     trait :routee do
       after(:create) do |procedure, _evaluator|
         procedure.groupe_instructeurs.create(label: 'deuxième groupe')
@@ -154,6 +182,12 @@ FactoryBot.define do
       end
     end
 
+    trait :with_siret do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_siret, procedure: procedure)
+      end
+    end
+
     trait :with_yes_no do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_yes_no, procedure: procedure)
@@ -163,6 +197,18 @@ FactoryBot.define do
     trait :with_commune do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_communes, procedure: procedure)
+      end
+    end
+
+    trait :with_departement do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_departements, procedure: procedure)
+      end
+    end
+
+    trait :with_region do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_regions, procedure: procedure)
       end
     end
 
@@ -184,6 +230,12 @@ FactoryBot.define do
       end
     end
 
+    trait :with_private_repetition do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_repetition, :private, procedure: procedure)
+      end
+    end
+
     trait :with_number do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_number, procedure: procedure)
@@ -196,6 +248,12 @@ FactoryBot.define do
       end
     end
 
+    trait :with_drop_down_list do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_drop_down_list, :with_other, procedure: procedure)
+      end
+    end
+
     trait :with_address do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_address, procedure: procedure)
@@ -205,6 +263,12 @@ FactoryBot.define do
     trait :with_cnaf do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_cnaf, procedure: procedure)
+      end
+    end
+
+    trait :with_rna do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_rna, procedure: procedure)
       end
     end
 
@@ -231,6 +295,15 @@ FactoryBot.define do
         build(:type_de_champ_explication, procedure: procedure)
       end
     end
+    trait :with_carte do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_carte, procedure: procedure)
+      end
+    end
+
+    trait :draft do
+      aasm_state { :brouillon }
+    end
 
     trait :published do
       aasm_state { :publiee }
@@ -238,6 +311,7 @@ FactoryBot.define do
       published_at { Time.zone.now }
       unpublished_at { nil }
       closed_at { nil }
+      zones { [association(:zone, strategy: :build)] }
     end
 
     trait :closed do
@@ -294,7 +368,11 @@ FactoryBot.define do
           if libelle == 'drop_down_list'
             libelle = 'simple_drop_down_list'
           end
-          build(:"type_de_champ_#{type_champ}", procedure: procedure, mandatory: true, libelle: libelle, position: index)
+          if type_champ == 'repetition'
+            build(:type_de_champ_repetition, :with_types_de_champ, procedure: procedure, mandatory: true, libelle: libelle, position: index)
+          else
+            build(:"type_de_champ_#{type_champ}", procedure: procedure, mandatory: true, libelle: libelle, position: index)
+          end
         end
         build(:type_de_champ_drop_down_list, :long, procedure: procedure, mandatory: true, libelle: 'simple_choice_drop_down_list_long', position: TypeDeChamp.type_champs.size)
         build(:type_de_champ_multiple_drop_down_list, :long, procedure: procedure, mandatory: true, libelle: 'multiple_choice_drop_down_list_long', position: TypeDeChamp.type_champs.size + 1)
@@ -307,7 +385,11 @@ FactoryBot.define do
           if libelle == 'drop_down_list'
             libelle = 'simple_drop_down_list'
           end
-          build(:"type_de_champ_#{type_champ}", procedure: procedure, libelle: libelle, position: index)
+          if type_champ == 'repetition'
+            build(:type_de_champ_repetition, :with_types_de_champ, procedure: procedure, libelle: libelle, position: index)
+          else
+            build(:"type_de_champ_#{type_champ}", procedure: procedure, libelle: libelle, position: index)
+          end
         end
       end
     end
@@ -331,16 +413,71 @@ FactoryBot.define do
   end
 end
 
-def add_types_de_champs(types_de_champ, to: nil, scope: :public)
-  revision = to
-  association_name = scope == :private ? :revision_types_de_champ_private : :revision_types_de_champ
+def build_types_de_champ(types_de_champ, revision:, scope: :public, parent: nil)
+  types_de_champ.deep_dup.each.with_index do |type_de_champ_attributes, i|
+    type = TypeDeChamp.type_champs.fetch(type_de_champ_attributes.delete(:type) || :text).to_sym
+    position = type_de_champ_attributes.delete(:position) || i
+    children = type_de_champ_attributes.delete(:children)
+    options = type_de_champ_attributes.delete(:options)
+    layers = type_de_champ_attributes.delete(:layers)
 
-  types_de_champ.each do |type_de_champ|
-    type_de_champ.revision = revision
-    type_de_champ.private = (scope == :private)
-    type_de_champ.revision.public_send(association_name) << build(:procedure_revision_type_de_champ,
-                                                                  revision: revision,
-                                                                  position: type_de_champ.order_place,
-                                                                  type_de_champ: type_de_champ)
+    if !options.nil?
+      if type == :drop_down_list
+        type_de_champ_attributes[:drop_down_other] = options.delete(:other).present?
+      end
+
+      if type.in?([:drop_down_list, :multiple_drop_down_list, :linked_drop_down_list])
+        type_de_champ_attributes[:drop_down_list_value] = options.join("\r\n")
+      end
+    end
+
+    if type == :linked_drop_down_list
+      type_de_champ_attributes[:drop_down_secondary_libelle] = type_de_champ_attributes.delete(:secondary_libelle)
+      type_de_champ_attributes[:drop_down_secondary_description] = type_de_champ_attributes.delete(:secondary_description)
+    end
+
+    if type == :carte && layers.present?
+      type_de_champ_attributes[:editable_options] = layers.index_with { '1' }
+    end
+
+    type_de_champ = if scope == :private
+      build(:"type_de_champ_#{type}", :private, no_coordinate: true, **type_de_champ_attributes)
+    else
+      build(:"type_de_champ_#{type}", no_coordinate: true, **type_de_champ_attributes)
+    end
+    coordinate = build(:procedure_revision_type_de_champ,
+      revision: revision,
+      type_de_champ: type_de_champ,
+      position: position,
+      parent: parent)
+
+    revision.association(:revision_types_de_champ).target << coordinate
+
+    if parent.present?
+      parent.association(:revision_types_de_champ).target << coordinate
+    end
+
+    if type_de_champ.repetition? && children.present?
+      build_types_de_champ(children, revision: revision, scope: scope, parent: coordinate)
+    end
+  end
+
+  if parent.present?
+    parent.association(:revision_types_de_champ).target.sort_by!(&:position)
+  else
+    revision_types_de_champ_private, revision_types_de_champ_public = revision.revision_types_de_champ.partition(&:private?)
+
+    root_revision_types_de_champ_public, child_revision_types_de_champ_public = revision_types_de_champ_public.partition { |coordinate| coordinate.parent.nil? }
+    root_revision_types_de_champ_private, child_revision_types_de_champ_private = revision_types_de_champ_private.partition { |coordinate| coordinate.parent.nil? }
+    revision.association(:revision_types_de_champ_public).target = root_revision_types_de_champ_public.sort_by(&:position)
+    revision.association(:revision_types_de_champ_private).target = root_revision_types_de_champ_private.sort_by(&:position)
+    revision.association(:revision_types_de_champ).target = revision.revision_types_de_champ_public +
+      revision.revision_types_de_champ_private +
+      child_revision_types_de_champ_public.sort_by(&:parent).sort_by(&:position) +
+      child_revision_types_de_champ_private.sort_by(&:parent).sort_by(&:position)
+
+    revision.association(:types_de_champ).target = revision.revision_types_de_champ.map(&:type_de_champ)
+    revision.association(:types_de_champ_public).target = revision.revision_types_de_champ_public.map(&:type_de_champ)
+    revision.association(:types_de_champ_private).target = revision.revision_types_de_champ_private.map(&:type_de_champ)
   end
 end

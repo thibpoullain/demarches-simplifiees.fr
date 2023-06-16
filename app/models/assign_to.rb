@@ -2,15 +2,17 @@
 #
 # Table name: assign_tos
 #
-#  id                                          :integer          not null, primary key
-#  daily_email_notifications_enabled           :boolean          default(FALSE), not null
-#  instant_email_dossier_notifications_enabled :boolean          default(FALSE), not null
-#  instant_email_message_notifications_enabled :boolean          default(FALSE), not null
-#  weekly_email_notifications_enabled          :boolean          default(TRUE), not null
-#  created_at                                  :datetime
-#  updated_at                                  :datetime
-#  groupe_instructeur_id                       :bigint
-#  instructeur_id                              :integer
+#  id                                              :integer          not null, primary key
+#  daily_email_notifications_enabled               :boolean          default(FALSE), not null
+#  instant_email_dossier_notifications_enabled     :boolean          default(FALSE), not null
+#  instant_email_message_notifications_enabled     :boolean          default(FALSE), not null
+#  instant_expert_avis_email_notifications_enabled :boolean          default(FALSE)
+#  manager                                         :boolean          default(FALSE)
+#  weekly_email_notifications_enabled              :boolean          default(TRUE), not null
+#  created_at                                      :datetime
+#  updated_at                                      :datetime
+#  groupe_instructeur_id                           :bigint
+#  instructeur_id                                  :integer
 #
 class AssignTo < ApplicationRecord
   belongs_to :instructeur, optional: false
@@ -22,7 +24,11 @@ class AssignTo < ApplicationRecord
 
   def procedure_presentation_or_default_and_errors
     errors = reset_procedure_presentation_if_invalid
-    [procedure_presentation || build_procedure_presentation, errors]
+    if self.procedure_presentation.nil?
+      self.procedure_presentation = build_procedure_presentation
+      self.procedure_presentation.save if procedure_presentation.valid? && !procedure_presentation.persisted?
+    end
+    [self.procedure_presentation, errors]
   end
 
   private

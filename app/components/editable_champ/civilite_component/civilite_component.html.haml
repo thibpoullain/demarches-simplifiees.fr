@@ -1,0 +1,10 @@
+%fieldset.radios
+  %legend.mandatory-explanation
+    Sélectionnez une des valeurs
+  %label
+    = @form.radio_button :value, Individual::GENDER_FEMALE, id: @champ.female_input_id
+    = Individual.human_attribute_name('gender.female')
+
+  %label
+    = @form.radio_button :value, Individual::GENDER_MALE, id: @champ.male_input_id
+    = Individual.human_attribute_name('gender.male')

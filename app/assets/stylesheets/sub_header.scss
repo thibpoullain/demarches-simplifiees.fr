@@ -2,12 +2,25 @@
 @import "constants";
 
 .sub-header {
-  background-color: $light-grey;
+  background-color: $alt-blue-france;
   padding-top: $default-padding;
   margin-bottom: $sub-header-bottom-margin;
   border-bottom: 1px solid $border-grey;
 
   .container {
     margin-bottom: -1px;
+  }
+
+  .breadcrumbs {
+    list-style: none;
+    padding-inline-start: 0;
+
+    a:not(:hover) {
+      background-image: none; // remove DSFR underline
+    }
+  }
+
+  .fr-btns-group .fr-btn {
+    margin-bottom: 0;
   }
 }

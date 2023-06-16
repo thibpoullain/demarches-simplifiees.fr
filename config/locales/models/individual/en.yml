@@ -5,7 +5,7 @@ en:
         gender: Gender
         nom: Last name
         prenom: First name
-        birthdate: Date de naissance
+        birthdate: Date of Birth
       individual/gender:
         female: Ms
         male: Mr

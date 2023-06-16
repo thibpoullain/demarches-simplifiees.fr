@@ -1,32 +1,13 @@
-%span.dropdown.print-menu-opener
-  %button.button.dropdown-button.icon-only{ title: 'imprimer', 'aria-label': 'imprimer', 'aria-expanded' => 'false', 'aria-controls' => 'print-menu' }
-    %span.icon.printer
-  %ul#print-menu.print-menu.dropdown-content
-    %li
-      = link_to "Tout le dossier", print_instructeur_dossier_path(dossier.procedure, dossier), target: "_blank", rel: "noopener", class: "menu-item menu-link"
-    %li
-      = link_to "Uniquement cet onglet", "#", onclick: "window.print()", class: "menu-item menu-link"
-    %li
-      = link_to "Export PDF", instructeur_dossier_path(dossier.procedure, dossier, format: :pdf), target: "_blank", rel: "noopener", class: "menu-item menu-link"
-    - if dossier.geo_data?
-      %li
-        = link_to "Export GeoJSON", geo_data_instructeur_dossier_path(dossier.procedure, dossier), target: "_blank", rel: "noopener", class: "menu-item menu-link"
+%ul.fr-btns-group.fr-btns-group--sm.fr-btns-group--inline-md.fr-btns-group--icon-right.flex.justify-end.fr-mb-1w
+  = render partial: "instructeurs/procedures/dossier_actions",
+    locals: { procedure_id: dossier.procedure.id,
+              dossier_id: dossier.id,
+              state: dossier.state,
+              archived: dossier.archived,
+              dossier_is_followed: current_instructeur&.follow?(dossier),
+              close_to_expiration: dossier.close_to_expiration?,
+              hidden_by_administration: dossier.hidden_by_administration?,
+              turbo: true }
 
-%span.dropdown.print-menu-opener
-  %button.button.dropdown-button.icon-only{ 'aria-expanded' => 'false', 'aria-controls' => 'print-pj-menu' }
-    %span.icon.attached
-  %ul#print-pj-menu.print-menu.dropdown-content
-    %li= link_to "Télécharger le dossier et toutes ses pièces jointes", telecharger_pjs_instructeur_dossier_path(dossier.procedure, dossier), target: "_blank", rel: "noopener", class: "menu-item menu-link"
-
-= render partial: "instructeurs/procedures/dossier_actions",
-  locals: { procedure_id: dossier.procedure.id,
-            dossier_id: dossier.id,
-            state: dossier.state,
-            archived: dossier.archived,
-            dossier_is_followed: current_instructeur&.follow?(dossier),
-            close_to_expiration: dossier.close_to_expiration?,
-            hidden_by_administration: dossier.hidden_by_administration? }
-
-
-.state-button
-  = render partial: "state_button", locals: { dossier: dossier }
+  %li.instruction-button
+    = render partial: "instruction_button", locals: { dossier: dossier }

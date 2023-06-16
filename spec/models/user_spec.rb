@@ -53,7 +53,7 @@ describe User, type: :model do
     let(:dossier) { create :dossier }
     let(:user) { dossier.user }
 
-    subject { user.invite? dossier.id }
+    subject { user.invite? dossier }
 
     context 'when user is invite at the dossier' do
       before do
@@ -298,7 +298,7 @@ describe User, type: :model do
     end
   end
 
-  describe '#delete_and_keep_track_dossiers' do
+  describe '#delete_and_keep_track_dossiers_also_delete_user' do
     let(:super_admin) { create(:super_admin) }
     let(:user) { create(:user) }
 
@@ -308,7 +308,7 @@ describe User, type: :model do
 
       context 'without a discarded dossier' do
         it "keep track of dossiers and delete user" do
-          user.delete_and_keep_track_dossiers(super_admin)
+          user.delete_and_keep_track_dossiers_also_delete_user(super_admin)
 
           expect(DeletedDossier.find_by(dossier_id: dossier_en_construction)).to be_present
           expect(DeletedDossier.find_by(dossier_id: dossier_brouillon)).to be_nil
@@ -322,7 +322,7 @@ describe User, type: :model do
 
         it "keep track of dossiers and delete user" do
           dossier_to_delete.hide_and_keep_track!(user, :user_request)
-          user.delete_and_keep_track_dossiers(super_admin)
+          user.delete_and_keep_track_dossiers_also_delete_user(super_admin)
 
           expect(DeletedDossier.find_by(dossier_id: dossier_en_construction)).to be_present
           expect(DeletedDossier.find_by(dossier_id: dossier_brouillon)).to be_nil
@@ -337,7 +337,7 @@ describe User, type: :model do
       let!(:dossier_termine) { create(:dossier, :accepte, user: user) }
 
       it "keep track of dossiers and delete user" do
-        user.delete_and_keep_track_dossiers(super_admin)
+        user.delete_and_keep_track_dossiers_also_delete_user(super_admin)
 
         expect(dossier_en_instruction.reload).to be_present
         expect(dossier_en_instruction.user).to be_nil
@@ -363,7 +363,9 @@ describe User, type: :model do
     # 2 - somewhat guessable: protection from unthrottled online attacks. (guesses < 10^8)
     # 3 - safely unguessable: moderate protection from offline slow-hash scenario. (guesses < 10^10)
     # 4 - very unguessable: strong protection from offline slow-hash scenario. (guesses >= 10^10)
-    passwords = ['password', '12pass23', 'démarches ', 'démarches-simple', '{My-$3cure-p4ssWord}']
+    # Note: minimum pasword length has been raised from 8 to 12 in demat-social
+    # See env variable PASSWORD_MIN_LENGTH
+    passwords = ['thenewpassword', 'thenew12pass23', 'thenewdémarches ', 'démarches-simple', '{My-$3cure-p4ssWord}']
     min_complexity = PASSWORD_COMPLEXITY_FOR_ADMIN
 
     subject do
@@ -378,7 +380,7 @@ describe User, type: :model do
         let(:password) { 's' * (PASSWORD_MIN_LENGTH - 1) }
 
         it 'reports an error about password length (but not about complexity)' do
-          expect(subject).to eq(["Le mot de passe est trop court"])
+          expect(subject).to eq(["Le champ « Mot de passe » est trop court. Saisir un mot de passe avec au moins 8 caractères"])
         end
       end
 
@@ -386,7 +388,7 @@ describe User, type: :model do
         context 'when the password is long enough, but too simple' do
           let(:password) { simple_password }
 
-          it { expect(subject).to eq(["Le mot de passe n’est pas assez complexe"]) }
+          it { expect(subject).to eq(["Le champ « Mot de passe » n’est pas assez complexe. Saisir un mot de passe plus complexe"]) }
         end
       end
 
@@ -404,7 +406,7 @@ describe User, type: :model do
         let(:password) { 's' * (PASSWORD_MIN_LENGTH - 1) }
 
         it 'reports an error about password length (but not about complexity)' do
-          expect(subject).to eq(["Le mot de passe est trop court"])
+          expect(subject).to eq(["Le champ « Mot de passe » est trop court. Saisir un mot de passe avec au moins 8 caractères"])
         end
       end
 
@@ -423,7 +425,11 @@ describe User, type: :model do
     let(:targeted_user) { create(:user) }
 
     subject { targeted_user.merge(old_user) }
-
+    context 'merge myself' do
+      it 'fails' do
+        expect { old_user.merge(old_user) }.to raise_error 'Merging same user, no way'
+      end
+    end
     context 'and the old account has some stuff' do
       let!(:dossier) { create(:dossier, user: old_user) }
       let!(:hidden_dossier) { create(:dossier, user: old_user, hidden_by_user_at: 1.hour.ago) }
@@ -474,6 +480,18 @@ describe User, type: :model do
           expect { administrateur.reload }.to raise_error(ActiveRecord::RecordNotFound)
           expect { old_user.reload }.to raise_error(ActiveRecord::RecordNotFound)
         end
+      end
+    end
+
+    context 'and the old account had targeted_user_links' do
+      let(:expert) { create(:expert, user: old_user) }
+      let(:expert_procedure) { create(:experts_procedure, expert: expert) }
+      let!(:targeted_user_link) { create(:targeted_user_link, user: old_user, target_model: create(:avis, experts_procedure: expert_procedure)) }
+
+      it 'transfers the targeted_user_link' do
+        subject
+        targeted_user.reload
+        expect(targeted_user.targeted_user_links).to include(targeted_user_link)
       end
     end
   end

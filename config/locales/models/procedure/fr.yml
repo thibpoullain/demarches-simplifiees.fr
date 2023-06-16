@@ -8,22 +8,45 @@ fr:
       procedure:
         path: Lien public
         organisation: Organisme
-        duree_conservation_dossiers_dans_ds: Durée de conservation des dossiers sur demarches-simplifiees.fr
-        duree_conservation_dossiers_hors_ds: Durée de conservation des dossiers hors demarches-simplifiees.fr
-        aasm_state/brouillon: Brouillon
-        aasm_state/publiee: Publiée
-        aasm_state/close: Close
-        aasm_state/hidden: Suprimée
+        duree_conservation_dossiers_dans_ds: Durée de conservation des dossiers sur demarches-simplifiees.fr (choisi par un usager)
+        max_duree_conservation_dossiers_dans_ds: Durée de conservation des dossiers maximum (autorisé par un super admin de DS)
+        id: Id
+        libelle: Libelle
+        published_at: 'Date de publication'
+        aasm_state: 'Statut'
+        admin_count: 'Nb administrateurs'
+        aasm_state:
+          brouillon: Brouillon
+          publiee: Publiée
+          close: Close
+          hidden: Supprimée
         declarative_with_state/en_instruction: En instruction
         declarative_with_state/accepte: Accepté
         api_particulier_token: Jeton API Particulier
+        lien_dpo: Contact du DPO
+        routing_criteria_name: Nomination du routage
+        initiated_mail: L’email de notification de passage de dossier en instruction
+        received_mail: L’email de notification de dépot de dossier
+        closed_mail: L’email de notification d’acceptation de dossier
+        refused_mail: L’email de notification de refus de dossier
+        without_continuation_mail: L’email de notification de classement sans suite de dossier
+        attestation_template: Le modèle d’attestation
+        draft_revision: Le formulaire
+      procedure_export:
+        id: Id
+        libelle: Libelle
+        published_at: 'Date de publication'
+        aasm_state: 'Statut'
+        admin_count: 'Nb administrateurs'
     errors:
       models:
         procedure:
           attributes:
             api_particulier_token:
               invalid: 'n’a pas le bon format'
-            draft_types_de_champ:
+            draft_types_de_champ_public:
               format: 'Le champ %{message}'
             draft_types_de_champ_private:
               format: 'L’annotation privée %{message}'
+            lien_dpo:
+              invalid_uri_or_email: "Veuillez saisir un mail ou un lien"

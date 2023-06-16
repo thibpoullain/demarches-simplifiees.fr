@@ -30,6 +30,13 @@ module Manager
       redirect_to manager_user_path(user)
     end
 
+    def resend_reset_password_instructions
+      user = User.find(params[:id])
+      user.send_reset_password_instructions
+      flash[:notice] = "L'email de réinitialisation du mot de passe a été renvoyé."
+      redirect_to manager_user_path(user)
+    end
+
     def enable_feature
       user = User.find(params[:id])
 
@@ -49,7 +56,7 @@ module Manager
       if !user.can_be_deleted?
         fail "Impossible de supprimer cet utilisateur. Il a des dossiers en instruction ou il est administrateur."
       end
-      user.delete_and_keep_track_dossiers(current_super_admin)
+      user.delete_and_keep_track_dossiers_also_delete_user(current_super_admin)
 
       logger.info("L'utilisateur #{user.id} est supprimé par #{current_super_admin.id}")
       flash[:notice] = "L'utilisateur #{user.id} est supprimé"
@@ -62,7 +69,8 @@ module Manager
 
       email_services = [
         Mailjet::API.new,
-        Sendinblue::API.new
+        Sendinblue::API.new,
+        Dolist::API.new
       ]
 
       @sent_mails = email_services
@@ -87,6 +95,10 @@ module Manager
 
     def targeted_email
       params[:user][:email]
+    end
+
+    def paginate_resources(_resources)
+      super.without_count
     end
   end
 end

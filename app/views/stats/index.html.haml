@@ -2,11 +2,7 @@
 - content_for :footer do
   = render partial: "root/footer"
 
-.statistiques
-  -# Load Chartkick lazily, by using our React lazy-loader.
-  -# (Chartkick itself doesn't use React though)
-  = react_component('Chartkick')
-
+.statistiques{ 'data-controller': 'chartkick' }
   %h1.new-h1 Statistiques
 
   .stat-cards
@@ -24,26 +20,6 @@
       %span.big-number-card-detail
         #{number_with_delimiter(@dossiers_numbers[:last_30_days_count])} (#{@dossiers_numbers[:evolution]} %) sur les 30 derniers jours
 
-    .stat-card.stat-card-half.pull-left
-      %span.stat-card-title
-        Pourcentage de contact utilisateur
-
-      .chart-container
-        .chart
-          = line_chart @contact_percentage
-
-      .stat-card-details
-        Nombre de réponses envoyées via HelpScout
-        \/ nombre de dossiers déposés
-
-    .stat-card.stat-card-half.pull-left
-      %span.stat-card-title
-        Répartition des dossiers
-
-      .chart-container
-        .chart
-          = pie_chart @dossiers_states_for_pie,
-            colors: ["#000091", "#7F7FC8", "#9A9AFF", "#00006D"]
 
     .stat-card.stat-card-half.pull-left
       %ul.segmented-control.pull-right
@@ -75,9 +51,18 @@
         .chart.cumulative-dossiers-chart.hidden
           = area_chart @dossiers_cumulative
 
+    .stat-card.stat-card-half.pull-left
+      %span.stat-card-title
+        Répartition des dossiers
+
+      .chart-container
+        .chart
+          = pie_chart @dossiers_states_for_pie,
+            colors: ["#000091", "#7F7FC8", "#9A9AFF", "#00006D"]
+
     .clearfix
 
   - if super_admin_signed_in?
     %h2.new-h2 Téléchargement
 
-    = link_to "Télécharger les statistiques (CSV)", stats_download_path(format: :csv), class: 'button secondary'
+    = link_to "Télécharger les statistiques (CSV)", stats_download_path(format: :csv), class: 'fr-btn fr-btn-primary mb-4'

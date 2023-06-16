@@ -1,10 +1,9 @@
-.dropdown.help-dropdown
-  %button.button.primary.dropdown-button{ 'aria-expanded' => 'false', 'aria-controls' => 'help-menu' }
+= render Dropdown::MenuComponent.new(wrapper: :span, wrapper_options: { class: ['help-dropdown']}, menu_options: { id: "help-menu" }) do |menu|
+  - menu.with_button_inner_html do
     = t('help')
-  #help-menu.dropdown-content.fade-in-down
-    %ul.dropdown-items
-      - if procedure.service.present?
-        = render partial: 'shared/help/dropdown_items/service_item',
-          locals: { service: procedure.service, title: "Une question sur cette démarche ?" }
 
-      = render partial: 'shared/help/dropdown_items/faq_item'
+  - if procedure.service.present?
+    - menu.with_item do
+      = render partial: 'shared/help/dropdown_items/service_item', locals: { service: procedure.service, title: t('help_dropdown.procedure_title') }
+  - menu.with_item do
+    = render partial: 'shared/help/dropdown_items/faq_item'

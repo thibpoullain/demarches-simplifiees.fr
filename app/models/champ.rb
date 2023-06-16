@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,19 +17,24 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champ < ApplicationRecord
+  include ChampConditionalConcern
+
   belongs_to :dossier, inverse_of: false, touch: true, optional: false
   belongs_to :type_de_champ, inverse_of: :champ, optional: false
   belongs_to :parent, class_name: 'Champ', optional: true
-  has_one_attached :piece_justificative_file
+  has_many_attached :piece_justificative_file
 
   # We declare champ specific relationships (Champs::CarteChamp, Champs::SiretChamp and Champs::RepetitionChamp)
   # here because otherwise we can't easily use includes in our queries.
   has_many :geo_areas, -> { order(:created_at) }, dependent: :destroy, inverse_of: :champ
   belongs_to :etablissement, optional: true, dependent: :destroy
-  has_many :champs, -> { ordered }, foreign_key: :parent_id, inverse_of: :parent, dependent: :destroy
+  has_many :champs, -> { ordered }, foreign_key: :parent_id, inverse_of: :parent
+
+  delegate :procedure, to: :dossier
 
   delegate :libelle,
     :type_champ,
@@ -38,54 +43,88 @@ class Champ < ApplicationRecord
     :mandatory?,
     :description,
     :drop_down_list_options,
-    :drop_down_other,
+    :drop_down_other?,
     :drop_down_list_options?,
     :drop_down_list_disabled_options,
     :drop_down_list_enabled_non_empty_options,
     :drop_down_secondary_libelle,
     :drop_down_secondary_description,
+    :collapsible_explanation_enabled?,
+    :collapsible_explanation_text,
     :exclude_from_export?,
     :exclude_from_view?,
     :repetition?,
+    :block?,
     :dossier_link?,
+    :departement?,
+    :region?,
     :titre_identite?,
     :header_section?,
+    :simple_drop_down_list?,
+    :linked_drop_down_list?,
+    :non_fillable?,
+    :fillable?,
+    :cnaf?,
+    :dgfip?,
+    :pole_emploi?,
+    :mesri?,
+    :rna?,
+    :siret?,
+    :carte?,
+    :datetime?,
+    :stable_id,
+    :mandatory?,
+    :prefillable?,
+    :refresh_after_update?,
     to: :type_de_champ
+
+  delegate :to_typed_id, :to_typed_id_for_query, to: :type_de_champ, prefix: true
+
+  delegate :revision, to: :dossier, prefix: true
 
   scope :updated_since?, -> (date) { where('champs.updated_at > ?', date) }
   scope :public_only, -> { where(private: false) }
   scope :private_only, -> { where(private: true) }
-  scope :ordered, -> { includes(:type_de_champ).order(:row, 'types_de_champ.order_place') }
-  scope :public_ordered, -> { public_only.joins(dossier: { revision: :revision_types_de_champ }).where('procedure_revision_types_de_champ.type_de_champ_id = champs.type_de_champ_id').order(:position) }
-  # we need to do private champs order as manual join to avoid conflicting join names
-  scope :private_ordered, -> do
-    private_only.joins('
-      INNER JOIN dossiers dossiers_private on dossiers_private.id = champs.dossier_id
-      INNER JOIN types_de_champ types_de_champ_private on types_de_champ_private.id = champs.type_de_champ_id
-      INNER JOIN procedure_revision_types_de_champ procedure_revision_types_de_champ_private
-      ON procedure_revision_types_de_champ_private.revision_id = dossiers_private.revision_id')
-      .where('procedure_revision_types_de_champ_private.type_de_champ_id = champs.type_de_champ_id')
-      .order(:position)
+  scope :ordered, -> do
+    includes(:type_de_champ)
+      .joins(dossier: { revision: :revision_types_de_champ })
+      .where('procedure_revision_types_de_champ.type_de_champ_id = champs.type_de_champ_id')
+      .order(:row_id, :position)
   end
-
+  scope :public_ordered, -> { public_only.ordered }
+  scope :private_ordered, -> { private_only.ordered }
   scope :root, -> { where(parent_id: nil) }
+  scope :prefilled, -> { where(prefilled: true) }
 
   before_create :set_dossier_id, if: :needs_dossier_id?
   before_validation :set_dossier_id, if: :needs_dossier_id?
   before_save :cleanup_if_empty
+  before_save :normalize
   after_update_commit :fetch_external_data_later
 
-  validates :type_de_champ_id, uniqueness: { scope: [:dossier_id, :row] }
+  # TODO uncomment out when deploying next release (Enterprise API)
+  # validates :type_de_champ_id, uniqueness: { scope: [:dossier_id, :row_id] }
 
   def public?
     !private?
   end
 
-  def sections
-    @sections ||= dossier&.sections_for(self)
+  def child?
+    parent_id.present?
   end
 
-  def mandatory_and_blank?
+  def sections
+    @sections ||= dossier.sections_for(self)
+  end
+
+  # used for the `required` html attribute
+  # check visibility to avoid hidden required input
+  # which prevent the form from being sent.
+  def required?
+    type_de_champ.mandatory? && visible?
+  end
+
+  def mandatory_blank?
     mandatory? && blank?
   end
 
@@ -122,7 +161,16 @@ class Champ < ApplicationRecord
   end
 
   def to_typed_id
-    type_de_champ.to_typed_id
+    if row_id.present?
+      GraphQL::Schema::UniqueWithinType.encode('Champ', "#{stable_id}|#{row_id}")
+    else
+      type_de_champ.to_typed_id
+    end
+  end
+
+  def self.decode_typed_id(typed_id)
+    _, stable_id_with_maybe_row = GraphQL::Schema::UniqueWithinType.decode(typed_id)
+    stable_id_with_maybe_row.split('|')
   end
 
   def html_label?
@@ -135,6 +183,23 @@ class Champ < ApplicationRecord
 
   def input_id
     "#{html_id}-input"
+  end
+
+  # A predictable string to use when generating an input name for this champ.
+  #
+  # Rail's FormBuilder can auto-generate input names, using the form "dossier[champs_public_attributes][5]",
+  # where [5] is the index of the field in the form.
+  # However the field index makes it difficult to render a single field, independent from the ordering of the others.
+  #
+  # Luckily, this is only used to make the name unique, but the actual value is ignored when Rails parses nested
+  # attributes. So instead of the field index, this method uses the champ id; which gives us an independent and
+  # predictable input name.
+  def input_name
+    if private?
+      "dossier[champs_private_attributes][#{id}]"
+    else
+      "dossier[champs_public_attributes][#{id}]"
+    end
   end
 
   def labelledby_id
@@ -163,10 +228,28 @@ class Champ < ApplicationRecord
     raise NotImplemented.new(:fetch_external_data)
   end
 
+  def update_with_external_data!(data:)
+    update!(data: data)
+  end
+
+  def clone
+    champ_attributes = [:parent_id, :private, :row_id, :type, :type_de_champ_id]
+    value_attributes = private? ? [] : [:value, :value_json, :data, :external_id]
+    relationships = private? ? [] : [:etablissement, :geo_areas]
+
+    deep_clone(only: champ_attributes + value_attributes, include: relationships) do |original, kopy|
+      PiecesJustificativesService.clone_attachments(original, kopy)
+    end
+  end
+
+  def focusable_input_id
+    input_id
+  end
+
   private
 
   def html_id
-    "#{stable_id}-#{id}"
+    "champ-#{stable_id}-#{id}"
   end
 
   def needs_dossier_id?
@@ -178,7 +261,7 @@ class Champ < ApplicationRecord
   end
 
   def cleanup_if_empty
-    if external_id_changed?
+    if persisted? && external_id_changed?
       self.data = nil
     end
   end
@@ -187,6 +270,13 @@ class Champ < ApplicationRecord
     if fetch_external_data? && external_id.present? && data.nil?
       ChampFetchExternalDataJob.perform_later(self, external_id)
     end
+  end
+
+  def normalize
+    return if value.nil?
+    return if value.present? && !value.include?("\u0000")
+
+    self.value = value.delete("\u0000")
   end
 
   class NotImplemented < ::StandardError

@@ -71,12 +71,14 @@ describe AttestationTemplate, type: :model do
       let(:attestation_template) { create(:attestation_template, :with_files) }
 
       it do
-        expect(subject.logo.blob).not_to eq(attestation_template.logo.blob)
+        expect(subject.logo.attachment).not_to eq(attestation_template.logo.attachment)
+        expect(subject.logo.blob).to eq(attestation_template.logo.blob)
         expect(subject.logo.attached?).to be_truthy
       end
 
       it do
-        expect(subject.signature.blob).not_to eq(attestation_template.signature.blob)
+        expect(subject.signature.attachment).not_to eq(attestation_template.signature.attachment)
+        expect(subject.signature.blob).to eq(attestation_template.signature.blob)
         expect(subject.signature.attached?).to be_truthy
       end
     end
@@ -93,7 +95,7 @@ describe AttestationTemplate, type: :model do
   describe 'attestation_for' do
     let(:procedure) do
       create(:procedure,
-        types_de_champ: types_de_champ,
+        types_de_champ_public: types_de_champ,
         types_de_champ_private: types_de_champ_private,
         for_individual: for_individual,
         attestation_template: attestation_template)
@@ -140,8 +142,8 @@ describe AttestationTemplate, type: :model do
     context 'when the procedure has a type de champ named libelleA et libelleB' do
       let(:types_de_champ) do
         [
-          create(:type_de_champ, libelle: 'libelleA'),
-          create(:type_de_champ, libelle: 'libelleB')
+          { libelle: 'libelleA' },
+          { libelle: 'libelleB' }
         ]
       end
 
@@ -151,11 +153,11 @@ describe AttestationTemplate, type: :model do
 
         context 'and their value in the dossier are not nil' do
           before do
-            dossier.champs
+            dossier.champs_public
               .find { |champ| champ.libelle == 'libelleA' }
               .update(value: 'libelle1')
 
-            dossier.champs
+            dossier.champs_public
               .find { |champ| champ.libelle == 'libelleB' }
               .update(value: 'libelle2')
           end

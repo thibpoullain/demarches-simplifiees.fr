@@ -1,0 +1,28 @@
+= turbo_stream.replace 'breadcrumbs' , render(partial: 'administrateurs/breadcrumbs',
+  locals: { steps: [['Démarches', admin_procedures_path],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Configuration des champs']],
+  preview: @procedure.draft_revision.valid? })
+
+= turbo_stream.replace 'errors-summary', render(TypesDeChampEditor::ErrorsSummary.new(revision: @procedure.draft_revision))
+
+- if @destroyed.present?
+  = turbo_stream.remove dom_id(@destroyed, :type_de_champ_editor)
+
+- if @created.present?
+  - if @created.coordinate.previous_sibling.present?
+    = turbo_stream.after dom_id(@created.coordinate.previous_sibling, :type_de_champ_editor) do
+      - render @created
+  - else
+    = turbo_stream.prepend dom_id(@created.coordinate.block, :types_de_champ_editor_block) do
+      - render @created
+
+- @morphed&.each do |champ_component|
+  = turbo_stream.replace dom_id(champ_component.coordinate, :type_de_champ_editor) do
+    - render champ_component
+
+- if @coordinate.present?
+  = turbo_stream.replace dom_id(@coordinate.revision, :estimated_fill_duration) do
+    - render TypesDeChampEditor::EstimatedFillDurationComponent.new(revision: @coordinate.revision, is_annotation: @coordinate.private?)
+
+= turbo_stream.dispatch 'sortable:sort'

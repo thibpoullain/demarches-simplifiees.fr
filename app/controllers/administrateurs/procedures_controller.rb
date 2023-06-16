@@ -1,7 +1,11 @@
 module Administrateurs
   class ProceduresController < AdministrateurController
-    before_action :retrieve_procedure, only: [:champs, :annotations, :modifications, :edit, :monavis, :update_monavis, :jeton, :update_jeton, :publication, :publish, :transfert, :allow_expert_review, :experts_require_administrateur_invitation]
-    before_action :procedure_revisable?, only: [:champs, :annotations, :modifications]
+    layout 'all', only: [:all, :administrateurs]
+    respond_to :html, :xlsx
+
+    before_action :retrieve_procedure, only: [:champs, :annotations, :modifications, :edit, :zones, :monavis, :update_monavis, :jeton, :update_jeton, :publication, :publish, :transfert, :close, :allow_expert_review, :allow_expert_messaging, :experts_require_administrateur_invitation, :reset_draft]
+    before_action :draft_valid?, only: [:apercu]
+    after_action :reset_procedure, only: [:update]
 
     ITEMS_PER_PAGE = 25
 
@@ -9,9 +13,11 @@ module Administrateurs
       @procedures_publiees = paginated_published_procedures
       @procedures_draft = paginated_draft_procedures
       @procedures_closed = paginated_closed_procedures
+      @procedures_deleted = paginated_deleted_procedures
       @procedures_publiees_count = current_administrateur.procedures.publiees.count
       @procedures_draft_count = current_administrateur.procedures.brouillons.count
       @procedures_closed_count = current_administrateur.procedures.closes.count
+      @procedures_deleted_count = current_administrateur.procedures.with_discarded.discarded.count
       @statut = params[:statut]
       @statut.blank? ? @statut = 'publiees' : @statut = params[:statut]
     end
@@ -43,8 +49,18 @@ module Administrateurs
         .order(created_at: :desc)
     end
 
+    def paginated_deleted_procedures
+      current_administrateur
+        .procedures
+        .with_discarded
+        .discarded
+        .page(params[:page])
+        .per(ITEMS_PER_PAGE)
+        .order(created_at: :desc)
+    end
+
     def apercu
-      @dossier = procedure_without_control.draft_revision.new_dossier
+      @dossier = procedure_without_control.draft_revision.dossier_for_preview(current_user)
       @tab = apercu_tab
     end
 
@@ -55,8 +71,15 @@ module Administrateurs
     SIGNIFICANT_DOSSIERS_THRESHOLD = 30
 
     def new_from_existing
+      @grouped_procedures = nil
+    end
+
+    def search
+      query = ActiveRecord::Base.sanitize_sql_like(params[:query])
+
       significant_procedure_ids = Procedure
         .publiees_ou_closes
+        .where('unaccent(libelle) ILIKE unaccent(?)', "%#{query}%")
         .joins(:dossiers)
         .group("procedures.id")
         .having("count(dossiers.id) >= ?", SIGNIFICANT_DOSSIERS_THRESHOLD)
@@ -70,7 +93,28 @@ module Administrateurs
     end
 
     def show
-      @procedure = current_administrateur.procedures.find(params[:id])
+      @procedure = current_administrateur
+        .procedures
+        .includes(
+          published_revision: {
+            types_de_champ: [],
+            revision_types_de_champ: { type_de_champ: { piece_justificative_template_attachment: :blob } }
+          },
+          draft_revision: {
+            types_de_champ: [],
+            revision_types_de_champ: { type_de_champ: { piece_justificative_template_attachment: :blob } }
+          },
+          attestation_template: [],
+          initiated_mail: [],
+          received_mail: [],
+          closed_mail: [],
+          refused_mail: [],
+          without_continuation_mail: []
+        )
+        .find(params[:id])
+
+      @procedure.validate(:publication)
+
       @current_administrateur = current_administrateur
       @procedure_lien = commencer_url(path: @procedure.path)
       @procedure_lien_test = commencer_test_url(path: @procedure.path)
@@ -79,8 +123,15 @@ module Administrateurs
     def edit
     end
 
+    def zones
+    end
+
     def create
-      @procedure = Procedure.new(procedure_params.merge(administrateurs: [current_administrateur]))
+      new_procedure_params = { max_duree_conservation_dossiers_dans_ds: Procedure::NEW_MAX_DUREE_CONSERVATION }
+        .merge(procedure_params)
+        .merge(administrateurs: [current_administrateur])
+
+      @procedure = Procedure.new(new_procedure_params)
       @procedure.draft_revision = @procedure.revisions.build
 
       if !@procedure.save
@@ -99,14 +150,17 @@ module Administrateurs
 
       if !@procedure.update(procedure_params)
         flash.now.alert = @procedure.errors.full_messages
-        render 'edit'
+        if @procedure.errors[:zones].present?
+          render 'zones'
+        else
+          render 'edit'
+        end
       elsif @procedure.brouillon?
-        reset_procedure
         flash.notice = 'Démarche modifiée. Tous les dossiers de cette démarche ont été supprimés.'
-        redirect_to edit_admin_procedure_path(id: @procedure.id)
+        redirect_to admin_procedure_path(id: @procedure.id)
       else
         flash.notice = 'Démarche modifiée.'
-        redirect_to edit_admin_procedure_path(id: @procedure.id)
+        redirect_to admin_procedure_path(id: @procedure.id)
       end
     end
 
@@ -115,8 +169,8 @@ module Administrateurs
       new_procedure = procedure.clone(current_administrateur, cloned_from_library?)
 
       if new_procedure.valid?
-        flash.notice = 'Démarche clonée'
-        redirect_to edit_admin_procedure_path(id: new_procedure.id)
+        flash.notice = 'Démarche clonée, pensez a vérifier la Présentation et choisir le service a laquelle cette procédure est associé.'
+        redirect_to admin_procedure_path(id: new_procedure.id)
       else
         if cloned_from_library?
           flash.alert = new_procedure.errors.full_messages
@@ -134,6 +188,12 @@ module Administrateurs
 
     def archive
       procedure = current_administrateur.procedures.find(params[:procedure_id])
+
+      if params[:new_procedure].present?
+        new_procedure = current_administrateur.procedures.find(params[:new_procedure])
+        procedure.update!(replaced_by_procedure_id: new_procedure.id)
+      end
+
       procedure.close!
 
       flash.notice = "Démarche close"
@@ -155,6 +215,13 @@ module Administrateurs
       else
         render json: {}, status: 403
       end
+    end
+
+    def restore
+      procedure = current_administrateur.procedures.with_discarded.discarded.find(params[:id])
+      procedure.restore_procedure(current_administrateur)
+      flash.notice = t('administrateurs.index.restored', procedure_id: procedure.id)
+      redirect_to admin_procedures_path
     end
 
     def monavis
@@ -193,34 +260,73 @@ module Administrateurs
     end
 
     def publication
+      @procedure = current_administrateur
+        .procedures
+        .includes(
+          published_revision: :types_de_champ,
+          draft_revision: :types_de_champ
+        ).find(params[:procedure_id])
+
       @procedure_lien = commencer_url(path: @procedure.path)
       @procedure_lien_test = commencer_test_url(path: @procedure.path)
       @procedure.path = @procedure.suggested_path(current_administrateur)
       @current_administrateur = current_administrateur
+      @closed_procedures = current_administrateur.procedures.with_discarded.closes.map { |p| ["#{p.libelle} (#{p.id})", p.id] }.to_h
     end
 
     def publish
       @procedure.assign_attributes(publish_params)
 
       if @procedure.draft_changed?
-        @procedure.publish_revision!
-        flash.notice = "Nouvelle version de la démarche publiée"
-        redirect_to admin_procedure_path(@procedure)
+        if @procedure.close?
+          if @procedure.publish_or_reopen!(current_administrateur)
+            @procedure.publish_revision!
+            flash.notice = "Démarche publiée"
+          else
+            flash.alert = @procedure.errors.full_messages
+          end
+        else
+          @procedure.publish_revision!
+          flash.notice = "Nouvelle version de la démarche publiée"
+        end
       elsif @procedure.publish_or_reopen!(current_administrateur)
         flash.notice = "Démarche publiée"
-        redirect_to admin_procedure_path(@procedure)
       else
         flash.alert = @procedure.errors.full_messages
-        redirect_to admin_procedure_path(@procedure)
       end
+
+      if params[:old_procedure].present? && @procedure.errors.empty?
+        current_administrateur
+          .procedures
+          .with_discarded
+          .closes
+          .find(params[:old_procedure])
+          .update!(replaced_by_procedure: @procedure)
+      end
+
+      redirect_to admin_procedure_path(@procedure)
+    end
+
+    def reset_draft
+      @procedure.reset_draft_revision!
+      redirect_to admin_procedure_path(@procedure)
     end
 
     def transfert
     end
 
+    def close
+    end
+
     def allow_expert_review
       @procedure.update!(allow_expert_review: !@procedure.allow_expert_review)
       flash.notice = @procedure.allow_expert_review? ? "Avis externes activés" : "Avis externes désactivés"
+      redirect_to admin_procedure_experts_path(@procedure)
+    end
+
+    def allow_expert_messaging
+      @procedure.update!(allow_expert_messaging: !@procedure.allow_expert_messaging)
+      flash.notice = @procedure.allow_expert_messaging ? "Les experts ont accès à la messagerie" : "Les experts n'ont plus accès à la messagerie"
       redirect_to admin_procedure_experts_path(@procedure)
     end
 
@@ -243,7 +349,95 @@ module Administrateurs
       redirect_to admin_procedure_experts_path(@procedure)
     end
 
+    def champs
+      @procedure = Procedure.includes(draft_revision: {
+        revision_types_de_champ: {
+          type_de_champ: { piece_justificative_template_attachment: :blob, revision: [], procedure: [] },
+          revision: [],
+          procedure: []
+        },
+        revision_types_de_champ_public: {
+          type_de_champ: { piece_justificative_template_attachment: :blob, revision: [], procedure: [] },
+          revision: [],
+          procedure: []
+        },
+        procedure: []
+      }).find(@procedure.id)
+    end
+
+    def annotations
+      @procedure = Procedure.includes(draft_revision: {
+        revision_types_de_champ: {
+          type_de_champ: { piece_justificative_template_attachment: :blob, revision: [], procedure: [] },
+          revision: [],
+          procedure: []
+        },
+        revision_types_de_champ_private: {
+          type_de_champ: { piece_justificative_template_attachment: :blob, revision: [], procedure: [] },
+          revision: [],
+          procedure: []
+        },
+        procedure: []
+      }).find(@procedure.id)
+    end
+
+    def detail
+      @procedure = Procedure.find(params[:id])
+      @show_detail = params[:show_detail]
+      respond_to do |format|
+        format.turbo_stream
+      end
+    end
+
+    def all
+      @filter = ProceduresFilter.new(current_administrateur, params)
+      all_procedures = filter_procedures(@filter).map { |p| ProcedureDetail.new(p) }
+
+      respond_to do |format|
+        format.html do
+          all_procedures = Kaminari.paginate_array(all_procedures.to_a, offset: 0, limit: ITEMS_PER_PAGE, total_count: all_procedures.count)
+          @procedures = all_procedures.page(params[:page]).per(25)
+        end
+        format.xlsx do
+          render xlsx: ProcedureDetail.to_xlsx(instances: all_procedures),
+            filename: "demarches-#{@filter}"
+        end
+      end
+    end
+
+    def administrateurs
+      @filter = ProceduresFilter.new(current_administrateur, params)
+      pids = AdministrateursProcedure.select(:administrateur_id).where(procedure: filter_procedures(@filter).map { |p| p["id"] })
+      @admins = Administrateur.includes(:user, :procedures).where(id: pids)
+      @admins = @admins.where('unaccent(users.email) ILIKE unaccent(?)', "%#{@filter.email}%") if @filter.email.present?
+      @admins = paginate(@admins, 'users.email')
+    end
+
     private
+
+    def filter_procedures(filter)
+      procedures_result = Procedure.select(:id).left_joins(:procedures_zones).distinct.publiees_ou_closes
+      procedures_result = procedures_result.where(procedures_zones: { zone_id: filter.zone_ids }) if filter.zone_ids.present?
+      procedures_result = procedures_result.where(aasm_state: filter.statuses) if filter.statuses.present?
+      procedures_result = procedures_result.where("tags @> ARRAY[?]::text[]", filter.tags) if filter.tags.present?
+      procedures_result = procedures_result.where('published_at >= ?', filter.from_publication_date) if filter.from_publication_date.present?
+      procedures_result = procedures_result.where('unaccent(libelle) ILIKE unaccent(?)', "%#{filter.libelle}%") if filter.libelle.present?
+      procedures_sql = procedures_result.to_sql
+
+      sql = "select id, libelle, published_at, aasm_state, estimated_dossiers_count, count(administrateurs_procedures.administrateur_id) as admin_count from administrateurs_procedures inner join procedures on procedures.id = administrateurs_procedures.procedure_id where procedures.id in (#{procedures_sql}) group by procedures.id order by published_at desc"
+      ActiveRecord::Base.connection.execute(sql)
+    end
+
+    def paginate(result, ordered_by)
+      result.page(params[:page]).per(ITEMS_PER_PAGE).order(ordered_by)
+    end
+
+    def draft_valid?
+      if procedure_without_control.draft_revision.invalid?
+        flash.alert = t('preview_unavailable', scope: 'administrateurs.procedures')
+        redirect_back(fallback_location: champs_admin_procedure_path(procedure_without_control))
+      end
+    end
 
     def apercu_tab
       params[:tab] || 'dossier'
@@ -254,7 +448,31 @@ module Administrateurs
     end
 
     def procedure_params
-      editable_params = [:libelle, :description, :organisation, :direction, :lien_site_web, :cadre_juridique, :deliberation, :notice, :web_hook_url, :declarative_with_state, :logo, :auto_archive_on, :monavis_embed, :api_entreprise_token, :duree_conservation_dossiers_dans_ds, :zone_id]
+      editable_params = [
+        :libelle,
+        :description,
+        :organisation,
+        :direction,
+        :lien_site_web,
+        :cadre_juridique,
+        :deliberation,
+        :notice,
+        :web_hook_url,
+        :declarative_with_state,
+        :logo,
+        :auto_archive_on,
+        :monavis_embed,
+        :api_entreprise_token,
+        :duree_conservation_dossiers_dans_ds,
+        { zone_ids: [] },
+        :lien_dpo,
+        :opendata,
+        :procedure_expires_when_termine_enabled,
+        :tags
+      ]
+
+      editable_params << :piece_justificative_multiple if @procedure && !@procedure.piece_justificative_multiple?
+
       permited_params = if @procedure&.locked?
         params.require(:procedure).permit(*editable_params)
       else
@@ -262,6 +480,9 @@ module Administrateurs
       end
       if permited_params[:auto_archive_on].present?
         permited_params[:auto_archive_on] = Date.parse(permited_params[:auto_archive_on]) + 1.day
+      end
+      if permited_params[:tags].present?
+        permited_params[:tags] = JSON.parse(permited_params[:tags])
       end
       permited_params
     end

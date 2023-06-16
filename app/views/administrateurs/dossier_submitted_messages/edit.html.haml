@@ -1,9 +1,9 @@
 - content_for(:root_class, 'scroll-margins-for-sticky-footer')
 
 = render partial: 'administrateurs/breadcrumbs',
-  locals: { steps: [link_to('Démarches', admin_procedures_path),
-                    link_to(@procedure.libelle, admin_procedure_path(@procedure)),
-                    'Fin de dépot'] }
+  locals: { steps: [['Démarches', admin_procedures_path],
+                    [@procedure.libelle.truncate_words(10), admin_procedure_path(@procedure)],
+                    ['Fin de dépot']] }
 
 .procedure-form
   .procedure-form__columns.container
@@ -14,7 +14,7 @@
       %h1.page-title
         Fin du dépot
       %p.notice
-        L'utilisateur se vera afficher ce message une fois le dossier envoyé
+        L'utilisateur se verra afficher ce message une fois le dossier envoyé
 
       = render partial: 'administrateurs/dossier_submitted_messages/informations', locals: { f: f }
 

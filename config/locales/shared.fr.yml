@@ -1,31 +1,18 @@
 fr:
   shared:
     dossiers:
-      editable_champs:
-        cnaf:
-          numero_allocataire_label: Le numéro d’allocataire CAF
-          numero_allocataire_notice: Il est généralement composé de 7 chiffres.
-          code_postal_label: Le code postal
-          code_postal_notice: Il est généralement composé de 5 chiffres.
-        dgfip:
-          numero_fiscal_label: Le numéro fiscal
-          numero_fiscal_notice: Il est généralement composé de 13 ou 14 caractères.
-          reference_avis_label: La référence d'avis d'imposition
-          reference_avis_notice: Elle est généralement composée de 13 ou 14 caractères.
-        pole_emploi:
-          identifiant_label: Identifiant
-          identifiant_notice: Il est généralement composé de caractères alphanumériques.
-        mesri:
-          ine_label: INE
-          ine_notice: Identifiant National Étudiant. Il est généralement composé de caractères alphanumériques.
+      france_connect_informations:
+        details_no_name: "Le dossier a été déposé par un compte FranceConnect."
+        details: "Le dossier a été déposé par le compte de %{name}."
+        details_updated: "Le dossier a été déposé par le compte de %{name}, authentifié par FranceConnect le %{date}."
       header:
         expires_at:
           brouillon: "Expirera le %{date} (%{duree_conservation_totale} mois après la création du dossier)"
-          en_construction: "Expirera le %{date} (%{duree_conservation_totale} mois après la dernière date d'édition)"
-          en_instruction: "Ce dossier est en instruction, il n'expirera pas"
-          accepte: "Expirera le %{date}  (%{duree_conservation_totale} mois après l'acceptation du dossier)"
+          en_construction: "Expirera le %{date} (%{duree_conservation_totale} mois après le dépôt du dossier)"
+          en_instruction: "Ce dossier est en instruction, il n’expirera pas"
+          accepte: "Expirera le %{date}  (%{duree_conservation_totale} mois après l’acceptation du dossier)"
           refuse: "Expirera le %{date}  (%{duree_conservation_totale} mois après le refus du dossier)"
-          sans_suite: "Expirera le %{date} (%{duree_conservation_totale} mois après que le dossier aie été classé sans suite)"
+          sans_suite: "Expirera le %{date} (%{duree_conservation_totale} mois après le classement sans suite du dossier)"
 
 
     champs:
@@ -35,21 +22,30 @@ fr:
           fetching_data: "La récupération automatique des données pour l’allocataire Nº %{numero_allocataire} avec le code postal %{code_postal} est en cours."
           data_fetched: "Des données concernant %{sources} liées au compte Nº %{numero_allocataire} avec le code postal %{code_postal} ont été reçues depuis la CAF."
           data_fetched_title: "Données obtenues de la Caisse nationale d’allocations familiales"
+      rna:
+        show:
+          not_filled: non renseigné
+          not_found: "RNA %{rna} (aucun établissement trouvé)"
+          data_fetched_title: Données obtenues grâce au RNA "%{rna}"
+        association:
+          data_fetched: "Ce RNA correspond à %{title}"
+          not_found: "Aucun établissement trouvé"
+          network_error: "Une erreur réseau a empêché l’association liée à ce RNA d’être trouvée"
       dgfip:
         show:
           not_filled: non renseigné
-          fetching_data: "La récupération automatique des données pour le déclarant Nº %{numero_fiscal} avec la référence d'avis %{reference_avis} est en cours."
-          data_fetched: "Des données concernant %{sources} liées au déclarant Nº %{numero_fiscal} avec la référence d'avis %{reference_avis} ont été reçues depuis la DGFiP."
+          fetching_data: "La récupération automatique des données pour le déclarant Nº %{numero_fiscal} avec la référence d’avis %{reference_avis} est en cours."
+          data_fetched: "Des données concernant %{sources} liées au déclarant Nº %{numero_fiscal} avec la référence d’avis %{reference_avis} ont été reçues depuis la DGFiP."
           data_fetched_title: "Données obtenues de la Direction générale des Finances publiques"
       pole_emploi:
         show:
           not_filled: non renseigné
-          fetching_data: "La récupération automatique des données pour l'identifiant %{identifiant} est en cours."
-          data_fetched: "Des données concernant %{sources} liées à l'identifiant %{identifiant} ont été reçues depuis Pôle emploi."
+          fetching_data: "La récupération automatique des données pour l’identifiant %{identifiant} est en cours."
+          data_fetched: "Des données concernant %{sources} liées à l’identifiant %{identifiant} ont été reçues depuis Pôle emploi."
           data_fetched_title: "Données obtenues de Pôle emploi"
       mesri:
         show:
           not_filled: non renseigné
-          fetching_data: "La récupération automatique des données pour l'INE %{ine} est en cours."
-          data_fetched: "Des données concernant %{sources} liées à l'INE %{ine} ont été reçues depuis le MESRI."
+          fetching_data: "La récupération automatique des données pour l’INE %{ine} est en cours."
+          data_fetched: "Des données concernant %{sources} liées à l’INE %{ine} ont été reçues depuis le MESRI."
           data_fetched_title: "Données obtenues du MESRI"

@@ -1,10 +1,11 @@
 describe UpdateZoneToProceduresService do
   before(:each) do
-    Rake::Task['zones:populate_zones'].invoke
+    Flipper.enable :zonage
+    Rake::Task['after_party:populate_zones'].invoke
   end
 
   after(:each) do
-    Rake::Task['zones:populate_zones'].reenable
+    Rake::Task['after_party:populate_zones'].reenable
   end
 
   describe '#call' do
@@ -16,8 +17,8 @@ describe UpdateZoneToProceduresService do
     context 'nominal case' do
       let(:lines) do
         [
-          { "id" => procedure1.id, "POL_PUB_MINISTERE RATTACHEMENT" => "PM" },
-          { "id" => procedure2.id, "POL_PUB_MINISTERE RATTACHEMENT" => "MI" }
+          { "id" => procedure1.id, "POL_PUB_MINISTERE RATTACHEMENT" => "ARS ARA" },
+          { "id" => procedure2.id, "POL_PUB_MINISTERE RATTACHEMENT" => "ARS BFC" }
         ]
       end
 
@@ -25,15 +26,15 @@ describe UpdateZoneToProceduresService do
         errors = subject
 
         expect(errors).to eq []
-        expect(procedure1.reload.zone.acronym).to eq("PM")
-        expect(procedure2.reload.zone.acronym).to eq("MI")
+        expect(procedure1.reload.zone.acronym).to eq("ARS ARA")
+        expect(procedure2.reload.zone.acronym).to eq("ARS BFC")
       end
     end
 
     context 'with unknown procedure' do
       let(:lines) do
         [
-          { "id" => procedure1.id + procedure2.id, "POL_PUB_MINISTERE RATTACHEMENT" => "PM" }
+          { "id" => procedure1.id + procedure2.id, "POL_PUB_MINISTERE RATTACHEMENT" => "ARS ARA" }
         ]
       end
       it 'returns errors' do

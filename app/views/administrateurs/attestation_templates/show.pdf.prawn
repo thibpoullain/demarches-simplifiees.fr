@@ -2,7 +2,7 @@ require 'prawn/measurement_extensions'
 
 #----- A4 page size
 page_size = 'A4'
-page_height = 842
+# page_height = 842
 page_width = 595
 
 #----- margins
@@ -11,7 +11,7 @@ top_margin = 50
 bottom_margin = 20
 footer_height = top_margin - bottom_margin
 
-right_margin = (page_width - body_width)/2
+right_margin = (page_width - body_width) / 2
 left_margin = right_margin
 
 #----- size of images
@@ -31,8 +31,24 @@ created_at = @attestation.fetch(:created_at)
 logo = @attestation[:logo]
 signature = @attestation[:signature]
 
+def download_file_and_retry(file_or_attached_one, max_attempts = 3)
+  if file_or_attached_one.is_a?(ActiveStorage::Attached::One)
+    file_or_attached_one.download
+  else
+    file_or_attached_one.rewind && file_or_attached_one.read
+  end
+rescue Fog::OpenStack::Storage::NotFound => e
+  if max_attempts > 0
+    max_attempts = max_attempts - 1
+    sleep 1
+    retry
+  else
+    raise e
+  end
+end
+
 prawn_document(margin: [top_margin, right_margin, bottom_margin, left_margin], page_size: page_size) do |pdf|
-  pdf.font_families.update( 'marianne' => { normal: Rails.root.join('lib/prawn/fonts/marianne/marianne-regular.ttf' )})
+  pdf.font_families.update('marianne' => { normal: Rails.root.join('lib/prawn/fonts/marianne/marianne-regular.ttf') })
   pdf.font 'marianne'
 
   grey = '555555'
@@ -47,7 +63,7 @@ prawn_document(margin: [top_margin, right_margin, bottom_margin, left_margin], p
       else
         logo.rewind && logo.read
       end
-      pdf.image StringIO.new(logo_content), fit: [max_logo_width , max_logo_height], position: :center
+      pdf.image StringIO.new(logo_content), fit: [max_logo_width, max_logo_height], position: :center
     end
 
     pdf.fill_color grey
@@ -66,7 +82,7 @@ prawn_document(margin: [top_margin, right_margin, bottom_margin, left_margin], p
         else
           signature.rewind && signature.read
         end
-        pdf.image StringIO.new(signature_content), fit: [max_signature_size , max_signature_size], position: :right
+        pdf.image StringIO.new(signature_content), fit: [max_signature_size, max_signature_size], position: :right
       end
     end
   end

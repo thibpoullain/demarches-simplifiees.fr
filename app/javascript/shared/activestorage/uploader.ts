@@ -1,11 +1,13 @@
 import { DirectUpload } from '@rails/activestorage';
-import { ajax } from '@utils';
+import { httpRequest, ResponseError } from '@utils';
 import ProgressBar from './progress-bar';
-import FileUploadError, {
+import {
+  FileUploadError,
   errorFromDirectUploadMessage,
   ERROR_CODE_ATTACH
 } from './file-upload-error';
 
+const BYTES_TO_MB_RATIO = 1_048_576;
 /**
   Uploader class is a delegate for DirectUpload instance
   used to track lifecycle and progress of an upload.
@@ -14,16 +16,25 @@ export default class Uploader {
   directUpload: DirectUpload;
   progressBar: ProgressBar;
   autoAttachUrl?: string;
+  maxFileSize: number;
+  file: File;
 
   constructor(
     input: HTMLInputElement,
     file: File,
     directUploadUrl: string,
-    autoAttachUrl?: string
+    autoAttachUrl?: string,
+    maxFileSize?: string
   ) {
+    this.file = file;
     this.directUpload = new DirectUpload(file, directUploadUrl, this);
     this.progressBar = new ProgressBar(input, this.directUpload.id + '', file);
     this.autoAttachUrl = autoAttachUrl;
+    try {
+      this.maxFileSize = parseInt(maxFileSize || '0', 10);
+    } catch (e) {
+      this.maxFileSize = 0;
+    }
   }
 
   /**
@@ -33,12 +44,17 @@ export default class Uploader {
     */
   async start() {
     this.progressBar.start();
-
+    if (this.maxFileSize > 0 && this.file.size > this.maxFileSize) {
+      throw `La taille du fichier ne peut dépasser
+             ${this.maxFileSize / BYTES_TO_MB_RATIO} Mo
+             (in english: File size can't be bigger than
+             ${this.maxFileSize / BYTES_TO_MB_RATIO} Mo).`;
+    }
     try {
-      const blobSignedId = await this._upload();
+      const blobSignedId = await this.upload();
 
       if (this.autoAttachUrl) {
-        await this._attach(blobSignedId, this.autoAttachUrl);
+        await this.attach(blobSignedId, this.autoAttachUrl);
         // On response, the attachment HTML fragment will replace the progress bar.
       } else {
         this.progressBar.end();
@@ -56,11 +72,11 @@ export default class Uploader {
     Upload the file using the DirectUpload instance, and return the blob signed_id.
     Throws a FileUploadError on failure.
     */
-  async _upload(): Promise<string> {
+  private async upload(): Promise<string> {
     return new Promise((resolve, reject) => {
       this.directUpload.create((errorMsg, attributes) => {
         if (errorMsg) {
-          const error = errorFromDirectUploadMessage(errorMsg.message);
+          const error = errorFromDirectUploadMessage(errorMsg);
           reject(error);
         } else {
           resolve(attributes.signed_id);
@@ -74,24 +90,24 @@ export default class Uploader {
     Throws a FileUploadError on failure (containing the first validation
     error message, if any).
     */
-  async _attach(blobSignedId: string, autoAttachUrl: string) {
-    const attachmentRequest = {
-      url: autoAttachUrl,
-      type: 'PUT',
-      data: `blob_signed_id=${blobSignedId}`
-    };
+  private async attach(blobSignedId: string, autoAttachUrl: string) {
+    const formData = new FormData();
+    formData.append('blob_signed_id', blobSignedId);
 
     try {
-      await ajax(attachmentRequest);
+      await httpRequest(autoAttachUrl, {
+        method: 'post',
+        body: formData,
+        headers: { 'x-http-method-override': 'PUT' }
+      }).turbo();
     } catch (e) {
-      const error = e as {
-        response?: { errors: string[] };
-        xhr?: XMLHttpRequest;
-      };
-      const message = error.response?.errors && error.response.errors[0];
+      const error = e as ResponseError;
+      const errors = (error.jsonBody as { errors: string[] })?.errors;
+      const message = errors && errors[0];
       throw new FileUploadError(
-        message || 'Error attaching file.',
-        error.xhr?.status,
+        message ||
+          `Impossible d'associer le fichier (in english: error attaching file).'`,
+        error.response?.status,
         ERROR_CODE_ATTACH
       );
     }

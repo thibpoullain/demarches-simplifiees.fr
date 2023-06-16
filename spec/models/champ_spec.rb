@@ -10,19 +10,16 @@ describe Champ do
 
     context 'when the parent dossier is discarded' do
       let(:discarded_dossier) { create(:dossier, :discarded) }
-      subject(:champ) { discarded_dossier.champs.first }
+      subject(:champ) { discarded_dossier.champs_public.first }
 
       it { expect(champ.reload.dossier).to eq discarded_dossier }
     end
   end
 
-  describe "validations" do
-    let(:row) { 1 }
-    let(:champ) { create(:champ, type_de_champ: create(:type_de_champ), row: row) }
-    let(:champ2) { build(:champ, type_de_champ: champ.type_de_champ, row: champ.row, dossier: champ.dossier) }
-
-    it "returns false when champ with same type_de_champ and row already exist" do
-      expect(champ2).not_to be_valid
+  describe "normalization" do
+    it "should remove null bytes before save" do
+      champ = create(:champ, value: "foo\u0000bar")
+      expect(champ.value).to eq "foobar"
     end
   end
 
@@ -38,7 +35,7 @@ describe Champ do
     let(:dossier) { create(:dossier) }
 
     it 'partition public and private' do
-      expect(dossier.champs.count).to eq(1)
+      expect(dossier.champs_public.count).to eq(1)
       expect(dossier.champs_private.count).to eq(1)
     end
   end
@@ -49,7 +46,7 @@ describe Champ do
 
     context 'when a procedure has 2 revisions' do
       it 'does not duplicate the champs' do
-        expect(dossier.champs.count).to eq(1)
+        expect(dossier.champs_public.count).to eq(1)
         expect(procedure.revisions.count).to eq(2)
       end
     end
@@ -71,18 +68,14 @@ describe Champ do
 
   describe '#sections' do
     let(:procedure) do
-      create(:procedure, :with_type_de_champ, :with_type_de_champ_private, :with_repetition, types_de_champ_count: 1, types_de_champ_private_count: 1).tap do |procedure|
-        create(:type_de_champ_header_section, procedure: procedure)
-        create(:type_de_champ_header_section, procedure: procedure, private: true)
-        create(:type_de_champ_header_section, parent: procedure.types_de_champ.find(&:repetition?))
-      end
+      create(:procedure, types_de_champ_public: [{}, { type: :header_section }, { type: :repetition, mandatory: true, children: [{ type: :header_section }] }], types_de_champ_private: [{}, { type: :header_section }])
     end
     let(:dossier) { create(:dossier, procedure: procedure) }
-    let(:public_champ) { dossier.champs.first }
+    let(:public_champ) { dossier.champs_public.first }
     let(:private_champ) { dossier.champs_private.first }
-    let(:champ_in_repetition) { dossier.champs.find(&:repetition?).champs.first }
+    let(:champ_in_repetition) { dossier.champs_public.find(&:repetition?).champs.first }
     let(:standalone_champ) { build(:champ, type_de_champ: build(:type_de_champ), dossier: build(:dossier)) }
-    let(:public_sections) { dossier.champs.filter(&:header_section?) }
+    let(:public_sections) { dossier.champs_public.filter(&:header_section?) }
     let(:private_sections) { dossier.champs_private.filter(&:header_section?) }
     let(:sections_in_repetition) { champ_in_repetition.parent.champs.filter(&:header_section?) }
 
@@ -106,13 +99,13 @@ describe Champ do
     context 'when the value is sent by a modern browser' do
       let(:value) { '2017-12-31 10:23' }
 
-      it { expect(champ.value).to eq(value) }
+      it { expect(champ.value).to eq("2017-12-31T10:23:00+01:00") }
     end
 
     context 'when the value is sent by a old browser' do
       let(:value) { '31/12/2018 09:26' }
 
-      it { expect(champ.value).to eq('2018-12-31 09:26') }
+      it { expect(champ.value).to eq("2018-12-31T09:26:00+01:00") }
     end
   end
 
@@ -124,7 +117,7 @@ describe Champ do
     # when using the old form, and the ChampsService Class
     # TODO: to remove
     context 'when the value is already deserialized' do
-      let(:value) { '["1", "2"]' }
+      let(:value) { '["val1","val2"]' }
 
       it { expect(champ.value).to eq(value) }
 
@@ -140,9 +133,9 @@ describe Champ do
     # GOTCHA
     context 'when the value is not already deserialized' do
       context 'when a choice is selected' do
-        let(:value) { '["", "1", "2"]' }
+        let(:value) { '["", "val1", "val2"]' }
 
-        it { expect(champ.value).to eq('["1", "2"]') }
+        it { expect(champ.value).to eq('["val1","val2"]') }
       end
 
       context 'when all choices are removed' do
@@ -210,13 +203,13 @@ describe Champ do
         let(:type_de_champ) { build(:type_de_champ_checkbox, libelle: libelle) }
 
         context 'when the box is checked' do
-          let(:value) { 'on' }
+          let(:value) { 'true' }
 
           it { is_expected.to eq([libelle]) }
         end
 
         context 'when the box is unchecked' do
-          let(:value) { 'off' }
+          let(:value) { 'false' }
 
           it { is_expected.to be_nil }
         end
@@ -245,9 +238,9 @@ describe Champ do
 
       context 'for département champ' do
         let(:type_de_champ) { build(:type_de_champ_departements) }
-        let(:value) { "69 - Rhône" }
+        let(:value) { "69" }
 
-        it { is_expected.to eq([value]) }
+        it { is_expected.to eq(['69 – Rhône']) }
       end
 
       context 'for dossier link champ' do
@@ -269,23 +262,6 @@ describe Champ do
         let(:value) { "machin@example.com" }
 
         it { is_expected.to eq([value]) }
-      end
-
-      context 'for engagement champ' do
-        let(:libelle) { 'je consens' }
-        let(:type_de_champ) { build(:type_de_champ_engagement, libelle: libelle) }
-
-        context 'when the box is checked' do
-          let(:value) { 'on' }
-
-          it { is_expected.to eq([libelle]) }
-        end
-
-        context 'when the box is unchecked' do
-          let(:value) { 'off' }
-
-          it { is_expected.to be_nil }
-        end
       end
 
       context 'for explication champ' do
@@ -334,9 +310,9 @@ describe Champ do
 
       context 'for pays champ' do
         let(:type_de_champ) { build(:type_de_champ_pays) }
-        let(:value) { "FRANCE" }
+        let(:value) { "FR" }
 
-        it { is_expected.to eq([value]) }
+        it { is_expected.to eq(['France']) }
       end
 
       context 'for phone champ' do
@@ -355,9 +331,9 @@ describe Champ do
 
       context 'for region champ' do
         let(:type_de_champ) { build(:type_de_champ_regions) }
-        let(:value) { "Île-de-France" }
+        let(:value) { "11" }
 
-        it { is_expected.to eq([value]) }
+        it { is_expected.to eq(['Île-de-France']) }
       end
 
       context 'for siret champ' do
@@ -467,13 +443,13 @@ describe Champ do
         end
 
         it 'marks the file as pending virus scan' do
-          expect(subject.piece_justificative_file.virus_scanner.started?).to be_truthy
+          expect(subject.piece_justificative_file.first.virus_scanner.started?).to be_truthy
         end
 
         it 'marks the file as safe once the scan completes' do
           subject
           perform_enqueued_jobs
-          expect(champ.reload.piece_justificative_file.virus_scanner.safe?).to be_truthy
+          expect(champ.reload.piece_justificative_file.first.virus_scanner.safe?).to be_truthy
         end
       end
     end
@@ -482,7 +458,7 @@ describe Champ do
   describe '#enqueue_watermark_job' do
     context 'when type_champ is type_de_champ_titre_identite' do
       let(:type_de_champ) { create(:type_de_champ_titre_identite) }
-      let(:champ) { build(:champ_titre_identite, type_de_champ: type_de_champ) }
+      let(:champ) { build(:champ_titre_identite, type_de_champ: type_de_champ, skip_default_attachment: true) }
 
       before do
         allow(ClamavService).to receive(:safe_file?).and_return(true)
@@ -495,31 +471,31 @@ describe Champ do
       end
 
       it 'marks the file as needing watermarking' do
-        expect(subject.piece_justificative_file.watermark_pending?).to be_truthy
+        expect(subject.piece_justificative_file.first.watermark_pending?).to be_truthy
       end
 
       it 'watermarks the file' do
         subject
         perform_enqueued_jobs
-        expect(champ.reload.piece_justificative_file.watermark_pending?).to be_falsy
-        expect(champ.reload.piece_justificative_file.blob.watermark_done?).to be_truthy
+        expect(champ.reload.piece_justificative_file.first.watermark_pending?).to be_falsy
+        expect(champ.reload.piece_justificative_file.first.blob.watermark_done?).to be_truthy
       end
     end
   end
 
   describe 'repetition' do
-    let(:procedure) { create(:procedure, :published, :with_type_de_champ, :with_type_de_champ_private, types_de_champ: [build(:type_de_champ_repetition, types_de_champ: [tdc_text, tdc_integer])]) }
-    let(:tdc_text) { build(:type_de_champ_text) }
-    let(:tdc_integer) { build(:type_de_champ_integer_number) }
+    let(:procedure) { create(:procedure, :published, types_de_champ_private: [{}], types_de_champ_public: [{}, { type: :repetition, mandatory: true, children: [{}, { type: :integer_number }] }]) }
+    let(:tdc_repetition) { procedure.active_revision.types_de_champ_public.find(&:repetition?) }
+    let(:tdc_text) { procedure.active_revision.children_of(tdc_repetition).first }
 
     let(:dossier) { create(:dossier, procedure: procedure) }
-    let(:champ) { dossier.champs.find(&:repetition?) }
+    let(:champ) { dossier.champs_public.find(&:repetition?) }
     let(:champ_text) { champ.champs.find { |c| c.type_champ == 'text' } }
     let(:champ_integer) { champ.champs.find { |c| c.type_champ == 'integer_number' } }
-    let(:champ_text_attrs) { attributes_for(:champ_text, type_de_champ: tdc_text, row: 1) }
+    let(:champ_text_attrs) { attributes_for(:champ_text, type_de_champ: tdc_text, row_id: ULID.generate) }
 
     context 'when creating the model directly' do
-      let(:champ_text_row_1) { create(:champ_text, type_de_champ: tdc_text, row: 2, parent: champ, dossier: nil) }
+      let(:champ_text_row_1) { create(:champ_text, type_de_champ: tdc_text, row_id: ULID.generate, parent: champ, dossier: nil) }
 
       it 'associates nested champs to the parent dossier' do
         expect(champ_text_row_1.dossier_id).to eq(champ.dossier_id)
@@ -528,7 +504,7 @@ describe Champ do
 
     context 'when updating using nested attributes' do
       subject do
-        dossier.update!(champs_attributes: [
+        dossier.update!(champs_public_attributes: [
           {
             id: champ.id,
             champs_attributes: [champ_text_attrs]
@@ -541,25 +517,21 @@ describe Champ do
       it 'associates nested champs to the parent dossier' do
         subject
 
-        expect(dossier.champs.size).to eq(2)
+        expect(dossier.champs_public.size).to eq(2)
         expect(champ.rows.size).to eq(2)
-        second_row = champ.rows.second
+        second_row = champ.reload.rows.second
         expect(second_row.size).to eq(1)
         expect(second_row.first.dossier).to eq(dossier)
-
-        # Make champs ordered
-        champ_integer.type_de_champ.update(order_place: 0)
-        champ_text.type_de_champ.update(order_place: 1)
 
         champ.champs << champ_integer
         first_row = champ.reload.rows.first
         expect(first_row.size).to eq(2)
-        expect(first_row.first).to eq(champ_integer)
+        expect(first_row.second).to eq(champ_integer)
 
         champ.champs << champ_text
         first_row = champ.reload.rows.first
         expect(first_row.size).to eq(2)
-        expect(first_row.second).to eq(champ_text)
+        expect(first_row.first).to eq(champ_text)
 
         expect(champ.rows.size).to eq(2)
       end
@@ -602,5 +574,33 @@ describe Champ do
         expect(champ.reload.data).to eq data
       end
     end
+
+    context "#input_name" do
+      let(:champ) { create(:champ_text) }
+      it { expect(champ.input_name).to eq "dossier[champs_public_attributes][#{champ.id}]" }
+
+      context "when private" do
+        let(:champ) { create(:champ_text, private: true) }
+        it { expect(champ.input_name).to eq "dossier[champs_private_attributes][#{champ.id}]" }
+      end
+
+      context "when has parent" do
+        let(:champ) { create(:champ_text, parent: create(:champ_text)) }
+        it { expect(champ.input_name).to eq "dossier[champs_public_attributes][#{champ.id}]" }
+      end
+
+      context "when has private parent" do
+        let(:champ) { create(:champ_text, private: true, parent: create(:champ_text, private: true)) }
+        it { expect(champ.input_name).to eq "dossier[champs_private_attributes][#{champ.id}]" }
+      end
+    end
+  end
+
+  describe '#update_with_external_data!' do
+    let(:champ) { create(:champ_siret) }
+    let(:data) { "data" }
+    subject { champ.update_with_external_data!(data: data) }
+
+    it { expect { subject }.to change { champ.reload.data }.to(data) }
   end
 end

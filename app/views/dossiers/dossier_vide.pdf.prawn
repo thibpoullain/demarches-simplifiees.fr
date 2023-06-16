@@ -1,17 +1,28 @@
 require 'prawn/measurement_extensions'
 
+# Render text in a box that expands vertically, then move the cursor down to the end of the rendered text
+def render_expanding_text_box(pdf, text, options)
+  box = Prawn::Text::Box.new(text, options.merge(document: pdf, overflow: :expand))
+
+  box.render(dry_run: true)
+  vertical_space_used = box.height
+
+  box.render
+  pdf.move_down(vertical_space_used)
+end
+
 def render_in_2_columns(pdf, label, text)
   pdf.text_box label, width: 200, height: 100, overflow: :expand, at: [0, pdf.cursor]
   pdf.text_box ":", width: 10, height: 100, overflow: :expand, at: [100, pdf.cursor]
-  pdf.text_box text, width: 420, height: 100, overflow: :expand, at: [110, pdf.cursor]
+  render_expanding_text_box(pdf, text, width: 420, height: 100, at: [110, pdf.cursor])
   pdf.text "\n"
 end
 
 def format_in_2_lines(pdf, champ, nb_lines = 1)
   add_single_line(pdf, champ.libelle, 9, :bold)
   add_optionnal_description(pdf, champ)
-  height = 10 * (nb_lines+1)
-  pdf.bounding_box([0, pdf.cursor],:width => 460,:height => height) do
+  height = 10 * (nb_lines + 1)
+  pdf.bounding_box([0, pdf.cursor], :width => 460, :height => height) do
     pdf.stroke_bounds
   end
   pdf.text "\n"
@@ -19,17 +30,31 @@ end
 
 def format_in_2_columns(pdf, label)
   pdf.text_box label, width: 200, height: 100, overflow: :expand, at: [0, pdf.cursor]
-  pdf.bounding_box([110, pdf.cursor+5],:width => 350,:height => 20) do
+  pdf.bounding_box([110, pdf.cursor + 5], :width => 350, :height => 20) do
     pdf.stroke_bounds
   end
 
   pdf.text "\n"
 end
 
-def format_with_checkbox(pdf, label, offset = 0)
+def format_with_checkbox(pdf, option, offset = 0)
+  # Option is a [text, value] pair, or a string used for both.
+  label = option.is_a?(String) ? option : option.first
+  value = option.is_a?(String) ? option : option.last
+
+  if value == Champs::DropDownListChamp::OTHER
+    label += " : "
+  end
+
   pdf.font 'marianne', size: 9 do
     pdf.stroke_rectangle [0 + offset, pdf.cursor], 10, 10
-    pdf.text_box label, at: [15 + offset, pdf.cursor]
+    render_expanding_text_box(pdf, label, at: [15, pdf.cursor])
+
+    if value == Champs::DropDownListChamp::OTHER
+      pdf.bounding_box([110, pdf.cursor + 3], :width => 350, :height => 20) do
+        pdf.stroke_bounds
+      end
+    end
   end
   pdf.text "\n"
 end
@@ -39,14 +64,14 @@ def add_page_numbering(pdf)
   # do not have page numbering
   string = '<page> / <total>'
   options = {
-      at: [0, -15],
-      align: :right
+    at: [0, -15],
+    align: :right
   }
   pdf.number_pages string, options
 end
 
 def add_procedure(pdf, dossier)
-  pdf.repeat(lambda {|page| page > 1 })  do
+  pdf.repeat(lambda { |page| page > 1 }) do
     pdf.draw_text dossier.procedure.libelle, :at => pdf.bounds.top_left
   end
 end
@@ -90,7 +115,7 @@ def add_explanation(pdf, explanation)
 end
 
 def add_optionnal_description(pdf, champ)
-  add_explanation(pdf, champ.description.strip + "\n\n") if champ.description.present?
+  add_explanation(pdf, strip_tags(champ.description).strip + "\n\n") if champ.description.present?
 end
 
 def render_single_champ(pdf, champ)
@@ -161,7 +186,7 @@ def add_champs(pdf, champs)
   champs.each do |champ|
     if champ.type == 'Champs::RepetitionChamp'
       add_libelle(pdf, champ)
-      (1..3).each do
+      3.times do
         champ.rows.each do |row|
           row.each do |inner_champ|
             render_single_champ(pdf, inner_champ)
@@ -175,17 +200,17 @@ def add_champs(pdf, champs)
 end
 
 prawn_document(page_size: "A4") do |pdf|
-  pdf.font_families.update( 'marianne' => {
-      normal: Rails.root.join('lib/prawn/fonts/marianne/marianne-regular.ttf' ),
-      bold: Rails.root.join('lib/prawn/fonts/marianne/marianne-bold.ttf' ),
-      italic: Rails.root.join('lib/prawn/fonts/marianne/marianne-thin.ttf' ),
+  pdf.font_families.update('marianne' => {
+    normal: Rails.root.join('lib/prawn/fonts/marianne/marianne-regular.ttf'),
+    bold: Rails.root.join('lib/prawn/fonts/marianne/marianne-bold.ttf'),
+    italic: Rails.root.join('lib/prawn/fonts/marianne/marianne-thin.ttf')
   })
   pdf.font 'marianne'
-  pdf.svg IO.read(DOSSIER_PDF_EXPORT_LOGO_SRC), width: 300, position: :center
+  pdf.image DOSSIER_PDF_EXPORT_LOGO_SRC, width: 300, position: :center
   pdf.move_down(40)
 
   render_in_2_columns(pdf, 'Démarche', @dossier.procedure.libelle)
-  render_in_2_columns(pdf, 'Organisme', @dossier.procedure.organisation_name)
+  render_in_2_columns(pdf, 'Organisme', @dossier.procedure.organisation_name || "En attente de saisi")
   pdf.text "\n"
 
   add_title(pdf, "Identité du demandeur")
@@ -199,8 +224,8 @@ prawn_document(page_size: "A4") do |pdf|
   pdf.text "\n"
 
   add_title(pdf, 'Formulaire')
-  add_single_line(pdf, @procedure.description + "\n", 9, :italic) if @procedure.description.present?
-  add_champs(pdf, @dossier.champs)
+  add_single_line(pdf, @dossier.procedure.description + "\n", 9, :italic) if @dossier.procedure.description.present?
+  add_champs(pdf, @dossier.champs_public)
   add_page_numbering(pdf)
   add_procedure(pdf, @dossier)
 end

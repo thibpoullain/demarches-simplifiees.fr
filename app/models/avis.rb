@@ -8,6 +8,9 @@
 #  confidentiel         :boolean          default(FALSE), not null
 #  email                :string
 #  introduction         :text
+#  question_answer      :boolean
+#  question_label       :string
+#  reminded_at          :datetime
 #  revoked_at           :datetime
 #  created_at           :datetime         not null
 #  updated_at           :datetime         not null
@@ -27,6 +30,8 @@ class Avis < ApplicationRecord
   has_one :expert, through: :experts_procedure
   has_one :procedure, through: :experts_procedure
 
+  has_many :targeted_user_links, as: :target_model, dependent: :destroy, inverse_of: :target_model
+
   FILE_MAX_SIZE = 20.megabytes
   validates :piece_justificative_file,
     content_type: AUTHORIZED_CONTENT_TYPES,
@@ -38,9 +43,11 @@ class Avis < ApplicationRecord
 
   validates :email, format: { with: Devise.email_regexp, message: "n'est pas valide" }, allow_nil: true
   validates :claimant, presence: true
+  validates :question_answer, inclusion: { in: [true, false] }, on: :update, if: -> { question_label.present? }
   validates :piece_justificative_file, size: { less_than: FILE_MAX_SIZE }
   validates :introduction_file, size: { less_than: FILE_MAX_SIZE }
   before_validation -> { sanitize_email(:email) }
+  before_validation -> { strip_attribute(:question_label) }
 
   default_scope { joins(:dossier) }
   scope :with_answer, -> { where.not(answer: nil) }
@@ -51,6 +58,9 @@ class Avis < ApplicationRecord
   scope :termine_expired, -> { unscope(:joins).where(dossier: Dossier.termine_expired) }
   scope :en_construction_expired, -> { unscope(:joins).where(dossier: Dossier.en_construction_expired) }
   scope :not_hidden_by_administration, -> { where(dossiers: { hidden_by_administration_at: nil }) }
+  scope :not_revoked, -> { where(revoked_at: nil) }
+  scope :not_termine, -> { where.not(dossiers: { state: Dossier::TERMINE }) }
+
   # The form allows subtmitting avis requests to several emails at once,
   # hence this virtual attribute.
   attr_accessor :emails
@@ -60,19 +70,13 @@ class Avis < ApplicationRecord
     expert&.email
   end
 
-  def self.link_avis_to_instructeur(instructeur)
-    Avis.where(email: instructeur.email).update_all(email: nil, instructeur_id: instructeur.id)
-  end
-
-  def self.avis_exists_and_email_belongs_to_avis?(avis_id, email)
-    Avis.find_by(id: avis_id)&.email == email
-  end
-
   def spreadsheet_columns
     [
       ['Dossier ID', dossier_id.to_s],
-      ['Question / Introduction', :introduction],
+      ['Introduction', :introduction],
       ['Réponse', :answer],
+      ['Question', :question_label],
+      ['Réponse oui/non', :question_answer],
       ['Créé le', :created_at],
       ['Répondu le', :updated_at],
       ['Instructeur', claimant&.email],
@@ -80,12 +84,16 @@ class Avis < ApplicationRecord
     ]
   end
 
+  def updated_recently?
+    updated_at > 30.minutes.ago
+  end
+
   def revoked?
     revoked_at.present?
   end
 
-  def revivable_by?(reviver)
-    revokable_by?(reviver)
+  def remindable_by?(reminder)
+    revokable_by?(reminder)
   end
 
   def revokable_by?(revocator)
@@ -100,5 +108,16 @@ class Avis < ApplicationRecord
     else
       destroy!
     end
+  end
+
+  def remind_by!(revocator)
+    return false if !remindable_by?(revocator) || answer.present?
+    update!(reminded_at: Time.zone.now)
+  end
+
+  private
+
+  def strip_attribute(attribute)
+    self[attribute] = self[attribute]&.strip&.presence
   end
 end

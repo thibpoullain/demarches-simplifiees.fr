@@ -1,15 +1,15 @@
 class Champs::RepetitionController < ApplicationController
   before_action :authenticate_logged_user!
 
-  def show
+  def add
     @champ = policy_scope(Champ).includes(:champs).find(params[:champ_id])
-    @position = params[:position]
-    @champ.add_row
+    @champs = @champ.add_row(@champ.dossier.revision)
+  end
 
-    if @champ.private?
-      @attribute = "dossier[champs_private_attributes][#{@position}][champs_attributes]"
-    else
-      @attribute = "dossier[champs_attributes][#{@position}][champs_attributes]"
-    end
+  def remove
+    @champ = policy_scope(Champ).includes(:champs).find(params[:champ_id])
+    @champ.champs.where(row_id: params[:row_id]).destroy_all
+    @champ.reload
+    @row_id = params[:row_id]
   end
 end

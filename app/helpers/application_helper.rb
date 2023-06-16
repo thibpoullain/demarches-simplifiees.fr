@@ -1,6 +1,22 @@
 module ApplicationHelper
   include SanitizeUrl
 
+  def html_lang
+    I18n.locale.to_s
+  end
+
+  def active_locale_link(locale)
+    link_to save_locale_path(locale:), {
+      method: :post,
+      class: "fr-translate__language fr-nav__link",
+      hreflang: locale,
+      lang: locale,
+      "aria-current": I18n.locale == locale ? "true" : nil
+    }.compact do
+      yield
+    end
+  end
+
   def sanitize_url(url)
     if !url.nil?
       super(url, schemes: ['http', 'https'], replace_evil_with: root_url)
@@ -26,84 +42,14 @@ module ApplicationHelper
     class_names.join(' ')
   end
 
-  def render_to_element(selector, partial:, outer: false, locals: {})
-    method = outer ? 'outerHTML' : 'innerHTML'
-    html = escape_javascript(render partial: partial, locals: locals)
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{selector}').#{method} = \"#{html}\";")
-    # rubocop:enable Rails/OutputSafety
+  def flash_role(level)
+    return "status" if level == "notice"
+
+    'alert'
   end
 
-  def append_to_element(selector, partial:, locals: {})
-    html = escape_javascript(render partial: partial, locals: locals)
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{selector}').insertAdjacentHTML('beforeend', \"#{html}\");")
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def render_flash(timeout: false, sticky: false, fixed: false)
-    if flash.any?
-      html = render_to_element('#flash_messages', partial: 'layouts/flash_messages', locals: { sticky: sticky, fixed: fixed }, outer: true)
-      flash.clear
-      if timeout
-        html += remove_element('#flash_messages', timeout: timeout, inner: true)
-      end
-      html
-    end
-  end
-
-  def render_champ(champ)
-    champ_selector = "##{champ.input_group_id}"
-    form_html = render 'shared/dossiers/edit', dossier: champ.dossier, apercu: false
-    champ_html = Nokogiri::HTML.fragment(form_html).at_css(champ_selector).to_s
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{champ_selector}').outerHTML = \"#{escape_javascript(champ_html)}\";")
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def remove_element(selector, timeout: 0, inner: false)
-    script = "(function() {";
-    script << "var el = document.querySelector('#{selector}');"
-    method = (inner ? "el.innerHTML = ''" : "el.parentNode.removeChild(el)")
-    if timeout.present? && timeout > 0
-      script << "if (el) { setTimeout(function() { #{method}; }, #{timeout}); }"
-    else
-      script << "if (el) { #{method} };"
-    end
-    script << "})();"
-    # rubocop:disable Rails/OutputSafety
-    raw(script);
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def show_element(selector)
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{selector}').classList.remove('hidden');")
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def focus_element(selector)
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{selector}').focus();")
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def disable_element(selector)
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{selector}').disabled = true;")
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def enable_element(selector)
-    # rubocop:disable Rails/OutputSafety
-    raw("document.querySelector('#{selector}').disabled = false;")
-    # rubocop:enable Rails/OutputSafety
-  end
-
-  def fire_event(event_name, data)
-    # rubocop:disable Rails/OutputSafety
-    raw("DS.fire('#{event_name}', #{raw(data)});")
-    # rubocop:enable Rails/OutputSafety
+  def react_component(name, props = {}, html = {})
+    tag.div(**html.merge(data: { controller: 'react', react_component_value: name, react_props_value: props.to_json }))
   end
 
   def current_email
@@ -138,22 +84,30 @@ module ApplicationHelper
   def root_path_info_for_profile(nav_bar_profile)
     case nav_bar_profile
     when :administrateur
-      [admin_procedures_path, "Aller au panneau d’administration"]
+      [admin_procedures_path, t("admin", scope: "layouts.root_path_link_title")]
     when :instructeur
-      [instructeur_procedures_path, 'Aller à la liste des démarches']
+      [instructeur_procedures_path, t("instructeur", scope: "layouts.root_path_link_title")]
     when :user
-      [dossiers_path, 'Aller à la liste des dossiers']
+      [dossiers_path, t("user", scope: "layouts.root_path_link_title")]
     else
-      [root_path, "Aller à la page d’accueil"]
+      [root_path, t("default", scope: "layouts.root_path_link_title")]
     end
   end
 
   def try_format_date(date)
-    date.present? ? I18n.l(date, format: :long) : ''
+    if date&.class == Date || date&.class == ActiveSupport::TimeWithZone
+      date.present? ? I18n.l(date, format: :long) : ''
+    else
+      date.presence || ''
+    end
   end
 
   def try_format_datetime(datetime)
-    datetime.present? ? I18n.l(datetime) : ''
+    if datetime&.class == DateTime || datetime&.class == ActiveSupport::TimeWithZone
+      datetime.present? ? I18n.l(datetime) : ''
+    else
+      datetime.presence || ''
+    end
   end
 
   def try_format_mois_effectif(etablissement)
@@ -181,5 +135,25 @@ module ApplicationHelper
 
   def show_outdated_browser_banner?
     !supported_browser? && !has_dismissed_outdated_browser_banner?
+  end
+
+  def vite_legacy?
+    if ENV['VITE_LEGACY'] == 'disabled'
+      false
+    else
+      Rails.env.production? || ENV['VITE_LEGACY'] == 'enabled'
+    end
+  end
+
+  def external_link_attributes
+    { target: "_blank", rel: "noopener noreferrer" }
+  end
+
+  def new_tab_suffix(title)
+    [title, I18n.t('utils.new_tab')].compact.join(' — ')
+  end
+
+  def download_details(attachment)
+    "#{attachment.filename.extension.upcase} – #{number_to_human_size(attachment.byte_size)}"
   end
 end

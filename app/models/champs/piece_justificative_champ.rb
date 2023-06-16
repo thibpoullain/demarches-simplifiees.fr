@@ -5,9 +5,9 @@
 #  id                             :integer          not null, primary key
 #  data                           :jsonb
 #  fetch_external_data_exceptions :string           is an Array
+#  prefilled                      :boolean
 #  private                        :boolean          default(FALSE), not null
 #  rebased_at                     :datetime
-#  row                            :integer
 #  type                           :string
 #  value                          :string
 #  value_json                     :jsonb
@@ -17,6 +17,7 @@
 #  etablissement_id               :integer
 #  external_id                    :string
 #  parent_id                      :bigint
+#  row_id                         :string
 #  type_de_champ_id               :integer
 #
 class Champs::PieceJustificativeChamp < Champ
@@ -38,17 +39,23 @@ class Champs::PieceJustificativeChamp < Champ
     # We don’t know how to search inside documents yet
   end
 
-  def mandatory_and_blank?
+  def mandatory_blank?
     mandatory? && !piece_justificative_file.attached?
   end
 
   def for_export
-    piece_justificative_file.filename.to_s if piece_justificative_file.attached?
+    piece_justificative_file.map { _1.filename.to_s }.join(', ')
   end
 
   def for_api
-    if piece_justificative_file.attached? && (piece_justificative_file.virus_scanner.safe? || piece_justificative_file.virus_scanner.pending?)
-      piece_justificative_file.service_url
+    return nil unless piece_justificative_file.attached?
+
+    # API v1 don't support multiple PJ
+    attachment = piece_justificative_file.first
+    return nil if attachment.nil?
+
+    if attachment.virus_scanner.safe? || attachment.virus_scanner.pending?
+      attachment.service_url
     end
   end
 end

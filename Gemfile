@@ -33,6 +33,7 @@ gem 'devise-two-factor'
 gem 'discard'
 gem 'dotenv-rails', require: 'dotenv/rails-now' # dotenv should always be loaded before rails
 gem 'ed25519' # Gestion de davantage de formats de cles SSH
+gem 'elastic-apm'
 gem 'flipper'
 gem 'flipper-active_record'
 gem 'flipper-ui'
@@ -66,6 +67,7 @@ gem 'net-pop', require: false # same
 gem 'net-sftp'
 gem 'net-smtp', require: false # same
 gem 'openid_connect'
+gem 'parsby'
 gem 'pg'
 gem 'phonelib'
 gem 'prawn-rails' # PDF Generation
@@ -78,6 +80,7 @@ gem 'rails'
 gem 'rails-i18n' # Locales par défaut
 gem 'rake-progressbar', require: false
 gem 'react-rails'
+gem 'redcarpet'
 gem 'rexml' # add missing gem due to ruby3 (https://github.com/Shopify/bootsnap/issues/325)
 gem 'rgeo-geojson'
 gem 'rqrcode'
@@ -91,9 +94,12 @@ gem 'sib-api-v3-sdk'
 gem 'skylight'
 gem 'spreadsheet_architect'
 gem 'strong_migrations' # lint database migrations
+gem 'turbo-rails'
 gem 'typhoeus'
+gem 'ulid-ruby', require: 'ulid'
+gem 'view_component'
+gem 'vite_rails'
 gem 'warden'
-gem 'webpacker'
 gem 'zipline'
 gem 'zxcvbn-ruby', require: 'zxcvbn'
 
@@ -104,8 +110,10 @@ group :test do
   gem 'capybara-screenshot' # Save a dump of the page when an integration test fails
   gem 'factory_bot'
   gem 'launchy'
+  gem 'rack_session_access'
   gem 'rails-controller-testing'
   gem 'rspec_junit_formatter'
+  gem 'selenium-devtools'
   gem 'selenium-webdriver'
   gem 'shoulda-matchers', require: false
   gem 'timecop'
@@ -119,6 +127,7 @@ group :development do
   gem 'brakeman', require: false
   gem 'haml-lint'
   gem 'letter_opener_web'
+  gem 'memory_profiler'
   gem 'rack-mini-profiler'
   gem 'rails-erd', require: false # generates `doc/database_models.pdf`
   gem 'rubocop', require: false
@@ -126,6 +135,7 @@ group :development do
   gem 'rubocop-rails', require: false
   gem 'rubocop-rspec', require: false
   gem 'scss_lint', require: false
+  gem 'stackprof'
   gem 'web-console'
 end
 
@@ -133,6 +143,7 @@ group :development, :test do
   gem 'graphql-schema_comparator'
   gem 'mina', require: false # Deploy
   gem 'pry-byebug' # Call 'byebug' anywhere in the code to stop execution and get a debugger console
+  gem 'pry-rails'
   gem 'rspec-rails'
   gem 'simple_xlsx_reader'
   gem 'spring' # Spring speeds up development by keeping your application running in the background

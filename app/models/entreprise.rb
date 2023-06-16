@@ -13,12 +13,13 @@ class Entreprise < Hashie::Dash
   property :raison_sociale
   property :siret_siege_social
   property :code_effectif_entreprise
+  property :etat_administratif
   property :effectif_mois
   property :effectif_annee
   property :effectif_mensuel
   property :effectif_annuel
   property :effectif_annuel_annee
-  property :date_creation
+  property :date_creation, default: nil
   property :nom, default: nil
   property :prenom, default: nil
 

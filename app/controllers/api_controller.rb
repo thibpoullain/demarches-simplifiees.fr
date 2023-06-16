@@ -4,8 +4,9 @@ class APIController < ApplicationController
   protected
 
   def find_administrateur_for_token(procedure)
-    procedure.administrateurs.find do |administrateur|
-      administrateur.valid_api_token?(token)
+    api_token = APIToken.find_and_verify(authorization_bearer_token, procedure.administrateurs)
+    if api_token.present? && api_token.context.fetch(:procedure_ids).include?(procedure.id)
+      api_token.administrateur
     end
   end
 
@@ -15,7 +16,7 @@ class APIController < ApplicationController
     request.format = "json" if !request.params[:format]
   end
 
-  def token
+  def authorization_bearer_token
     params_token.presence || header_token
   end
 

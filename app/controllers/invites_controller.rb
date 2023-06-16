@@ -3,11 +3,10 @@ class InvitesController < ApplicationController
   before_action :store_user_location!, only: [:show]
 
   def create
-    email = params[:invite_email].downcase
-    dossier = current_user.dossiers.visible_by_user.find(params[:dossier_id])
-
+    email = params[:invite_email]&.downcase
+    @dossier = current_user.dossiers.visible_by_user.find(params[:dossier_id])
     invite = Invite.create(
-      dossier: dossier,
+      dossier: @dossier,
       user: User.find_by(email: email),
       email: email,
       message: params[:invite_message],
@@ -22,23 +21,18 @@ class InvitesController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { redirect_back(fallback_location: helpers.url_for_dossier(dossier)) }
-      format.js { @dossier = dossier }
+      format.html { redirect_back(fallback_location: helpers.url_for_dossier(@dossier)) }
+      format.turbo_stream
     end
   end
 
   def show
     if user_signed_in?
       erase_user_location!
-
       dossier = Dossier.joins(:invites)
         .find_by!(invites: { email: current_user.email, id: params[:id] })
 
-      if dossier.brouillon?
-        redirect_to brouillon_dossier_path(dossier)
-      else
-        redirect_to dossier_path(dossier)
-      end
+      redirect_to helpers.url_for_dossier(dossier)
     elsif params[:email].present? && !User.find_by(email: params[:email])
       redirect_to new_user_registration_path(user: { email: params[:email] })
     else
@@ -50,9 +44,10 @@ class InvitesController < ApplicationController
   end
 
   def destroy
-    invite = Invite.find(params[:id])
-    dossier = invite.dossier
-    if dossier.user == current_user
+    invite = Invite.find_by(id: params[:id], dossier: current_user.dossiers.visible_by_user)
+
+    if invite.present?
+      @dossier = invite.dossier
       invite.destroy!
       flash.notice = "L’autorisation de #{invite.email} vient d’être révoquée."
     else
@@ -60,8 +55,8 @@ class InvitesController < ApplicationController
     end
 
     respond_to do |format|
-      format.html { redirect_back(fallback_location: helpers.url_for_dossier(dossier)) }
-      format.js { @dossier = dossier }
+      format.html { redirect_back(fallback_location: @dossier.present? ? helpers.url_for_dossier(@dossier) : root_url) }
+      format.turbo_stream
     end
   end
 

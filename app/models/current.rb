@@ -1,3 +1,3 @@
 class Current < ActiveSupport::CurrentAttributes
-  attribute :instructeur, :administrateur
+  attribute :user, :request_id
 end

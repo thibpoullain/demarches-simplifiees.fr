@@ -4,7 +4,7 @@ describe 'Instructing a dossier:', js: true do
   let(:password) { 'my-s3cure-p4ssword' }
   let!(:instructeur) { create(:instructeur, password: password) }
 
-  let!(:procedure) { create(:procedure, :published, instructeurs: [instructeur]) }
+  let!(:procedure) { create(:procedure, :with_type_de_champ, :published, instructeurs: [instructeur]) }
   let!(:dossier) { create(:dossier, :en_construction, :with_entreprise, procedure: procedure) }
   context 'the instructeur is also a user' do
     scenario 'a instructeur can fill a dossier' do
@@ -37,18 +37,18 @@ describe 'Instructing a dossier:', js: true do
     click_on dossier.user.email
     expect(page).to have_current_path(instructeur_dossier_path(procedure, dossier))
 
-    click_on 'En construction'
-    accept_confirm do
-      click_on 'Passer en instruction'
-    end
-    expect(page).to have_text('En instruction')
+    click_on 'Passer en instruction'
+
+    expect(page).to have_text('Dossier passé en instruction.')
+    expect(page).to have_text('Instruire le dossier')
+    expect(page).to have_selector('.fr-badge', text: 'en instruction')
 
     dossier.reload
     expect(dossier.state).to eq(Dossier.states.fetch(:en_instruction))
 
-    click_on 'En instruction'
+    click_on 'Instruire le dossier'
 
-    within('.state-button') do
+    within('.instruction-button') do
       click_on 'Accepter'
     end
 
@@ -61,7 +61,7 @@ describe 'Instructing a dossier:', js: true do
     end
 
     expect(page).to have_text('Dossier traité avec succès.')
-    expect(page).to have_link('Archiver le dossier')
+    expect(page).to have_button('Archiver le dossier')
 
     dossier.reload
     expect(dossier.state).to eq(Dossier.states.fetch(:accepte))
@@ -69,10 +69,19 @@ describe 'Instructing a dossier:', js: true do
 
     click_on procedure.libelle
     click_on 'traité'
-    click_on 'Actions'
+    expect(page).to have_button('Repasser en instruction')
     click_on 'Supprimer le dossier'
     click_on 'traité'
-    expect(page).not_to have_button('Actions')
+    expect(page).not_to have_button('Repasser en instruction')
+  end
+
+  scenario 'An instructeur can destroy a dossier from view' do
+    log_in(instructeur.email, password)
+
+    dossier.passer_en_instruction(instructeur: instructeur)
+    dossier.accepter!(instructeur: instructeur)
+    visit instructeur_dossier_path(procedure, dossier)
+    click_on 'Supprimer le dossier'
   end
 
   scenario 'A instructeur can follow/unfollow a dossier' do
@@ -104,37 +113,20 @@ describe 'Instructing a dossier:', js: true do
     test_statut_bar(a_suivre: 1, tous_les_dossiers: 1)
     assert_performed_jobs 1
 
-    click_on "Télécharger tous les dossiers"
-    within(:css, '.procedure-actions') do
-      click_on "Demander un export au format .xlsx"
-    end
-    expect(page).to have_text('Nous générons cet export.')
-    expect(page).to have_text('Un export au format .xlsx est en train d’être généré')
-
-    click_on "Télécharger tous les dossiers"
-    click_on "Demander un export des 30 derniers jours au format .xlsx"
-    expect(page).to have_text('Nous générons cet export.')
-    expect(page).to have_text('Un export des 30 derniers jours au format .xlsx est en train d’être généré')
-
     click_on "Télécharger un dossier"
     within(:css, '.dossiers-export') do
       click_on "Demander un export au format .csv"
     end
-    expect(page).to have_text('Nous générons cet export.')
-    expect(page).to have_text('Un export au format .csv est en train d’être généré')
 
+    expect(page).to have_text('Nous générons cet export.')
+    click_on "Télécharger un dossier"
+    expect(page).to have_text('Un export au format .csv est en train d’être généré')
     perform_enqueued_jobs(only: ExportJob)
-    assert_performed_jobs 4
+    assert_performed_jobs 2
     page.driver.browser.navigate.refresh
 
-    click_on "Télécharger tous les dossiers"
-    expect(page).to have_text('Télécharger l’export au format .xlsx')
-    expect(page).to have_text('Télécharger l’export des 30 derniers jours au format .xlsx')
-    # close dropdown menu
-    click_on "Télécharger tous les dossiers"
-
     click_on "Télécharger un dossier"
-    expect(page).to have_text('Télécharger l’export au format .xlsx')
+    expect(page).to have_text('Télécharger l’export au format .csv')
   end
 
   scenario 'A instructeur can see the personnes impliquées' do
@@ -147,6 +139,8 @@ describe 'Instructing a dossier:', js: true do
 
     click_on 'Avis externes'
     expect(page).to have_current_path(avis_instructeur_dossier_path(procedure, dossier))
+    within('.fr-sidemenu') { click_on 'Demander un avis' }
+    expect(page).to have_current_path(avis_new_instructeur_dossier_path(procedure, dossier))
 
     expert_email_formated = "[\"expert@tps.com\"]"
     expert_email = 'expert@tps.com'
@@ -185,10 +179,24 @@ describe 'Instructing a dossier:', js: true do
     expect(page).to have_text("Dossier envoyé")
   end
 
+  context 'A instructeur can ask for an Archive' do
+    let(:procedure) { create(:procedure, :published, :with_piece_justificative, instructeurs: [instructeur]) }
+    let(:dossier) { create(:dossier, :accepte, procedure: procedure) }
+    before do
+      log_in(instructeur.email, password)
+      visit instructeur_archives_path(procedure)
+    end
+    scenario 'download' do
+      expect {
+        page.first(".archive-table .button").click
+      }.to have_enqueued_job(ArchiveCreationJob).with(procedure, an_instance_of(Archive), instructeur)
+      expect(Archive.first.month).not_to be_nil
+    end
+  end
   context 'with dossiers having attached files', js: true do
     let(:procedure) { create(:procedure, :published, :with_piece_justificative, instructeurs: [instructeur]) }
     let(:dossier) { create(:dossier, :en_construction, procedure: procedure) }
-    let(:champ) { dossier.champs.first }
+    let(:champ) { dossier.champs_public.first }
     let(:path) { 'spec/fixtures/files/piece_justificative_0.pdf' }
     let(:commentaire) { create(:commentaire, instructeur: instructeur, dossier: dossier) }
 
@@ -215,11 +223,10 @@ describe 'Instructing a dossier:', js: true do
       files = ZipTricks::FileReader.read_zip_structure(io: File.open(DownloadHelpers.download))
 
       expect(DownloadHelpers.download).to include "dossier-#{dossier.id}.zip"
-      expect(files.size).to be 3
+      expect(files.size).to be 2
       expect(files[0].filename.include?('export')).to be_truthy
       expect(files[1].filename.include?('piece_justificative_0')).to be_truthy
       expect(files[1].uncompressed_size).to be File.size(path)
-      expect(files[2].filename.include?('horodatage/operation')).to be_truthy
     end
 
     scenario 'A instructeur can download an archive containing several identical attachments' do
@@ -235,14 +242,13 @@ describe 'Instructing a dossier:', js: true do
       files = ZipTricks::FileReader.read_zip_structure(io: File.open(DownloadHelpers.download))
 
       expect(DownloadHelpers.download).to include "dossier-#{dossier.id}.zip"
-      expect(files.size).to be 4
+      expect(files.size).to be 3
       expect(files[0].filename.include?('export')).to be_truthy
       expect(files[1].filename.include?('piece_justificative_0')).to be_truthy
       expect(files[2].filename.include?('piece_justificative_0')).to be_truthy
       expect(files[1].filename).not_to eq files[2].filename
       expect(files[1].uncompressed_size).to be File.size(path)
       expect(files[2].uncompressed_size).to be File.size(path)
-      expect(files[3].filename.include?('horodatage/operation')).to be_truthy
     end
 
     before { DownloadHelpers.clear_downloads }
@@ -250,8 +256,7 @@ describe 'Instructing a dossier:', js: true do
   end
 
   def log_in(email, password, check_email: true)
-    visit '/'
-    click_on 'Connexion'
+    visit new_user_session_path
     expect(page).to have_current_path(new_user_session_path)
 
     sign_in_with(email, password, check_email)
@@ -267,6 +272,7 @@ describe 'Instructing a dossier:', js: true do
     page.execute_script("document.querySelector('#avis_emails').value = '#{to}'")
     fill_in 'avis_introduction', with: introduction
     select 'confidentiel', from: 'avis_confidentiel'
+    within('form#new_avis') { click_on 'Demander un avis' }
     click_on 'Demander un avis'
   end
 

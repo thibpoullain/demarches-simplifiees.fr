@@ -2,31 +2,90 @@
 #
 # Table name: types_de_champ
 #
-#  id              :integer          not null, primary key
-#  description     :text
-#  libelle         :string
-#  mandatory       :boolean          default(FALSE)
-#  migrated_parent :boolean
-#  options         :jsonb
-#  order_place     :integer
-#  private         :boolean          default(FALSE), not null
-#  type_champ      :string
-#  created_at      :datetime
-#  updated_at      :datetime
-#  parent_id       :bigint
-#  revision_id     :bigint
-#  stable_id       :bigint
+#  id          :integer          not null, primary key
+#  condition   :jsonb
+#  description :text
+#  libelle     :string
+#  mandatory   :boolean          default(FALSE)
+#  options     :jsonb
+#  private     :boolean          default(FALSE), not null
+#  type_champ  :string
+#  created_at  :datetime
+#  updated_at  :datetime
+#  stable_id   :bigint
 #
 class TypeDeChamp < ApplicationRecord
+  # TODO remove class method when deploying next release (Enterprise API)
+  def self.is_db_migrated?
+    !(TypeDeChamp.column_names.include? 'parent_id')
+  end
+
+  # TODO remove condition when deploying next release (Enterprise API)
+  if self.is_db_migrated?
+    self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
+  end
+
+  FILE_MAX_SIZE = 200.megabytes
+  FEATURE_FLAGS = {}
+
+  STRUCTURE = :structure
+  ETAT_CIVIL = :etat_civil
+  LOCALISATION = :localisation
+  PAIEMENT_IDENTIFICATION = :paiement_identification
+  STANDARD = :standard
+  PIECES_JOINTES = :pieces_jointes
+  CHOICE = :choice
+  REFERENTIEL_EXTERNE = :referentiel_externe
+
+  CATEGORIES = [STRUCTURE, ETAT_CIVIL, LOCALISATION, PAIEMENT_IDENTIFICATION, STANDARD, PIECES_JOINTES, CHOICE, REFERENTIEL_EXTERNE]
+
+  TYPE_DE_CHAMP_TO_CATEGORIE = {
+    header_section: STRUCTURE,
+    repetition: STRUCTURE,
+    dossier_link: STRUCTURE,
+    explication: STRUCTURE,
+    civilite: ETAT_CIVIL,
+    email: ETAT_CIVIL,
+    nir: ETAT_CIVIL,
+    finess: REFERENTIEL_EXTERNE,
+    rppsante: REFERENTIEL_EXTERNE,
+    phone: ETAT_CIVIL,
+    address: LOCALISATION,
+    communes: LOCALISATION,
+    departements: LOCALISATION,
+    regions: LOCALISATION,
+    pays: LOCALISATION,
+    epci: LOCALISATION,
+    iban: PAIEMENT_IDENTIFICATION,
+    siret: PAIEMENT_IDENTIFICATION,
+    text: STANDARD,
+    textarea: STANDARD,
+    number: STANDARD,
+    decimal_number: STANDARD,
+    integer_number: STANDARD,
+    date: STANDARD,
+    datetime: STANDARD,
+    piece_justificative: PIECES_JOINTES,
+    titre_identite: PIECES_JOINTES,
+    checkbox: CHOICE,
+    drop_down_list: CHOICE,
+    multiple_drop_down_list: CHOICE,
+    linked_drop_down_list: CHOICE,
+    yes_no: CHOICE,
+    annuaire_education: REFERENTIEL_EXTERNE,
+    rna: REFERENTIEL_EXTERNE,
+    carte: REFERENTIEL_EXTERNE,
+    cnaf: REFERENTIEL_EXTERNE,
+    dgfip: REFERENTIEL_EXTERNE,
+    pole_emploi: REFERENTIEL_EXTERNE,
+    mesri: REFERENTIEL_EXTERNE
+  }
+
   enum type_champs: {
-    text: 'text',
-    textarea: 'textarea',
-    date: 'date',
-    datetime: 'datetime',
-    number: 'number',
-    decimal_number: 'decimal_number',
-    integer_number: 'integer_number',
-    checkbox: 'checkbox',
+    header_section: 'header_section',
+    repetition: 'repetition',
+    dossier_link: 'dossier_link',
+    explication: 'explication',
     civilite: 'civilite',
     email: 'email',
     nir: 'nir',
@@ -34,43 +93,62 @@ class TypeDeChamp < ApplicationRecord
     rppsante: 'rppsante',
     phone: 'phone',
     address: 'address',
-    yes_no: 'yes_no',
+    communes: 'communes',
+    departements: 'departements',
+    regions: 'regions',
+    pays: 'pays',
+    iban: 'iban',
+    siret: 'siret',
+    text: 'text',
+    textarea: 'textarea',
+    number: 'number',
+    decimal_number: 'decimal_number',
+    integer_number: 'integer_number',
+    date: 'date',
+    datetime: 'datetime',
+    piece_justificative: 'piece_justificative',
+    titre_identite: 'titre_identite',
+    checkbox: 'checkbox',
     drop_down_list: 'drop_down_list',
     multiple_drop_down_list: 'multiple_drop_down_list',
     linked_drop_down_list: 'linked_drop_down_list',
-    pays: 'pays',
-    regions: 'regions',
-    departements: 'departements',
-    communes: 'communes',
-    engagement: 'engagement',
-    header_section: 'header_section',
-    explication: 'explication',
-    dossier_link: 'dossier_link',
-    piece_justificative: 'piece_justificative',
-    siret: 'siret',
-    carte: 'carte',
-    repetition: 'repetition',
-    titre_identite: 'titre_identite',
-    iban: 'iban',
+    yes_no: 'yes_no',
     annuaire_education: 'annuaire_education',
+    rna: 'rna',
+    carte: 'carte',
     cnaf: 'cnaf',
     dgfip: 'dgfip',
     pole_emploi: 'pole_emploi',
-    mesri: 'mesri'
+    mesri: 'mesri',
+    epci: 'epci'
   }
 
-  belongs_to :revision, class_name: 'ProcedureRevision', optional: true
-  has_one :procedure, through: :revision
+  store_accessor :options,
+                 :cadastres,
+                 :old_pj,
+                 :drop_down_options,
+                 :skip_pj_validation,
+                 :skip_content_type_pj_validation,
+                 :drop_down_secondary_libelle,
+                 :drop_down_secondary_description,
+                 :drop_down_other,
+                 :collapsible_explanation_enabled,
+                 :collapsible_explanation_text
 
-  belongs_to :parent, class_name: 'TypeDeChamp', optional: true
-  has_many :types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'TypeDeChamp', inverse_of: :parent, dependent: :destroy
+  # TODO remove condition when deploying next release (Enterprise API)
+  if !self.is_db_migrated?
+    belongs_to :parent, class_name: 'TypeDeChamp', optional: true
+    has_many :types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'TypeDeChamp', inverse_of: :parent, dependent: :destroy
+  end
 
   store_accessor :options, :cadastres, :old_pj, :drop_down_options, :skip_pj_validation, :skip_content_type_pj_validation, :drop_down_secondary_libelle, :drop_down_secondary_description, :drop_down_other
   has_many :revision_types_de_champ, -> { revision_ordered }, class_name: 'ProcedureRevisionTypeDeChamp', dependent: :destroy, inverse_of: :type_de_champ
   has_one :revision_type_de_champ, -> { revision_ordered }, class_name: 'ProcedureRevisionTypeDeChamp', inverse_of: false
   has_many :revisions, -> { ordered }, through: :revision_types_de_champ
+  has_one :revision, through: :revision_type_de_champ
+  has_one :procedure, through: :revision
 
-  delegate :tags_for_template, :libelle_for_export, to: :dynamic_type
+  delegate :estimated_fill_duration, :estimated_read_duration, :tags_for_template, :libelle_for_export, to: :dynamic_type
 
   class WithIndifferentAccess
     def self.load(options)
@@ -84,6 +162,8 @@ class TypeDeChamp < ApplicationRecord
 
   serialize :options, WithIndifferentAccess
 
+  serialize :condition, LogicSerializer
+
   after_initialize :set_dynamic_type
   after_create :populate_stable_id
 
@@ -95,7 +175,13 @@ class TypeDeChamp < ApplicationRecord
   scope :root, -> { where(parent_id: nil) }
   scope :repetition, -> { where(type_champ: type_champs.fetch(:repetition)) }
   scope :not_repetition, -> { where.not(type_champ: type_champs.fetch(:repetition)) }
+  scope :not_condition, -> { where(condition: nil) }
   scope :fillable, -> { where.not(type_champ: [type_champs.fetch(:header_section), type_champs.fetch(:explication)]) }
+
+  scope :dubious, -> {
+    where("unaccent(types_de_champ.libelle) ~* unaccent(?)", DubiousProcedure.forbidden_regexp)
+      .where(type_champ: [TypeDeChamp.type_champs.fetch(:text), TypeDeChamp.type_champs.fetch(:textarea)])
+  }
 
   has_many :champ, inverse_of: :type_de_champ, dependent: :destroy do
     def build(params = {})
@@ -108,16 +194,17 @@ class TypeDeChamp < ApplicationRecord
   end
 
   has_one_attached :piece_justificative_template
-
-  accepts_nested_attributes_for :types_de_champ, reject_if: proc { |attributes| attributes['libelle'].blank? }, allow_destroy: true
+  validates :piece_justificative_template, size: { less_than: FILE_MAX_SIZE }
+  validates :piece_justificative_template, content_type: AUTHORIZED_CONTENT_TYPES
 
   validates :libelle, presence: true, allow_blank: false, allow_nil: false
   validates :type_champ, presence: true, allow_blank: false, allow_nil: false
 
   before_validation :check_mandatory
+  before_validation :normalize_libelle
   before_save :remove_piece_justificative_template, if: -> { type_champ_changed? }
-  before_save :remove_drop_down_list, if: -> { type_champ_changed? }
-  before_save :remove_repetition, if: -> { type_champ_changed? }
+  before_validation :remove_drop_down_list, if: -> { type_champ_changed? }
+  before_save :remove_block, if: -> { type_champ_changed? }
 
   after_save if: -> { @remove_piece_justificative_template } do
     piece_justificative_template.purge_later
@@ -150,8 +237,8 @@ class TypeDeChamp < ApplicationRecord
     }
   end
 
-  def build_champ
-    dynamic_type.build_champ
+  def build_champ(params = {})
+    champ.build(params)
   end
 
   def check_mandatory
@@ -160,6 +247,52 @@ class TypeDeChamp < ApplicationRecord
     else
       true
     end
+  end
+
+  def only_present_on_draft?
+    revisions.one? && revisions.first.draft?
+  end
+
+  def drop_down_other?
+    drop_down_other == "1" || drop_down_other == true
+  end
+
+  def collapsible_explanation_enabled?
+    collapsible_explanation_enabled == "1"
+  end
+
+  def prefillable?
+    type_champ.in?([
+      TypeDeChamp.type_champs.fetch(:text),
+      TypeDeChamp.type_champs.fetch(:textarea),
+      TypeDeChamp.type_champs.fetch(:decimal_number),
+      TypeDeChamp.type_champs.fetch(:integer_number),
+      TypeDeChamp.type_champs.fetch(:email),
+      TypeDeChamp.type_champs.fetch(:phone),
+      TypeDeChamp.type_champs.fetch(:iban),
+      TypeDeChamp.type_champs.fetch(:civilite),
+      TypeDeChamp.type_champs.fetch(:pays),
+      TypeDeChamp.type_champs.fetch(:regions),
+      TypeDeChamp.type_champs.fetch(:departements),
+      TypeDeChamp.type_champs.fetch(:communes),
+      TypeDeChamp.type_champs.fetch(:address),
+      TypeDeChamp.type_champs.fetch(:date),
+      TypeDeChamp.type_champs.fetch(:datetime),
+      TypeDeChamp.type_champs.fetch(:yes_no),
+      TypeDeChamp.type_champs.fetch(:checkbox),
+      TypeDeChamp.type_champs.fetch(:drop_down_list),
+      TypeDeChamp.type_champs.fetch(:repetition),
+      TypeDeChamp.type_champs.fetch(:multiple_drop_down_list),
+      TypeDeChamp.type_champs.fetch(:epci),
+      TypeDeChamp.type_champs.fetch(:annuaire_education),
+      TypeDeChamp.type_champs.fetch(:dossier_link),
+      TypeDeChamp.type_champs.fetch(:siret),
+      TypeDeChamp.type_champs.fetch(:rna)
+    ])
+  end
+
+  def fillable?
+    !non_fillable?
   end
 
   def non_fillable?
@@ -185,15 +318,27 @@ class TypeDeChamp < ApplicationRecord
     ])
   end
 
-  def header_section?
-    type_champ == TypeDeChamp.type_champs.fetch(:header_section)
+  def simple_drop_down_list?
+    type_champ == TypeDeChamp.type_champs.fetch(:drop_down_list)
   end
 
   def linked_drop_down_list?
     type_champ == TypeDeChamp.type_champs.fetch(:linked_drop_down_list)
   end
 
+  def block?
+    type_champ == TypeDeChamp.type_champs.fetch(:repetition)
+  end
+
+  def header_section?
+    type_champ == TypeDeChamp.type_champs.fetch(:header_section)
+  end
+
   def exclude_from_view?
+    type_champ == TypeDeChamp.type_champs.fetch(:explication)
+  end
+
+  def explication?
     type_champ == TypeDeChamp.type_champs.fetch(:explication)
   end
 
@@ -203,6 +348,10 @@ class TypeDeChamp < ApplicationRecord
 
   def dossier_link?
     type_champ == TypeDeChamp.type_champs.fetch(:dossier_link)
+  end
+
+  def siret?
+    type_champ == TypeDeChamp.type_champs.fetch(:siret)
   end
 
   def piece_justificative?
@@ -219,6 +368,38 @@ class TypeDeChamp < ApplicationRecord
 
   def carte?
     type_champ == TypeDeChamp.type_champs.fetch(:carte)
+  end
+
+  def cnaf?
+    type_champ == TypeDeChamp.type_champs.fetch(:cnaf)
+  end
+
+  def rna?
+    type_champ == TypeDeChamp.type_champs.fetch(:rna)
+  end
+
+  def dgfip?
+    type_champ == TypeDeChamp.type_champs.fetch(:dgfip)
+  end
+
+  def pole_emploi?
+    type_champ == TypeDeChamp.type_champs.fetch(:pole_emploi)
+  end
+
+  def departement?
+    type_champ == TypeDeChamp.type_champs.fetch(:departements)
+  end
+
+  def region?
+    type_champ == TypeDeChamp.type_champs.fetch(:regions)
+  end
+
+  def mesri?
+    type_champ == TypeDeChamp.type_champs.fetch(:mesri)
+  end
+
+  def datetime?
+    type_champ == TypeDeChamp.type_champs.fetch(:datetime)
   end
 
   def public?
@@ -259,6 +440,29 @@ class TypeDeChamp < ApplicationRecord
     self.drop_down_options = parse_drop_down_list_value(value)
   end
 
+  def self.options_for_select?(type_champs)
+    [
+      TypeDeChamp.type_champs.fetch(:departements),
+      TypeDeChamp.type_champs.fetch(:regions)
+    ].include?(type_champs)
+  end
+
+  def options_for_select
+    if departement?
+      APIGeoService.departements.map { ["#{_1[:code]} – #{_1[:name]}", _1[:name]] }
+    elsif region?
+      APIGeoService.regions.map { [_1[:name], _1[:name]] }
+    end
+  end
+
+  # historicaly we added a blank ("") option by default to avoid wrong selection
+  #   see self.parse_drop_down_list_value
+  #   then rails decided to add this blank ("") option when the select is required
+  #   so we revert this change
+  def options_without_empty_value_when_mandatory(options)
+    mandatory? ? options.reject(&:blank?) : options
+  end
+
   def drop_down_list_options?
     drop_down_list_options.any?
   end
@@ -294,89 +498,10 @@ class TypeDeChamp < ApplicationRecord
   end
 
   def editable_options
-    options.slice(*TypesDeChamp::CarteTypeDeChamp::LAYERS)
-  end
-
-  def types_de_champ_for_revision(revision)
-    if revision.draft?
-      # if we are asking for children on a draft revision, just use current child types_de_champ
-      types_de_champ.fillable
-    else
-      # otherwise return all types_de_champ in their latest state
-      types_de_champ = TypeDeChamp
-        .fillable
-        .joins(parent: :revision_types_de_champ)
-        .where(parent: { stable_id: stable_id }, revision_types_de_champ: { revision_id: revision })
-
-      TypeDeChamp
-        .where(id: types_de_champ.group(:stable_id).select('MAX(types_de_champ.id)'))
-        .order(:order_place, id: :desc)
+    layers = TypesDeChamp::CarteTypeDeChamp::LAYERS.map do |layer|
+      [layer, layer_enabled?(layer)]
     end
-  end
-
-  FEATURE_FLAGS = {}
-
-  def self.type_de_champ_types_for(procedure, user)
-    has_legacy_number = (procedure.types_de_champ + procedure.types_de_champ_private).any?(&:legacy_number?)
-
-    filter_featured_tdc = -> (tdc) do
-      feature_name = FEATURE_FLAGS[tdc]
-      feature_name.blank? || Flipper.enabled?(feature_name, user)
-    end
-
-    filter_tdc = -> (tdc) do
-      case tdc
-      when TypeDeChamp.type_champs.fetch(:number)
-        has_legacy_number
-      when TypeDeChamp.type_champs.fetch(:cnaf)
-        procedure.cnaf_enabled?
-      when TypeDeChamp.type_champs.fetch(:dgfip)
-        procedure.dgfip_enabled?
-      when TypeDeChamp.type_champs.fetch(:pole_emploi)
-        procedure.pole_emploi_enabled?
-      when TypeDeChamp.type_champs.fetch(:mesri)
-        procedure.mesri_enabled?
-      else
-        true
-      end
-    end
-
-    type_champs
-      .keys
-      .filter(&filter_tdc)
-      .filter(&filter_featured_tdc)
-      .map { |tdc| [I18n.t("activerecord.attributes.type_de_champ.type_champs.#{tdc}"), tdc] }
-      .sort_by(&:first)
-  end
-
-  TYPES_DE_CHAMP_BASE = {
-    except: [
-      :created_at,
-      :options,
-      :order_place,
-      :parent_id,
-      :private,
-      :procedure_id,
-      :revision_id,
-      :stable_id,
-      :type,
-      :updated_at
-    ],
-    methods: [
-      :drop_down_list_value,
-      :drop_down_other,
-      :piece_justificative_template_filename,
-      :piece_justificative_template_url,
-      :editable_options,
-      :drop_down_secondary_libelle,
-      :drop_down_secondary_description
-    ]
-  }
-  TYPES_DE_CHAMP = TYPES_DE_CHAMP_BASE
-    .merge(include: { types_de_champ: TYPES_DE_CHAMP_BASE })
-
-  def self.as_json_for_editor
-    includes(piece_justificative_template_attachment: :blob, types_de_champ: [piece_justificative_template_attachment: :blob]).as_json(TYPES_DE_CHAMP)
+    layers.each_slice((layers.size / 2.0).round).to_a
   end
 
   def read_attribute_for_serialization(name)
@@ -384,6 +509,33 @@ class TypeDeChamp < ApplicationRecord
       stable_id
     else
       super
+    end
+  end
+
+  def destroy_if_orphan
+    if revision_types_de_champ.empty?
+      destroy
+    end
+  end
+
+  def stable_self
+    OpenStruct.new(to_key: [stable_id],
+      model_name: OpenStruct.new(param_key: model_name.param_key))
+  end
+
+  def refresh_after_update?
+    self.class.refresh_after_update?(type_champ)
+  end
+
+  def self.refresh_after_update?(type_champ)
+    case type_champ
+    when type_champs.fetch(:epci),
+      type_champs.fetch(:communes),
+      type_champs.fetch(:multiple_drop_down_list),
+      type_champs.fetch(:dossier_link)
+      true
+    else
+      false
     end
   end
 
@@ -400,10 +552,11 @@ class TypeDeChamp < ApplicationRecord
 
   private
 
+  DEFAULT_EMPTY = ['']
   def parse_drop_down_list_value(value)
     value = value ? value.split("\r\n").map(&:strip).join("\r\n") : ''
     result = value.split(/[\r\n]|[\r]|[\n]|[\n\r]/).reject(&:empty?)
-    result.blank? ? [] : [''] + result
+    result.blank? ? [] : DEFAULT_EMPTY + result
   end
 
   def populate_stable_id
@@ -421,12 +574,24 @@ class TypeDeChamp < ApplicationRecord
   def remove_drop_down_list
     if !drop_down_list?
       self.drop_down_options = nil
+    elsif !drop_down_options_changed?
+      self.drop_down_options = if linked_drop_down_list?
+        ['', '--Fromage--', 'bleu de sassenage', 'picodon', '--Dessert--', 'éclair', 'tarte aux pommes']
+      else
+        ['', 'Premier choix', 'Deuxième choix']
+      end
     end
   end
 
-  def remove_repetition
-    if !repetition?
-      types_de_champ.destroy_all
+  def remove_block
+    if !block? && procedure.present?
+      procedure
+        .draft_revision # action occurs only on draft
+        .remove_children_of(self)
     end
+  end
+
+  def normalize_libelle
+    self.libelle&.strip!
   end
 end

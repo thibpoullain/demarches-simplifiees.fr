@@ -4,11 +4,15 @@ module Instructeurs
     include ActionView::Helpers::TextHelper
     include CreateAvisConcern
     include DossierHelper
+    include TurboChampsConcern
 
     include ActionController::Streaming
     include Zipline
 
+    before_action :redirect_on_dossier_not_found, only: :show
+    before_action :redirect_on_dossier_in_batch_operation, only: [:archive, :unarchive, :follow, :unfollow, :passer_en_instruction, :repasser_en_construction, :repasser_en_instruction, :terminer, :restore, :destroy, :extend_conservation]
     after_action :mark_demande_as_read, only: :show
+
     after_action :mark_messagerie_as_read, only: [:messagerie, :create_commentaire]
     after_action :mark_avis_as_read, only: [:avis, :create_avis]
     after_action :mark_annotations_privees_as_read, only: [:annotations_privees, :update_annotations]
@@ -44,6 +48,7 @@ module Instructeurs
 
     def show
       @demande_seen_at = current_instructeur.follows.find_by(dossier: dossier_with_champs)&.demande_seen_at
+      @is_dossier_in_batch_operation = dossier.batch_operation.present?
 
       respond_to do |format|
         format.pdf do
@@ -71,6 +76,14 @@ module Instructeurs
       end
     end
 
+    def avis_new
+      @avis_seen_at = current_instructeur.follows.find_by(dossier: dossier)&.avis_seen_at
+      @avis = Avis.new
+      if @dossier.procedure.experts_require_administrateur_invitation?
+        @experts_emails = dossier.procedure.experts_procedures.where(revoked_at: nil).map(&:expert).map(&:email).sort
+      end
+    end
+
     def personnes_impliquees
       @following_instructeurs_emails = dossier.followers_instructeurs.map(&:email)
       previous_followers = dossier.previous_followers_instructeurs - dossier.followers_instructeurs
@@ -82,14 +95,19 @@ module Instructeurs
 
     def send_to_instructeurs
       recipients = params['recipients'].presence || [].to_json
-      recipients = Instructeur.find(JSON.parse(recipients))
+      # instructeurs are scoped by groupe_instructeur to avoid enumeration
+      recipients = dossier.groupe_instructeur.instructeurs.where(id: JSON.parse(recipients))
 
-      recipients.each do |recipient|
-        recipient.follow(dossier)
-        InstructeurMailer.send_dossier(current_instructeur, dossier, recipient).deliver_later
+      if recipients.present?
+        recipients.each do |recipient|
+          recipient.follow(dossier)
+          InstructeurMailer.send_dossier(current_instructeur, dossier, recipient).deliver_later
+        end
+        flash.notice = "Dossier envoyé"
+      else
+        flash.alert = "Instructeur inconnu ou non présent sur la procédure"
       end
 
-      flash.notice = "Dossier envoyé"
       redirect_to(personnes_impliquees_instructeur_dossier_path(procedure, dossier))
     end
 
@@ -112,7 +130,7 @@ module Instructeurs
     end
 
     def unarchive
-      dossier.desarchiver!(current_instructeur)
+      dossier.desarchiver!
       redirect_back(fallback_location: instructeur_procedure_path(procedure))
     end
 
@@ -124,18 +142,36 @@ module Instructeurs
         flash.alert = aasm_error_message(e, target_state: :en_instruction)
       end
 
-      render partial: 'state_button_refresh', locals: { dossier: dossier }
+      @dossier = dossier
+      respond_to do |format|
+        format.turbo_stream do
+          render :change_state
+        end
+
+        format.html do
+          redirect_back(fallback_location: instructeur_procedure_path(procedure))
+        end
+      end
     end
 
     def repasser_en_construction
       begin
-        dossier.repasser_en_construction!(current_instructeur)
+        dossier.repasser_en_construction!(instructeur: current_instructeur)
         flash.notice = 'Dossier repassé en construction.'
       rescue AASM::InvalidTransition => e
         flash.alert = aasm_error_message(e, target_state: :en_construction)
       end
 
-      render partial: 'state_button_refresh', locals: { dossier: dossier }
+      @dossier = dossier
+      respond_to do |format|
+        format.turbo_stream do
+          render :change_state
+        end
+
+        format.html do
+          redirect_back(fallback_location: instructeur_procedure_path(procedure))
+        end
+      end
     end
 
     def repasser_en_instruction
@@ -146,7 +182,16 @@ module Instructeurs
         flash.alert = aasm_error_message(e, target_state: :en_instruction)
       end
 
-      render partial: 'state_button_refresh', locals: { dossier: dossier }
+      @dossier = dossier
+      respond_to do |format|
+        format.turbo_stream do
+          render :change_state
+        end
+
+        format.html do
+          redirect_back(fallback_location: instructeur_procedure_path(procedure))
+        end
+      end
     end
 
     def terminer
@@ -174,13 +219,14 @@ module Instructeurs
         flash.alert = aasm_error_message(e, target_state: target_state)
       end
 
-      render partial: 'state_button_refresh', locals: { dossier: dossier }
+      @dossier = dossier
+      render :change_state
     end
 
     def create_commentaire
-      @commentaire = CommentaireService.build(current_instructeur, dossier, commentaire_params)
+      @commentaire = CommentaireService.create(current_instructeur, dossier, commentaire_params)
 
-      if @commentaire.save
+      if @commentaire.errors.empty?
         @commentaire.dossier.update!(last_commentaire_updated_at: Time.zone.now)
         current_instructeur.follow(dossier)
         flash.notice = "Message envoyé"
@@ -204,12 +250,18 @@ module Instructeurs
 
     def update_annotations
       dossier_with_champs.assign_attributes(champs_private_params)
-      if dossier.champs_private.any?(&:changed?)
+      if dossier.champs_private_all.any?(&:changed?)
         dossier.last_champ_private_updated_at = Time.zone.now
       end
-      dossier.save
-      dossier.log_modifier_annotations!(current_instructeur)
-      redirect_to annotations_privees_instructeur_dossier_path(procedure, dossier)
+      if !dossier.save(context: :annotations)
+        flash.now.alert = dossier.errors.full_messages
+      end
+
+      respond_to do |format|
+        format.turbo_stream do
+          @to_show, @to_hide, @to_update = champs_to_turbo_update(champs_private_params.fetch(:champs_private_all_attributes), dossier.champs_private_all)
+        end
+      end
     end
 
     def print
@@ -218,9 +270,10 @@ module Instructeurs
     end
 
     def telecharger_pjs
-      files = ActiveStorage::DownloadableFile.create_list_from_dossiers(Dossier.where(id: dossier.id))
+      files = ActiveStorage::DownloadableFile.create_list_from_dossiers(Dossier.where(id: dossier.id), with_champs_private: true, include_infos_administration: true)
+      cleaned_files = ActiveStorage::DownloadableFile.cleanup_list_from_dossier(files)
 
-      zipline(files, "dossier-#{dossier.id}.zip")
+      zipline(cleaned_files, "dossier-#{dossier.id}.zip")
     end
 
     def destroy
@@ -247,20 +300,24 @@ module Instructeurs
 
     private
 
+    def dossier_scope
+      if action_name == 'update_annotations'
+        Dossier
+          .where(id: current_instructeur.dossiers.visible_by_administration)
+          .or(Dossier.where(id: current_user.dossiers.for_procedure_preview))
+      else
+        current_instructeur.dossiers.visible_by_administration
+      end
+    end
+
     def dossier
-      @dossier ||= current_instructeur
-        .dossiers
-        .visible_by_administration
-        .find(params[:dossier_id])
+      @dossier ||= DossierPreloader.load_one(dossier_scope.find(params[:dossier_id])).tap do
+        set_sentry_dossier(_1)
+      end
     end
 
     def dossier_with_champs
-      @dossier ||= current_instructeur
-        .dossiers
-        .visible_by_administration
-        .with_champs
-        .with_annotations
-        .find(params[:dossier_id])
+      @dossier ||= DossierPreloader.load_one(dossier_scope.find(params[:dossier_id]))
     end
 
     def commentaire_params
@@ -268,10 +325,12 @@ module Instructeurs
     end
 
     def champs_private_params
-      params.require(:dossier).permit(champs_private_attributes: [
-        :id, :primary_value, :secondary_value, :piece_justificative_file, :value_other, :external_id, :numero_allocataire, :code_postal, :departement, :code_departement, :value, value: [],
-        champs_attributes: [:id, :_destroy, :value, :primary_value, :secondary_value, :piece_justificative_file, :value_other, :external_id, :numero_allocataire, :code_postal, :departement, :code_departement, value: []]
+      champs_params = params.require(:dossier).permit(champs_private_attributes: [
+        :id, :primary_value, :secondary_value, :piece_justificative_file, :value_other, :external_id, :numero_allocataire, :code_postal, :code_departement, :value, value: [],
+        champs_attributes: [:id, :_destroy, :value, :primary_value, :secondary_value, :piece_justificative_file, :value_other, :external_id, :numero_allocataire, :code_postal, :code_departement, value: []]
       ])
+      champs_params[:champs_private_all_attributes] = champs_params.delete(:champs_private_attributes) || {}
+      champs_params
     end
 
     def mark_demande_as_read
@@ -293,8 +352,28 @@ module Instructeurs
     def aasm_error_message(exception, target_state:)
       if exception.originating_state == target_state
         "Le dossier est déjà #{dossier_display_state(target_state, lower: true)}."
+      elsif exception.failures.include?(:can_terminer?) && dossier.any_etablissement_as_degraded_mode?
+        "Les données relatives au SIRET de ce dossier n’ont pas pu encore être vérifiées : il n’est pas possible de le passer #{dossier_display_state(target_state, lower: true)}."
       else
         "Le dossier est en ce moment #{dossier_display_state(exception.originating_state, lower: true)} : il n’est pas possible de le passer #{dossier_display_state(target_state, lower: true)}."
+      end
+    end
+
+    def redirect_on_dossier_not_found
+      if !dossier_scope.exists?(id: params[:dossier_id])
+        redirect_to instructeur_procedure_path(procedure)
+      end
+    end
+
+    def redirect_on_dossier_in_batch_operation
+      dossier_in_batch = begin
+        dossier
+                         rescue ActiveRecord::RecordNotFound
+                           current_instructeur.dossiers.find(params[:dossier_id])
+      end
+      if dossier_in_batch.batch_operation.present?
+        flash.alert = "Votre action n'a pas été effectuée, ce dossier fait parti d'un traitement de masse."
+        redirect_back(fallback_location: instructeur_dossier_path(procedure, dossier_in_batch))
       end
     end
   end

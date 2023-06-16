@@ -1,6 +1,9 @@
 module Administrateurs
   class GroupeInstructeursController < AdministrateurController
     include ActiveSupport::NumberHelper
+
+    before_action :ensure_not_super_admin!, only: [:add_instructeur]
+
     ITEMS_PER_PAGE = 25
     CSV_MAX_SIZE = 1.megabytes
     CSV_ACCEPTED_CONTENT_TYPES = [
@@ -10,16 +13,10 @@ module Administrateurs
 
     def index
       @procedure = procedure
+      @groupes_instructeurs = paginated_groupe_instructeurs
 
-      if procedure.routee?
-        @groupes_instructeurs = paginated_groupe_instructeurs
-        @instructeurs = []
-        @available_instructeur_emails = []
-      else
-        @groupes_instructeurs = []
-        @instructeurs = paginated_instructeurs
-        @available_instructeur_emails = available_instructeur_emails
-      end
+      @instructeurs = paginated_instructeurs
+      @available_instructeur_emails = available_instructeur_emails
     end
 
     def show
@@ -32,16 +29,18 @@ module Administrateurs
     def create
       @groupe_instructeur = procedure
         .groupe_instructeurs
-        .new(label: label, instructeurs: [current_administrateur.instructeur])
+        .new({ instructeurs: [current_administrateur.instructeur] }.merge(groupe_instructeur_params))
 
       if @groupe_instructeur.save
+        routing_notice = " et le routage a été activé" if procedure.groupe_instructeurs.active.size == 2
         redirect_to admin_procedure_groupe_instructeur_path(procedure, @groupe_instructeur),
-          notice: "Le groupe d’instructeurs « #{label} » a été créé."
+          notice: "Le groupe d’instructeurs « #{@groupe_instructeur.label} » a été créé#{routing_notice}."
       else
         @procedure = procedure
+        @instructeurs = paginated_instructeurs
         @groupes_instructeurs = paginated_groupe_instructeurs
 
-        flash[:alert] = "le nom « #{label} » est déjà pris par un autre groupe."
+        flash.now[:alert] = @groupe_instructeur.errors.full_messages
         render :index
       end
     end
@@ -49,28 +48,33 @@ module Administrateurs
     def update
       @groupe_instructeur = groupe_instructeur
 
-      if @groupe_instructeur.update(label: label)
+      if @groupe_instructeur.update(groupe_instructeur_params)
         redirect_to admin_procedure_groupe_instructeur_path(procedure, groupe_instructeur),
-          notice: "Le nom est à présent « #{label} »."
+          notice: "Le nom est à présent « #{@groupe_instructeur.label} »."
       else
         @procedure = procedure
         @instructeurs = paginated_instructeurs
         @available_instructeur_emails = available_instructeur_emails
 
-        flash[:alert] = "le nom « #{label} » est déjà pris par un autre groupe."
+        flash.now[:alert] = @groupe_instructeur.errors.full_messages
         render :show
       end
     end
 
     def destroy
-      if !groupe_instructeur.dossiers.empty?
+      @groupe_instructeur = groupe_instructeur
+
+      if @groupe_instructeur.dossiers.present?
         flash[:alert] = "Impossible de supprimer un groupe avec des dossiers. Il faut le réaffecter avant"
       elsif procedure.groupe_instructeurs.one?
         flash[:alert] = "Suppression impossible : il doit y avoir au moins un groupe instructeur sur chaque procédure"
       else
-        label = groupe_instructeur.label
-        groupe_instructeur.destroy!
-        flash[:notice] = "le groupe « #{label} » a été supprimé."
+        @groupe_instructeur.destroy!
+        if procedure.groupe_instructeurs.active.one?
+          procedure.update!(routing_enabled: false)
+          routing_notice = " et le routage a été désactivé"
+        end
+        flash[:notice] = "le groupe « #{@groupe_instructeur.label} » a été supprimé#{routing_notice}."
       end
       redirect_to admin_procedure_groupe_instructeurs_path(procedure)
     end
@@ -105,51 +109,32 @@ module Administrateurs
 
     def add_instructeur
       emails = params['emails'].presence || [].to_json
-      emails = JSON.parse(emails).map(&:strip).map(&:downcase)
+      emails = JSON.parse(emails).map { EmailSanitizableConcern::EmailSanitizer.sanitize(_1) }
 
-      correct_emails, bad_emails = emails
-        .partition { |email| URI::MailTo::EMAIL_REGEXP.match?(email) }
+      instructeurs, invalid_emails = groupe_instructeur.add_instructeurs(emails:)
 
-      if bad_emails.present?
+      if invalid_emails.present?
         flash[:alert] = t('.wrong_address',
-          count: bad_emails.count,
-          value: bad_emails.join(', '))
+          count: invalid_emails.size,
+          emails: invalid_emails.join(', '))
       end
 
-      email_to_adds = correct_emails - groupe_instructeur.instructeurs.map(&:email)
-
-      if email_to_adds.present?
-        instructeurs = email_to_adds.map do |instructeur_email|
-          Instructeur.by_email(instructeur_email) ||
-            create_instructeur(instructeur_email)
-        end
-
-        if procedure.routee?
-          instructeurs.each do |instructeur|
-            groupe_instructeur.add(instructeur)
-          end
-
-          GroupeInstructeurMailer
-            .add_instructeurs(groupe_instructeur, instructeurs, current_user.email)
-            .deliver_later
-
-          flash[:notice] = t('.assignment',
-            count: email_to_adds.count,
-            value: email_to_adds.join(', '),
+      if instructeurs.present?
+        flash[:notice] = if procedure.routing_enabled?
+          t('.assignment',
+            count: instructeurs.size,
+            emails: instructeurs.map(&:email).join(', '),
             groupe: groupe_instructeur.label)
-
         else
-
-          if instructeurs.present?
-            instructeurs.each do |instructeur|
-              procedure.defaut_groupe_instructeur.add(instructeur)
-            end
-            flash[:notice] = "Les instructeurs ont bien été affectés à la démarche"
-          end
+          "Les instructeurs ont bien été affectés à la démarche"
         end
+
+        GroupeInstructeurMailer
+          .notify_added_instructeurs(groupe_instructeur, instructeurs, current_administrateur.email)
+          .deliver_later
       end
 
-      if procedure.routee?
+      if procedure.routing_enabled?
         redirect_to admin_procedure_groupe_instructeur_path(procedure, groupe_instructeur)
       else
         redirect_to admin_procedure_groupe_instructeurs_path(procedure)
@@ -160,26 +145,31 @@ module Administrateurs
       if groupe_instructeur.instructeurs.one?
         flash[:alert] = "Suppression impossible : il doit y avoir au moins un instructeur dans le groupe"
       else
-        instructeur = Instructeur.find(instructeur_id)
-        if procedure.routee?
-          if groupe_instructeur.remove(instructeur)
-            flash[:notice] = "L’instructeur « #{instructeur.email} » a été retiré du groupe."
-            GroupeInstructeurMailer
-              .remove_instructeur(groupe_instructeur, instructeur, current_user.email)
-              .deliver_later
+        instructeur = groupe_instructeur.instructeurs.find_by(id: instructeur_id)
+
+        if groupe_instructeur.remove(instructeur)
+          flash[:notice] = if instructeur.in?(procedure.instructeurs)
+            "L’instructeur « #{instructeur.email} » a été retiré du groupe."
           else
-            flash[:alert] = "L’instructeur « #{instructeur.email} » n’est pas dans le groupe."
+            "L’instructeur a bien été désaffecté de la démarche"
           end
+          GroupeInstructeurMailer
+            .notify_removed_instructeur(groupe_instructeur, instructeur, current_administrateur.email)
+            .deliver_later
         else
-          if procedure.defaut_groupe_instructeur.remove(instructeur)
-            flash[:notice] = "L’instructeur a bien été désaffecté de la démarche"
+          flash[:alert] = if procedure.routing_enabled?
+            if instructeur.present?
+              "L’instructeur « #{instructeur.email} » n’est pas dans le groupe."
+            else
+              "L’instructeur n’est pas dans le groupe."
+            end
           else
-            flash[:alert] = "L’instructeur n’est pas affecté à la démarche"
+            "L’instructeur n’est pas affecté à la démarche"
           end
         end
       end
 
-      if procedure.routee?
+      if procedure.routing_enabled?
         redirect_to admin_procedure_groupe_instructeur_path(procedure, groupe_instructeur)
       else
         redirect_to admin_procedure_groupe_instructeurs_path(procedure)
@@ -187,17 +177,12 @@ module Administrateurs
     end
 
     def update_routing_criteria_name
-      procedure.update!(routing_criteria_name: routing_criteria_name)
-
-      redirect_to admin_procedure_groupe_instructeurs_path(procedure),
-        notice: "Le libellé est maintenant « #{procedure.routing_criteria_name} »."
-    end
-
-    def update_routing_enabled
-      procedure.update!(routing_enabled_params)
-
-      redirect_to admin_procedure_groupe_instructeurs_path(procedure),
-      notice: "Le routage est #{procedure.routing_enabled? ? "activée" : "désactivée"}."
+      if procedure.update(routing_criteria_name: routing_criteria_name)
+        flash[:notice] = "Le libellé est maintenant « #{procedure.routing_criteria_name} »."
+      else
+        flash[:alert] = "Le libellé du routage doit être rempli."
+      end
+      redirect_to admin_procedure_groupe_instructeurs_path(procedure)
     end
 
     def update_instructeurs_self_management_enabled
@@ -208,34 +193,48 @@ module Administrateurs
     end
 
     def import
-      if procedure.publiee?
-        if !CSV_ACCEPTED_CONTENT_TYPES.include?(group_csv_file.content_type) && !CSV_ACCEPTED_CONTENT_TYPES.include?(marcel_content_type)
+      if procedure.publiee_or_close?
+        if !CSV_ACCEPTED_CONTENT_TYPES.include?(csv_file.content_type) && !CSV_ACCEPTED_CONTENT_TYPES.include?(marcel_content_type)
           flash[:alert] = "Importation impossible : veuillez importer un fichier CSV"
 
-        elsif group_csv_file.size > CSV_MAX_SIZE
+        elsif csv_file.size > CSV_MAX_SIZE
           flash[:alert] = "Importation impossible : le poids du fichier est supérieur à #{number_to_human_size(CSV_MAX_SIZE)}"
 
         else
-          file = group_csv_file.read
+          file = csv_file.read
           base_encoding = CharlockHolmes::EncodingDetector.detect(file)
-          groupes_emails = ACSV::CSV.new_for_ruby3(file.encode("UTF-8", base_encoding[:encoding], invalid: :replace, replace: ""), headers: true, header_converters: :downcase)
-            .map { |r| r.to_h.slice('groupe', 'email') }
 
-          groupes_emails_has_keys = groupes_emails.first.has_key?("groupe") && groupes_emails.first.has_key?("email")
+          csv_content = ACSV::CSV.new_for_ruby3(file.encode("UTF-8", base_encoding[:encoding], invalid: :replace, replace: ""), headers: true, header_converters: :downcase).map(&:to_h)
 
-          if groupes_emails_has_keys.blank?
-            flash[:alert] = "Importation impossible, veuillez importer un csv #{view_context.link_to('suivant ce modèle', "/csv/#{I18n.locale}/import-groupe-test.csv")}"
-          else
-            add_instructeurs_and_get_errors = InstructeursImportService.import(procedure, groupes_emails)
+          if csv_content.first.has_key?("groupe") && csv_content.first.has_key?("email")
+            groupes_emails = csv_content.map { |r| r.to_h.slice('groupe', 'email') }
 
-            if add_instructeurs_and_get_errors.empty?
-              flash[:notice] = "La liste des instructeurs a été importée avec succès"
-            else
-              flash[:alert] = "Import terminé. Cependant les emails suivants ne sont pas pris en compte: #{add_instructeurs_and_get_errors.join(', ')}"
+            added_instructeurs_by_group, invalid_emails = InstructeursImportService.import_groupes(procedure, groupes_emails)
+
+            added_instructeurs_by_group.each do |groupe, added_instructeurs|
+              if added_instructeurs.present?
+                GroupeInstructeurMailer
+                  .notify_added_instructeurs(groupe, added_instructeurs, current_administrateur.email)
+                  .deliver_later
+              end
+              flash_message_for_import(invalid_emails)
             end
+
+          elsif csv_content.first.has_key?("email") && !csv_content.map(&:to_h).first.keys.many? && procedure.groupe_instructeurs.one?
+            instructors_emails = csv_content.map(&:to_h)
+
+            added_instructeurs, invalid_emails = InstructeursImportService.import_instructeurs(procedure, instructors_emails)
+            if added_instructeurs.present?
+              GroupeInstructeurMailer
+                .notify_added_instructeurs(groupe_instructeur, added_instructeurs, current_administrateur.email)
+                .deliver_later
+            end
+            flash_message_for_import(invalid_emails)
+          else
+            flash_message_for_invalid_csv
           end
+          redirect_to admin_procedure_groupe_instructeurs_path(procedure)
         end
-        redirect_to admin_procedure_groupe_instructeurs_path(procedure)
       end
     end
 
@@ -259,16 +258,6 @@ module Administrateurs
 
     private
 
-    def create_instructeur(email)
-      user = User.create_or_promote_to_instructeur(
-        email,
-        SecureRandom.hex,
-        administrateurs: [current_administrateur]
-      )
-      user.invite!
-      user.instructeur
-    end
-
     def procedure
       current_administrateur
         .procedures
@@ -288,8 +277,8 @@ module Administrateurs
       params[:instructeur][:id]
     end
 
-    def label
-      params[:groupe_instructeur][:label]
+    def groupe_instructeur_params
+      params.require(:groupe_instructeur).permit(:label, :closed)
     end
 
     def paginated_groupe_instructeurs
@@ -297,7 +286,6 @@ module Administrateurs
         .groupe_instructeurs
         .page(params[:page])
         .per(ITEMS_PER_PAGE)
-        .order(:label)
     end
 
     def paginated_instructeurs
@@ -318,12 +306,12 @@ module Administrateurs
       (all - assigned).sort
     end
 
-    def group_csv_file
-      params[:group_csv_file]
+    def csv_file
+      params[:csv_file]
     end
 
     def marcel_content_type
-      Marcel::MimeType.for(group_csv_file.read, name: group_csv_file.original_filename, declared_type: group_csv_file.content_type)
+      Marcel::MimeType.for(csv_file.read, name: csv_file.original_filename, declared_type: csv_file.content_type)
     end
 
     def instructeurs_self_management_enabled_params
@@ -332,6 +320,18 @@ module Administrateurs
 
     def routing_enabled_params
       { routing_enabled: params.require(:routing) == 'enable' }
+    end
+
+    def flash_message_for_import(result)
+      if result.blank?
+        flash[:notice] = "La liste des instructeurs a été importée avec succès"
+      else
+        flash[:alert] = "Import terminé. Cependant les emails suivants ne sont pas pris en compte: #{result.join(', ')}"
+      end
+    end
+
+    def flash_message_for_invalid_csv
+      flash[:alert] = "Importation impossible, veuillez importer un csv suivant #{view_context.link_to('ce modèle', "/csv/import-instructeurs-test.csv")} pour une procédure sans routage ou #{view_context.link_to('celui-ci', "/csv/#{I18n.locale}/import-groupe-test.csv")} pour une procédure routée"
     end
   end
 end
