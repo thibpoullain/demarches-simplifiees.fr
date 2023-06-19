@@ -6,7 +6,11 @@ namespace :after_party do
     champs = Champ.private_only
 
     # count of large champs count is too slow, so we're using an progress approximation based on id
-    progress = ProgressReport.new(champs&.last&.id)
+    if champs&.last&.id
+      progress = ProgressReport.new(champs&.last&.id)
+    else
+      progress = ProgressReport.new(0)
+    end
 
     champs.includes(:type_de_champ).in_batches.each_record do |champ|
       type_champ = champ.type_de_champ.type_champ
