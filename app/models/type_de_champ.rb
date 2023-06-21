@@ -15,7 +15,15 @@
 #  stable_id   :bigint
 #
 class TypeDeChamp < ApplicationRecord
-  self.ignored_columns += [:migrated_parent, :revision_id, :parent_id, :order_place]
+  # TODO can remove class method when deploying next release
+  def self.is_db_migrated?
+    !(TypeDeChamp.column_names.include? 'parent_id')
+  end
+
+  # TODO can remove condition when deploying next release
+  if self.is_db_migrated?
+    self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
+  end
 
   FILE_MAX_SIZE = 200.megabytes
   FEATURE_FLAGS = {}
@@ -129,6 +137,12 @@ class TypeDeChamp < ApplicationRecord
                  :collapsible_explanation_enabled,
                  :collapsible_explanation_text,
                  :header_section_level
+
+  # TODO can remove condition when deploying next release
+  if !self.is_db_migrated?
+    belongs_to :parent, class_name: 'TypeDeChamp', optional: true
+    has_many :types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'TypeDeChamp', inverse_of: :parent, dependent: :destroy
+  end
 
   store_accessor :options, :cadastres, :old_pj, :drop_down_options, :skip_pj_validation, :skip_content_type_pj_validation, :drop_down_secondary_libelle, :drop_down_secondary_description, :drop_down_other
   has_many :revision_types_de_champ, -> { revision_ordered }, class_name: 'ProcedureRevisionTypeDeChamp', dependent: :destroy, inverse_of: :type_de_champ
