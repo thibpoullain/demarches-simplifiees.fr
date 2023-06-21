@@ -8,4 +8,5 @@ if [ $IS_REVIEW_APP ]; then
     bin/rails db:seed
 fi
 
-bundle exec rake jobs:schedule jobs:work
+bundle exec rake jobs:work
+bundle exec rake jobs:schedule
