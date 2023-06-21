@@ -22,7 +22,7 @@ class TypeDeChamp < ApplicationRecord
 
   # TODO can remove condition when deploying next release
   if self.is_db_migrated?
-    self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
+    self.ignored_columns += [:migrated_parent, :revision_id, :parent_id, :order_place]
   end
 
   FILE_MAX_SIZE = 200.megabytes
