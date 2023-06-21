@@ -5,7 +5,7 @@ FROM ruby:3.2.2
 # environment variables
 # ENV PORT $port
 
-RUN sed -i 's#http:#https:#g' /etc/apt/sources.list
+# RUN sed -i 's#http:#https:#g' /etc/apt/sources.list
 RUN apt update && apt install -y libcurl3-dev libpq-dev zlib1g-dev libssl-dev libreadline-dev zlib1g-dev zip
 
 # Add node for webpack
