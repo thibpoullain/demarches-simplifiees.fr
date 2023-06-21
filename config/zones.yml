@@ -1,217 +1,215 @@
 ministeres:
   - MAA:
-    labels:
-      - '2022-05-20': "Ministère de l'Agriculture et de la Souveraineté alimentaire"
-      - '2020-07-06': "Ministère de l'Agriculture et de l'Alimentation"
-    tchap_hs:
-      - agent.agriculture.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de l'Agriculture et de la Souveraineté alimentaire"
+        - '2020-07-06': "Ministère de l'Agriculture et de l'Alimentation"
+      tchap_hs:
+        - agent.agriculture.tchap.gouv.fr
   - MC:
-    labels:
-      - '2020-07-06': "Ministère de la Culture"
-    tchap_hs:
-      - agent.culture.tchap.gouv.fr
-
-
+      labels:
+        - '2020-07-06': "Ministère de la Culture"
+      tchap_hs:
+        - agent.culture.tchap.gouv.fr
   - MAS:
-    labels:
-      - '2022-05-20': "Ministère de la Santé et de la Prévention"
-      - '2020-07-06': "Ministère des Solidarités et de la Santé"
-    tchap_hs:
-      - agent.social.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de la Santé et de la Prévention"
+        - '2020-07-06': "Ministère des Solidarités et de la Santé"
+      tchap_hs:
+        - agent.social.tchap.gouv.fr
   - MSAPH:
-    labels:
-      - '2022-05-20': "Ministère des Solidarités, de l'Autonomie et des personnes handicapées"
-      - '2020-07-06': "Non attribué"
-    tchap_hs:
-      - agent.social.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère des Solidarités, de l'Autonomie et des personnes handicapées"
+        - '2020-07-06': "Non attribué"
+      tchap_hs:
+        - agent.social.tchap.gouv.fr
   - MTEI:
-    labels:
-      - '2022-05-20': "Ministère du Travail, du Plein emploi et de l'Insertion"
-      - '2020-07-06': "Ministère du Travail"
-    tchap_hs:
-      - agent.social.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère du Travail, du Plein emploi et de l'Insertion"
+        - '2020-07-06': "Ministère du Travail"
+      tchap_hs:
+        - agent.social.tchap.gouv.fr
   - MEAE:
-    labels:
-      - '2020-07-06': "Ministère de l'Europe et des Affaires étrangères"
-    tchap_hs:
-      - agent.diplomatie.tchap.gouv.fr
+      labels:
+        - '2020-07-06': "Ministère de l'Europe et des Affaires étrangères"
+      tchap_hs:
+        - agent.diplomatie.tchap.gouv.fr
   - MEF:
-    labels:
-      - '2022-05-20': "Ministère de l'Économie, des Finances et de la Souveraineté industrielle et numérique"
-      - '2020-07-06': "Ministère de l'Économie, des Finances et de la Relance"
-    tchap_hs:
-      - agent.finances.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de l'Économie, des Finances et de la Souveraineté industrielle et numérique"
+        - '2020-07-06': "Ministère de l'Économie, des Finances et de la Relance"
+      tchap_hs:
+        - agent.finances.tchap.gouv.fr
   - MJS:
-    labels:
-      - '2022-05-20': "Non attribué"
-      - '2020-07-06': "Ministère de la Jeunesse et des Sports"
-    tchap_hs:
-      - agent.social.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Non attribué"
+        - '2020-07-06': "Ministère de la Jeunesse et des Sports"
+      tchap_hs:
+        - agent.social.tchap.gouv.fr
   - MSJO:
-    labels:
-      - '2022-05-20': "Ministère des Sports et des Jeux olympiques et paralympiques"
-      - '2020-07-06': "Non attribué"
-    tchap_hs:
-      - agent.social.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère des Sports et des Jeux olympiques et paralympiques"
+        - '2020-07-06': "Non attribué"
+      tchap_hs:
+        - agent.social.tchap.gouv.fr
   - MEN:
-    labels:
-      - '2022-05-20': "Ministère de l'Éducation nationale et de la Jeunesse"
-      - '2020-07-06': "Ministère de l'Éducation nationale, de la Jeunesse et des Sports"
-    tchap_hs:
-      - agent.education.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de l'Éducation nationale et de la Jeunesse"
+        - '2020-07-06': "Ministère de l'Éducation nationale, de la Jeunesse et des Sports"
+      tchap_hs:
+        - agent.education.tchap.gouv.fr
   - ESR:
-    labels:
-      - '2022-05-20': "Ministère de l'Enseignement supérieur et de la Recherche"
-      - '2020-07-06': "Ministère de l'Enseignement supérieur, de la Recherche et de l'Innovation"
-    tchap_hs:
-      - agent.education.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de l'Enseignement supérieur et de la Recherche"
+        - '2020-07-06': "Ministère de l'Enseignement supérieur, de la Recherche et de l'Innovation"
+      tchap_hs:
+        - agent.education.tchap.gouv.fr
   - MI:
-    labels:
-      - '2022-05-20': "Ministère de l'Intérieur et des Outre-mer"
-      - '2020-07-06': "Ministère de l'Intérieur"
-    tchap_hs:
-      - agent.interieur.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de l'Intérieur et des Outre-mer"
+        - '2020-07-06': "Ministère de l'Intérieur"
+      tchap_hs:
+        - agent.interieur.tchap.gouv.fr
   - MINARM:
-    labels:
-      - '2020-07-06': "Ministère des Armées"
-    tchap_hs:
-      - agent.intradef.tchap.gouv.fr
+      labels:
+        - '2020-07-06': "Ministère des Armées"
+      tchap_hs:
+        - agent.intradef.tchap.gouv.fr
   - MJ:
-    labels:
-      - '2020-07-06': "Ministère de la Justice"
-    tchap_hs:
-      - agent.justice.tchap.gouv.fr
+      labels:
+        - '2020-07-06': "Ministère de la Justice"
+      tchap_hs:
+        - agent.justice.tchap.gouv.fr
   - MTES:
-    labels:
-      - '2022-05-20': "Ministère de la Transition écologique et de la Cohésion des territoires"
-      - '2020-07-06': "Ministère de la Transition écologique"
-    tchap_hs:
-      - agent.dev-durable.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de la Transition écologique et de la Cohésion des territoires"
+        - '2020-07-06': "Ministère de la Transition écologique"
+      tchap_hs:
+        - agent.dev-durable.tchap.gouv.fr
   - MTE:
-    labels:
-      - '2022-05-20': "Ministère de la Transition énergétique"
-      - '2020-07-06': "Non attribué"
-    tchap_hs:
-      - agent.dev-durable.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Ministère de la Transition énergétique"
+        - '2020-07-06': "Non attribué"
+      tchap_hs:
+        - agent.dev-durable.tchap.gouv.fr
   - MCTRCT:
-    labels:
-      - '2022-05-20': "Non attribué"
-      - '2020-07-06': "Ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales"
-    tchap_hs:
-      - agent.dev-durable.tchap.gouv.fr
+      labels:
+        - '2022-05-20': "Non attribué"
+        - '2020-07-06': "Ministère de la Cohésion des territoires et des Relations avec les collectivités territoriales"
+      tchap_hs:
+        - agent.dev-durable.tchap.gouv.fr
   - PM:
-    labels:
-      - '2020-07-06': "Premier ministre"
-    tchap_hs:
-      - agent.pm.tchap.gouv.fr
-      - agent.dinum.tchap.gouv.fr
+      labels:
+        - '2020-07-06': "Premier ministre"
+      tchap_hs:
+        - agent.pm.tchap.gouv.fr
+        - agent.dinum.tchap.gouv.fr
   - MER:
-    labels:
-      - '2022-05-20': "Non attribué"
-      - '2020-07-06': "Ministère de la Mer"
+      labels:
+        - '2022-05-20': "Non attribué"
+        - '2020-07-06': "Ministère de la Mer"
   - MTFP:
-    labels:
-      - '2020-07-06': "Ministère de la Transformation et de la Fonction publiques"
-    tchap_hs:
-      - agent.pm.tchap.gouv.fr
-      - agent.dinum.tchap.gouv.fr
+      labels:
+        - '2020-07-06': "Ministère de la Transformation et de la Fonction publiques"
+      tchap_hs:
+        - agent.pm.tchap.gouv.fr
+        - agent.dinum.tchap.gouv.fr
   - ARS ARA:
-    labels:
-      - '2023-05-23': "ARS Auvergne-Rhône-Alpes"
+      labels:
+        - '2023-05-23': "ARS Auvergne-Rhône-Alpes"
   - ARS BFC:
-    labels:
-      - '2023-05-23': "ARS Bourgogne-Franche-Comté"
+      labels:
+        - '2023-05-23': "ARS Bourgogne-Franche-Comté"
   - ARS BRET:
-    labels:
-      - '2023-05-23': "ARS Bretagne"
+      labels:
+        - '2023-05-23': "ARS Bretagne"
   - ARS CVL:
-    labels:
-     - '2023-05-23': "ARS Centre-Val de Loire"
+      labels:
+       - '2023-05-23': "ARS Centre-Val de Loire"
   - ARS COR:
-    labels:
-      - '2023-05-23': "ARS Corse"
+      labels:
+        - '2023-05-23': "ARS Corse"
   - ARS GE:
-    labels:
-      - '2023-05-23': "ARS Grand Est"
+      labels:
+        - '2023-05-23': "ARS Grand Est"
   - ARS GUAD:
-    labels:
-      - '2023-05-23': "ARS Guadeloupe"
+      labels:
+        - '2023-05-23': "ARS Guadeloupe"
   - ARS GUY:
-    labels:
-      - '2023-05-23': "ARS Guyane"
+      labels:
+        - '2023-05-23': "ARS Guyane"
   - ARS HDF:
-    labels:
-      - '2023-05-23': "ARS Hauts-de-France"
+      labels:
+        - '2023-05-23': "ARS Hauts-de-France"
   - ARS IF:
-    labels:
-      - '2023-05-23': "ARS Île-de-France"
+      labels:
+        - '2023-05-23': "ARS Île-de-France"
   - ARS REU:
-    labels:
-      - '2023-05-23': "ARS La Réunion"
+      labels:
+        - '2023-05-23': "ARS La Réunion"
   - ARS MART:
-    labels:
-      - '2023-05-23': "ARS Martinique"
+      labels:
+        - '2023-05-23': "ARS Martinique"
   - ARS MAY:
-    labels:
-     - '2023-05-23': "ARS Mayotte"
+      labels:
+       - '2023-05-23': "ARS Mayotte"
   - ARS NORM:
-    labels:
-     - '2023-05-23': "ARS Normandie"
+      labels:
+       - '2023-05-23': "ARS Normandie"
   - ARS NA:
-    labels:
-     - '2023-05-23': "ARS Nouvelle-Aquitaine"
+      labels:
+       - '2023-05-23': "ARS Nouvelle-Aquitaine"
   - ARS OCC:
-    labels:
-      - '2023-05-23': "ARS Occitanie"
+      labels:
+        - '2023-05-23': "ARS Occitanie"
   - ARS PDL:
-    labels:
-     - '2023-05-23': "Pays de la Loire"
+      labels:
+       - '2023-05-23': "Pays de la Loire"
   - ARS PACA:
-    labels:
-      - '2023-05-23': "ARS Provence-Alpes-Côte d'Azur"
+      labels:
+        - '2023-05-23': "ARS Provence-Alpes-Côte d'Azur"
   - BCJS:
-    labels:
-      - '2023-05-23': "Bureau de la communication Jeunesse et sports"
+      labels:
+        - '2023-05-23': "Bureau de la communication Jeunesse et sports"
   - DICOM:
-    labels:
-      - '2023-05-23': "Délégation à l'information et à la communication"
+      labels:
+        - '2023-05-23': "Délégation à l'information et à la communication"
   - DAEI:
-    labels:
-      - '2023-05-23': "Délégation aux affaires européennes et internationales"
+      labels:
+        - '2023-05-23': "Délégation aux affaires européennes et internationales"
   - DSS:
-    labels:
-      - '2023-05-23': "Direction de la sécurité sociale"
+      labels:
+        - '2023-05-23': "Direction de la sécurité sociale"
   - DAJ:
-    labels:
-      - '2023-05-23': "Direction des affaires juridiques"
+      labels:
+        - '2023-05-23': "Direction des affaires juridiques"
   - DFAS:
-    labels:
-      - '2023-05-23': "Direction des finances, des achats et des services"
+      labels:
+        - '2023-05-23': "Direction des finances, des achats et des services"
   - DRH:
-    labels:
-     - '2023-05-23': "Direction des ressources humaines des ministères sociaux"
+      labels:
+       - '2023-05-23': "Direction des ressources humaines des ministères sociaux"
   - DNUM:
-    labels:
-      - '2023-05-23': "Direction du numérique"
+      labels:
+        - '2023-05-23': "Direction du numérique"
   - DGOS:
-    labels:
-      - '2023-05-23': "Direction générale de l’offre de soins"
+      labels:
+        - '2023-05-23': "Direction générale de l’offre de soins"
   - DGCS:
-    labels:
-      - '2023-05-23': "Direction générale de la cohésion sociale"
+      labels:
+        - '2023-05-23': "Direction générale de la cohésion sociale"
   - DGS:
-    labels:
-      - '2023-05-23': "Direction générale de la santé"
+      labels:
+        - '2023-05-23': "Direction générale de la santé"
   - SG:
-    labels:
-      - '2023-05-23': "Secrétariat général des ministères chargés des affaires sociales"
+      labels:
+        - '2023-05-23': "Secrétariat général des ministères chargés des affaires sociales"
   - SPF:
-    labels:
-      - '2023-05-23': "Santé Publique France"
+      labels:
+        - '2023-05-23': "Santé Publique France"
   - AUTRE:
-    labels:
-      - '2023-05-23': "Autre"
+      labels:
+        - '2023-05-23': "Autre"
   - OM:
-    labels:
-      - '2022-05-20': "Non attribué"
-      - '2020-07-06': "Ministère des Outre-mer"
+      labels:
+        - '2022-05-20': "Non attribué"
+        - '2020-07-06': "Ministère des Outre-mer"
