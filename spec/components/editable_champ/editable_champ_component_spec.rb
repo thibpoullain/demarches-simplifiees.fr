@@ -21,6 +21,12 @@ describe EditableChamp::EditableChampComponent, type: :component do
       it { expect(subject).to eq(nil) }
     end
 
+    context 'when a carte champ' do
+      let(:champ) { create(:champ_carte, dossier: dossier) }
+
+      it { expect(subject).to eq(nil) }
+    end
+
     context 'when a private champ' do
       let(:champ) { create(:champ, dossier: dossier, private: true) }
 
@@ -34,14 +40,14 @@ describe EditableChamp::EditableChampComponent, type: :component do
       it { expect(subject).to eq(data) }
 
       context 'when a public dropdown champ' do
-        let(:controllers) { ['autosave', 'champ-dropdown'] }
+        let(:controllers) { ['autosave'] }
         let(:champ) { create(:champ_drop_down_list, dossier: dossier) }
 
         it { expect(subject).to eq(data) }
       end
 
       context 'when a private dropdown champ' do
-        let(:controllers) { ['autosave', 'champ-dropdown'] }
+        let(:controllers) { ['autosave'] }
         let(:champ) { create(:champ_drop_down_list, dossier: dossier, private: true) }
 
         it { expect(subject).to eq(data) }
@@ -49,14 +55,14 @@ describe EditableChamp::EditableChampComponent, type: :component do
     end
 
     context 'when a public dropdown champ' do
-      let(:controllers) { ['autosave', 'champ-dropdown'] }
+      let(:controllers) { ['autosave'] }
       let(:champ) { create(:champ_drop_down_list, dossier: dossier) }
 
       it { expect(subject).to eq(data) }
     end
 
     context 'when a private dropdown champ' do
-      let(:controllers) { ['autosave', 'champ-dropdown'] }
+      let(:controllers) { ['autosave'] }
       let(:champ) { create(:champ_drop_down_list, dossier: dossier, private: true) }
 
       it { expect(subject).to eq(data) }

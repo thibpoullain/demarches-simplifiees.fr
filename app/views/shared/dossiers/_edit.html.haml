@@ -1,17 +1,13 @@
+- dossier_for_editing = dossier.en_construction? ? dossier.owner_editing_fork : dossier
+
 - if dossier.france_connect_information.present?
   - content_for(:notice_info) do
     = render partial: "shared/dossiers/france_connect_informations_notice", locals: { user_information: dossier.france_connect_information }
 
 .dossier-edit.container.counter-start-header-section
   = render partial: "shared/dossiers/submit_is_over", locals: { dossier: dossier }
-
-  - if dossier.brouillon?
-    - form_options = { url: brouillon_dossier_url(dossier), method: :patch }
-  - else
-    - form_options = { url: modifier_dossier_url(dossier), method: :patch }
   = render NestedForms::FormOwnerComponent.new
-  = form_for dossier, form_options.merge({ html: { id: 'dossier-edit-form', class: 'form', multipart: true, novalidate: 'novalidate' } }) do |f|
-
+  = form_for dossier_for_editing, url: brouillon_dossier_url(dossier), method: :patch, html: { id: 'dossier-edit-form', class: 'form', multipart: true, novalidate: 'novalidate' } do |f|
     %header.mb-6
       .fr-highlight
         %p.fr-text--sm
@@ -20,19 +16,8 @@
           - if dossier.brouillon?
             = t('views.shared.dossiers.edit.autosave')
 
-          - if notice_url(dossier.procedure).present?
-            .fr-download
-              %p
-                = link_to notice_url(dossier.procedure), download: "", class: "fr-download__link mr-2", title: t("views.shared.dossiers.edit.notice_title") do
-                  = t("views.shared.dossiers.edit.notice")
-                  - if dossier.procedure.notice.attached?
-                    %span.fr-download__detail
-                      = download_details(dossier.procedure.notice)
-
-                - if administrateur_signed_in?
-                  %span.fr-text--xs.fr-text-mention--grey.visible-on-previous-hover
-                    %span.fr-text-action-high--blue-france.fr-icon-questionnaire-line{ "aria-hidden": "true" }
-                    = t('shared.ephemeral_link')
+          - if dossier.procedure.notice.attached?
+            = render Dsfr::DownloadComponent.new(attachment: dossier.procedure.notice , url: notice_url(dossier.procedure), name: t("views.shared.dossiers.edit.notice"), ephemeral_link: administrateur_signed_in?)
 
     - if dossier.show_groupe_instructeur_selector?
       %span{ data: { controller: 'autosave' } }
@@ -43,8 +28,12 @@
           dossier.procedure.groupe_instructeurs.active.map { |gi| [gi.label, gi.id] },
           { include_blank: dossier.brouillon? }
 
-    - dossier.champs_public.each do |champ|
-      = fields_for champ.input_name, champ do |form|
-        = render EditableChamp::EditableChampComponent.new form: form, champ: champ
+    = render EditableChamp::SectionComponent.new(champs: dossier_for_editing.champs_public)
 
-  = render Dossiers::EditFooterComponent.new(dossier: dossier, annotation: false)
+    - if dossier.pending_correction?
+      .fr-checkbox-group.fr-my-3w
+        = check_box_tag field_name(:dossier, :pending_correction_confirm), "1", false, form: "form-submit-en-construction"
+        %label.fr-label{ for: :dossier_pending_correction_confirm }= t('views.shared.dossiers.edit.pending_correction.confirm_label')
+
+
+  = render Dossiers::EditFooterComponent.new(dossier: dossier_for_editing, annotation: false)

@@ -7,7 +7,7 @@ shared_examples "the user has got a prefilled dossier, owned by themselves" do
     click_on 'Valider'
 
     expect(page).to have_current_path(etablissement_dossier_path(dossier))
-    expect(page).to have_content('OCTO TECHNOLOGY')
+    expect(page).to have_content('DIRECTION INTERMINISTERIELLE DU NUMERIQUE')
     click_on 'Continuer avec ces informations'
 
     expect(page).to have_current_path(brouillon_dossier_path(dossier))
@@ -16,7 +16,7 @@ shared_examples "the user has got a prefilled dossier, owned by themselves" do
     expect(page).to have_css('label', text: type_de_champ_phone.libelle)
     expect(page).to have_field(type_de_champ_rna.libelle, with: rna_value)
     expect(page).to have_field(type_de_champ_siret.libelle, with: siret_value)
-    expect(page).to have_css('h3', text: type_de_champ_repetition.libelle)
+    expect(page).to have_css('legend', text: type_de_champ_repetition.libelle)
     expect(page).to have_field(text_repetition_libelle, with: text_repetition_value)
     expect(page).to have_field(integer_repetition_libelle, with: integer_repetition_value)
     expect(page).to have_field(type_de_champ_datetime.libelle, with: datetime_value)

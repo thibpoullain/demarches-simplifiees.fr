@@ -73,7 +73,7 @@ class Attachment::EditComponent < ApplicationComponent
       aria: { describedby: champ&.describedby_id },
       data: {
         auto_attach_url:,
-        turbo_force: true
+        turbo_force: :server
       }.merge(has_file_size_validator? ? { max_file_size: } : {})
         .merge(user_can_replace? ? { replace_attachment_target: "input" } : {})
     }.merge(has_content_type_validator? ? { accept: accept_content_type } : {})
@@ -93,7 +93,7 @@ class Attachment::EditComponent < ApplicationComponent
     nil
   end
 
-  def field_name
+  def field_name(object_name = nil, method_name = nil, *method_names, multiple: false, index: nil)
     helpers.field_name(@form_object_name || ActiveModel::Naming.param_key(@attached_file.record), attribute_name)
   end
 

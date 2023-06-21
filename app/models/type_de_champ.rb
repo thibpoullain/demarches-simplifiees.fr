@@ -15,18 +15,11 @@
 #  stable_id   :bigint
 #
 class TypeDeChamp < ApplicationRecord
-  # TODO remove class method when deploying next release (Enterprise API)
-  def self.is_db_migrated?
-    !(TypeDeChamp.column_names.include? 'parent_id')
-  end
-
-  # TODO remove condition when deploying next release (Enterprise API)
-  if self.is_db_migrated?
-    self.ignored_columns = [:migrated_parent, :revision_id, :parent_id, :order_place]
-  end
+  self.ignored_columns += [:migrated_parent, :revision_id, :parent_id, :order_place]
 
   FILE_MAX_SIZE = 200.megabytes
   FEATURE_FLAGS = {}
+  MINIMUM_TEXTAREA_CHARACTER_LIMIT_LENGTH = 400
 
   STRUCTURE = :structure
   ETAT_CIVIL = :etat_civil
@@ -132,14 +125,10 @@ class TypeDeChamp < ApplicationRecord
                  :drop_down_secondary_libelle,
                  :drop_down_secondary_description,
                  :drop_down_other,
+                 :character_limit,
                  :collapsible_explanation_enabled,
-                 :collapsible_explanation_text
-
-  # TODO remove condition when deploying next release (Enterprise API)
-  if !self.is_db_migrated?
-    belongs_to :parent, class_name: 'TypeDeChamp', optional: true
-    has_many :types_de_champ, -> { ordered }, foreign_key: :parent_id, class_name: 'TypeDeChamp', inverse_of: :parent, dependent: :destroy
-  end
+                 :collapsible_explanation_text,
+                 :header_section_level
 
   store_accessor :options, :cadastres, :old_pj, :drop_down_options, :skip_pj_validation, :skip_content_type_pj_validation, :drop_down_secondary_libelle, :drop_down_secondary_description, :drop_down_other
   has_many :revision_types_de_champ, -> { revision_ordered }, class_name: 'ProcedureRevisionTypeDeChamp', dependent: :destroy, inverse_of: :type_de_champ
@@ -149,6 +138,7 @@ class TypeDeChamp < ApplicationRecord
   has_one :procedure, through: :revision
 
   delegate :estimated_fill_duration, :estimated_read_duration, :tags_for_template, :libelle_for_export, to: :dynamic_type
+  delegate :used_by_routing_rules?, to: :revision_type_de_champ
 
   class WithIndifferentAccess
     def self.load(options)
@@ -199,6 +189,11 @@ class TypeDeChamp < ApplicationRecord
 
   validates :libelle, presence: true, allow_blank: false, allow_nil: false
   validates :type_champ, presence: true, allow_blank: false, allow_nil: false
+  validates :character_limit, numericality: {
+    greater_than_or_equal_to: MINIMUM_TEXTAREA_CHARACTER_LIMIT_LENGTH,
+    only_integer: true,
+    allow_blank: true
+  }
 
   before_validation :check_mandatory
   before_validation :normalize_libelle
@@ -255,6 +250,10 @@ class TypeDeChamp < ApplicationRecord
 
   def drop_down_other?
     drop_down_other == "1" || drop_down_other == true
+  end
+
+  def character_limit?
+    character_limit.present?
   end
 
   def collapsible_explanation_enabled?
@@ -362,6 +361,10 @@ class TypeDeChamp < ApplicationRecord
     type_champ == TypeDeChamp.type_champs.fetch(:number)
   end
 
+  def textarea?
+    type_champ == TypeDeChamp.type_champs.fetch(:textarea)
+  end
+
   def titre_identite?
     type_champ == TypeDeChamp.type_champs.fetch(:titre_identite)
   end
@@ -440,6 +443,39 @@ class TypeDeChamp < ApplicationRecord
     self.drop_down_options = parse_drop_down_list_value(value)
   end
 
+  def header_section_level_value
+    if header_section_level.presence
+      header_section_level.to_i
+    else
+      1
+    end
+  end
+
+  def previous_section_level(upper_tdcs)
+    previous_header_section = upper_tdcs.reverse.find(&:header_section?)
+
+    return 0 if !previous_header_section
+    previous_header_section.header_section_level_value.to_i
+  end
+
+  def check_coherent_header_level(upper_tdcs)
+    errs = []
+    previous_level = previous_section_level(upper_tdcs)
+
+    current_level = header_section_level_value.to_i
+    difference = current_level - previous_level
+    if current_level > previous_level && difference != 1
+      errs << I18n.t('activerecord.errors.type_de_champ.attributes.header_section_level.gap_error', level: current_level - previous_level - 1)
+    end
+    errs
+  end
+
+  def current_section_level(revision)
+    tdcs = private? ? revision.types_de_champ_private.to_a : revision.types_de_champ_public.to_a
+
+    previous_section_level(tdcs.take(tdcs.find_index(self)))
+  end
+
   def self.options_for_select?(type_champs)
     [
       TypeDeChamp.type_champs.fetch(:departements),
@@ -460,7 +496,7 @@ class TypeDeChamp < ApplicationRecord
   #   then rails decided to add this blank ("") option when the select is required
   #   so we revert this change
   def options_without_empty_value_when_mandatory(options)
-    mandatory? ? options.reject(&:blank?) : options
+    mandatory? ? options.compact_blank : options
   end
 
   def drop_down_list_options?
@@ -532,7 +568,10 @@ class TypeDeChamp < ApplicationRecord
     when type_champs.fetch(:epci),
       type_champs.fetch(:communes),
       type_champs.fetch(:multiple_drop_down_list),
-      type_champs.fetch(:dossier_link)
+      type_champs.fetch(:dossier_link),
+      type_champs.fetch(:linked_drop_down_list),
+      type_champs.fetch(:drop_down_list),
+      type_champs.fetch(:textarea)
       true
     else
       false

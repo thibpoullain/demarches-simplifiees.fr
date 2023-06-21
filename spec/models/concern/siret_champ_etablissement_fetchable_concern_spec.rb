@@ -6,9 +6,9 @@ RSpec.describe SiretChampEtablissementFetchableConcern do
     let!(:champ) { create(:champ_siret) }
 
     before do
-      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v2\/etablissements\/#{siret}/)
+      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v3\/insee\/sirene\/etablissements\/#{siret}/)
         .to_return(status: api_etablissement_status, body: api_etablissement_body)
-      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v2\/entreprises\/#{siret[0..8]}/)
+      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v3\/insee\/sirene\/unites_legales\/#{siret[0..8]}/)
         .to_return(body: File.read('spec/fixtures/files/api_entreprise/entreprises.json'), status: 200)
       allow_any_instance_of(APIEntrepriseToken).to receive(:roles)
         .and_return(["attestations_fiscales", "attestations_sociales", "bilans_entreprise_bdf"])
@@ -90,13 +90,13 @@ RSpec.describe SiretChampEtablissementFetchableConcern do
     end
 
     context 'when the SIRET informations are retrieved successfully' do
-      let(:siret) { '41816609600051' }
+      let(:siret) { '30613890001294' }
       let(:api_etablissement_status) { 200 }
       let(:api_etablissement_body) { File.read('spec/fixtures/files/api_entreprise/etablissements.json') }
 
       it { expect { fetch_etablissement! }.to change { champ.reload.etablissement.siret }.to(siret) }
 
-      it { expect { fetch_etablissement! }.to change { champ.reload.etablissement.naf }.to("6202A") }
+      it { expect { fetch_etablissement! }.to change { champ.reload.etablissement.naf }.to("8411Z") }
 
       it { expect { fetch_etablissement! }.to change { Etablissement.count }.by(1) }
 
@@ -104,7 +104,7 @@ RSpec.describe SiretChampEtablissementFetchableConcern do
 
       it "fetches the entreprise raison sociale" do
         fetch_etablissement!
-        expect(champ.reload.etablissement.entreprise_raison_sociale).to eq("OCTO-TECHNOLOGY")
+        expect(champ.reload.etablissement.entreprise_raison_sociale).to eq("DIRECTION INTERMINISTERIELLE DU NUMERIQUE")
       end
     end
   end
