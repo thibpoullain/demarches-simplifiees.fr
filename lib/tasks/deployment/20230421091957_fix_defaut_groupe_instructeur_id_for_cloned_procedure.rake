@@ -13,7 +13,7 @@ namespace :after_party do
         wrong_groupe = p.defaut_groupe_instructeur
         parent_procedure = Procedure.unscoped.find(p.parent_procedure_id)
         new_defaut_groupe = p.groupe_instructeurs
-          .find_by(label: parent_procedure.defaut_groupe_instructeur.label).presence || p.groupe_instructeurs.first
+          .find_by(label: parent_procedure&.defaut_groupe_instructeur&.label).presence || p.groupe_instructeurs.first
 
         p.update!(defaut_groupe_instructeur: new_defaut_groupe)
 
