@@ -11,11 +11,11 @@ namespace :after_party do
       acronym = ministere.keys.first
       zone = Zone.find_or_create_by!(acronym: acronym)
       labels_a = ministere[acronym]['labels']
-        labels_a.each do |label_h|
-          designated_on = label_h.keys.first
-          label = zone.labels.find_or_initialize_by(designated_on: designated_on)
-          label.update(name: label_h[designated_on])
-        end
+      labels_a.each do |label_h|
+        designated_on = label_h.keys.first
+        label = zone.labels.find_or_initialize_by(designated_on: designated_on)
+        label.update(name: label_h[designated_on])
+      end
       zone.update(tchap_hs: ministere[acronym]['tchap_hs']) if ministere[acronym]['tchap_hs']
     end
 

@@ -1,0 +1,7 @@
+en:
+  activemodel:
+    models:
+      outdated_procedure: Procedures without expiration
+    attributes:
+      outdated_procedure:
+        dossiers_close_to_expiration: Procedures that can be expired

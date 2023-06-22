@@ -1,8 +1,7 @@
 fr:
   activemodel:
     models:
-      outdated_procedure:
-        other: Démarches sans expiration
+      outdated_procedure: Démarches sans expiration
     attributes:
       outdated_procedure:
         dossiers_close_to_expiration: Dossier pouvant être expirés
