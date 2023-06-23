@@ -13,4 +13,4 @@ if [ $IS_REVIEW_APP ]; then
     bin/rails db:seed
 fi
 
-bundle exec rails server
+bundle exec puma -C config/puma.rb
