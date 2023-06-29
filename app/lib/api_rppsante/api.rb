@@ -3,7 +3,7 @@ class APIRppsante::API
   end
 
   def self.get_rppsante(id)
-    call([API_OPENDATASOFT_URL, 'search'].join('/'), 'ps_libreacces_personne_activite', { 'q': 'identification_nationale_pp:' + id + ' AND NOT #null(code_postal_coord_structure) ' })
+    call([API_OPENDATASOFT_URL, 'search'].join('/'), 'ps_libreacces_personne_activite', { 'q': 'identifiant_pp:' + id + ' AND NOT #null(code_postal_coord_structure) ' })
   end
 
   private
