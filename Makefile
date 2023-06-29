@@ -101,9 +101,10 @@ console:
 dbconsole:
 	docker-compose run --name data-console -p 5432:5432 -e RAILS_ENV=development -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development --rm  db
 
-# Start the background jobs (workers)
+# Start the background jobs (workers and periodic jobs)
 workers:
-	docker exec -it demat-social-app bin/rails jobs:work
+	docker exec -d demat-social-app bin/rails jobs:work
+	docker exec -d demat-social-app bin/rails jobs:schedule
 
 # List Docker containers
 status:

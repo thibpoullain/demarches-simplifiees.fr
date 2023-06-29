@@ -79,19 +79,27 @@ module DossierHelper
 
   def status_badge(state, alignment_class = '')
     status_text = dossier_display_state(state, lower: true)
-    tag.span(status_text, class: "fr-badge #{class_badge_state(state)} fr-badge--no-icon #{alignment_class}", role: 'status')
+    tag.span(status_text, class: "fr-badge fr-badge--sm #{class_badge_state(state)} fr-badge--no-icon #{alignment_class}", role: 'status')
   end
 
   def deletion_reason_badge(reason)
     if reason.present?
-      status_text = I18n.t(reason, scope: [:activerecord, :attributes, :deleted_dossier, :reason])
+      status_text = I18n.t(reason, scope: 'activerecord.attributes.deleted_dossier.reason')
       status_class = reason.tr('_', '-')
     else
-      status_text = I18n.t(:unknown, scope: [:activerecord, :attributes, :deleted_dossier, :reason])
+      status_text = I18n.t('activerecord.attributes.deleted_dossier.reason.unknown')
       status_class = 'unknown'
     end
 
     tag.span(status_text, class: "label #{status_class} ")
+  end
+
+  def pending_correction_badge(for_profile, html_class: nil)
+    tag.span(Dossier.human_attribute_name("pending_correction.#{for_profile}"), class: ['fr-badge fr-badge--sm fr-badge--warning super', html_class], role: 'status')
+  end
+
+  def correction_resolved_badge
+    tag.span(Dossier.human_attribute_name("pending_correction.resolved"), class: ['fr-badge fr-badge--sm fr-badge--success super'], role: 'status')
   end
 
   def demandeur_dossier(dossier)

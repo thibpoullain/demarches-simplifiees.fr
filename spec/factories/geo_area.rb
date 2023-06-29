@@ -2,6 +2,7 @@ FactoryBot.define do
   factory :geo_area do
     association :champ
     properties { {} }
+    geometry { {} }
 
     trait :cadastre do
       source { GeoArea.sources.fetch(:cadastre) }
@@ -111,6 +112,15 @@ FactoryBot.define do
         {
           "type": "Point",
           "coordinates": [2.428439855575562, 46.538476837725796]
+        }
+      end
+    end
+
+    trait :invalid_point do
+      geometry do
+        {
+          "type": "Point",
+          "coordinates": [46.538476837725796]
         }
       end
     end

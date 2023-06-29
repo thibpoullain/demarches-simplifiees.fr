@@ -1,7 +1,8 @@
 describe APIEntrepriseService do
   shared_examples 'schedule fetch of all etablissement params' do
     [
-      APIEntreprise::EntrepriseJob, APIEntreprise::AssociationJob, APIEntreprise::ExercicesJob,
+      APIEntreprise::EntrepriseJob, APIEntreprise::ExtraitKbisJob, APIEntreprise::TvaJob,
+      APIEntreprise::AssociationJob, APIEntreprise::ExercicesJob,
       APIEntreprise::EffectifsJob, APIEntreprise::EffectifsAnnuelsJob, APIEntreprise::AttestationSocialeJob,
       APIEntreprise::BilansBdfJob
     ].each do |job|
@@ -13,14 +14,14 @@ describe APIEntrepriseService do
 
   describe '#create_etablissement' do
     before do
-      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v2\/etablissements\/#{siret}/)
+      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v3\/insee\/sirene\/etablissements\/#{siret}/)
         .to_return(body: etablissements_body, status: etablissements_status)
-      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v2\/entreprises\/#{siret[0..8]}/)
+      stub_request(:get, /https:\/\/entreprise.api.gouv.fr\/v3\/insee\/sirene\/unites_legales\/#{siret[0..8]}/)
         .to_return(body: entreprises_body, status: entreprises_status)
     end
 
-    let(:siret) { '41816609600051' }
-    let(:raison_sociale) { "OCTO-TECHNOLOGY" }
+    let(:siret) { '30613890001294' }
+    let(:raison_sociale) { "DIRECTION INTERMINISTERIELLE DU NUMERIQUE" }
     let(:etablissements_status) { 200 }
     let(:etablissements_body) { File.read('spec/fixtures/files/api_entreprise/etablissements.json') }
     let(:entreprises_status) { 200 }
@@ -86,11 +87,11 @@ describe APIEntrepriseService do
 
   describe "#api_up?" do
     subject { described_class.api_up? }
-    let(:body) { File.read('spec/fixtures/files/api_entreprise/current_status.json') }
+    let(:body) { Rails.root.join('spec/fixtures/files/api_entreprise/status.json').read }
     let(:status) { 200 }
 
     before do
-      stub_request(:get, "https://entreprise.api.gouv.fr/watchdoge/dashboard/current_status")
+      stub_request(:get, "https://status.entreprise.api.gouv.fr/summary.json")
         .to_return(body: body, status: status)
     end
 
@@ -99,18 +100,10 @@ describe APIEntrepriseService do
     end
 
     context "when api entreprise is down" do
-      let(:body) do
-        original_body = super()
-
-        json = JSON.parse(original_body)
-        # API etablissements is the first listed
-        json["results"][0]["code"] = 502
-
-        JSON.generate(json)
-      end
+      let(:body) { Rails.root.join('spec/fixtures/files/api_entreprise/status.json').read.gsub('UP', 'HASISSUES') }
 
       it "returns false" do
-        expect(subject).to be_falsy
+        expect(subject).to be_falsey
       end
     end
 
@@ -119,7 +112,7 @@ describe APIEntrepriseService do
       let(:status) { 0 }
 
       it "returns nil" do
-        expect(subject).to be_nil
+        expect(subject).to be_falsey
       end
     end
   end

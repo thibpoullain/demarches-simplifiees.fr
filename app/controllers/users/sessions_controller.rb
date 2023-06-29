@@ -3,7 +3,7 @@ class Users::SessionsController < Devise::SessionsController
   include TrustedDeviceConcern
   include ActionView::Helpers::DateHelper
 
-  layout 'procedure_context', only: [:new, :create]
+  layout 'login', only: [:new, :create]
 
   before_action :restore_procedure_context, only: [:new, :create]
 
@@ -36,7 +36,7 @@ class Users::SessionsController < Devise::SessionsController
 
       case connected_with_france_connect
       when User.loged_in_with_france_connects.fetch(:particulier)
-        redirect_to FRANCE_CONNECT[:particulier][:logout_endpoint]
+        redirect_to FRANCE_CONNECT[:particulier][:logout_endpoint], allow_other_host: true
         return
       end
     end

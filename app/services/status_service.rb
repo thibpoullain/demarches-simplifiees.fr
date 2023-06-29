@@ -153,7 +153,7 @@ class StatusService
     maintenance_file = {}
     maintenance_file[TYPE_JSON_ATTR] = CUSTOM_COMPONENT_VALUE
     begin
-      if File.file?(Rails.root.join("maintenance"))
+      if Rails.root.join("maintenance").file?
         maintenance_file[STATUS_JSON_ATTR] = STATUS_DOWN_VALUE
         maintenance_file[MESSAGE_JSON_ATTR] = "Le fichier de maintenance est pas présent sur le système de fichier"
         http_code = :internal_server_error

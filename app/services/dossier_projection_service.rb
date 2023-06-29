@@ -1,5 +1,11 @@
 class DossierProjectionService
-  class DossierProjection < Struct.new(:dossier_id, :state, :archived, :hidden_by_user_at, :hidden_by_administration_at, :batch_operation_id, :columns)
+  class DossierProjection < Struct.new(:dossier_id, :state, :archived, :hidden_by_user_at, :hidden_by_administration_at, :batch_operation_id, :corrections, :columns) do
+      def pending_correction?
+        return false if corrections.blank?
+
+        corrections.any? { _1[:resolved_at].nil? }
+      end
+    end
   end
 
   TABLE = 'table'
@@ -23,7 +29,8 @@ class DossierProjectionService
     batch_operation_field = { TABLE => 'self', COLUMN => 'batch_operation_id' }
     hidden_by_user_at_field = { TABLE => 'self', COLUMN => 'hidden_by_user_at' }
     hidden_by_administration_at_field = { TABLE => 'self', COLUMN => 'hidden_by_administration_at' }
-    ([state_field, archived_field, hidden_by_user_at_field, hidden_by_administration_at_field, batch_operation_field] + fields) # the view needs state and archived dossier attributes
+    dossier_corrections = { TABLE => 'dossier_corrections', COLUMN => 'resolved_at' }
+    ([state_field, archived_field, hidden_by_user_at_field, hidden_by_administration_at_field, batch_operation_field, dossier_corrections] + fields) # the view needs state and archived dossier attributes
       .each { |f| f[:id_value_h] = {} }
       .group_by { |f| f[TABLE] } # one query per table
       .each do |table, fields|
@@ -76,6 +83,18 @@ class DossierProjectionService
           .where(id: dossiers_ids)
           .pluck('dossiers.id, groupe_instructeurs.label')
           .to_h
+      when 'dossier_corrections'
+        columns = fields.map { _1[COLUMN].to_sym }
+
+        id_value_h = DossierCorrection.where(dossier_id: dossiers_ids)
+          .pluck(:dossier_id, *columns)
+          .group_by(&:first) # group corrections by dossier_id
+          .transform_values do |values| # build each correction has an hash column => value
+            values.map { Hash[columns.zip(_1[1..-1])] }
+          end
+
+        fields[0][:id_value_h] = id_value_h
+
       when 'procedure'
         Dossier
           .joins(:procedure)
@@ -92,6 +111,14 @@ class DossierProjectionService
           .group_by { |dossier_id, _| dossier_id }
           .to_h { |dossier_id, dossier_id_emails| [dossier_id, dossier_id_emails.sort.map { |_, email| email }&.join(', ')] }
         # rubocop:enable Style/HashTransformValues
+      when 'avis'
+        # rubocop:disable Style/HashTransformValues
+        fields[0][:id_value_h] = Avis
+          .where(dossier_id: dossiers_ids)
+          .pluck('dossier_id', 'question_answer')
+          .group_by { |dossier_id, _| dossier_id }
+          .to_h { |dossier_id, question_answer| [dossier_id, question_answer.map { |_, answer| answer }&.compact&.tally&.map { |k, v| I18n.t("helpers.label.question_answer_with_count.#{k}", count: v) }&.join(' / ')] }
+        # rubocop:enable Style/HashTransformValues
       end
     end
 
@@ -103,6 +130,7 @@ class DossierProjectionService
         hidden_by_user_at_field[:id_value_h][dossier_id],
         hidden_by_administration_at_field[:id_value_h][dossier_id],
         batch_operation_field[:id_value_h][dossier_id],
+        dossier_corrections[:id_value_h][dossier_id],
         fields.map { |f| f[:id_value_h][dossier_id] }
       )
     end

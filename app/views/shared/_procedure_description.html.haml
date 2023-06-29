@@ -5,23 +5,48 @@
   = image_tag procedure.logo_url, alt: procedure_logo_alt
   - if procedure.euro_flag
     = image_tag("flag_of_europe.svg", id: 'euro_flag', class: (!procedure.euro_flag ? "hidden" : ""))
-%h1.procedure-title
+%h1.fr-h2
   = procedure.libelle
 
 - if procedure.persisted? && procedure.estimated_duration_visible?
-  %p.procedure-configuration.procedure-configuration--fill-duration
-    %span.icon.clock
-    = t('shared.procedure_description.estimated_fill_duration', estimated_minutes: estimated_fill_duration_minutes(procedure))
+  %p
+    %small
+      %span.fr-icon-timer-line
+      = t('shared.procedure_description.estimated_fill_duration', estimated_minutes: estimated_fill_duration_minutes(procedure))
 
 - if procedure.auto_archive_on
-  %details.procedure-configuration.procedure-configuration--auto-archive
-    %summary
-      %span.icon.edit
+  %p
+    %small
+      %span.fr-icon-calendar-line
+        Date limite : #{procedure_auto_archive_datetime(procedure)}.
 
-      %span.procedure-auto-archive-title Date limite : #{procedure_auto_archive_date(procedure)}
-    %p Vous pouvez déposer vos dossiers jusqu’au #{procedure_auto_archive_datetime(procedure)}.
+= yield
 
-.procedure-description
-  .procedure-description-body.read-more-enabled.read-more-collapsed{ tabindex: "0", role: "region", "aria-label": t('views.users.dossiers.identite.description') }
-    = h render SimpleFormatComponent.new(procedure.description, allow_a: true)
-  = button_tag "Afficher la description complète", class: 'button read-more-button'
+- unless @no_description
+  .fr-accordions-group
+    %section.fr-accordion
+      %h2.fr-accordion__title
+        %button.fr-accordion__btn{ "aria-controls" => "accordion-114", "aria-expanded" => "true" }
+          = t('activerecord.attributes.procedure.description')
+      #accordion-114.fr-collapse.js_description
+        = h render SimpleFormatComponent.new(procedure.description, allow_a: true)
+
+    - if procedure.description_target_audience.present?
+      %section.fr-accordion
+        %h2.fr-accordion__title
+          %button.fr-accordion__btn{ "aria-controls" => "accordion-115", "aria-expanded" => "false" }
+            = t('activerecord.attributes.procedure.description_target_audience')
+        #accordion-115.fr-collapse.js_description_target_audience
+          = h render SimpleFormatComponent.new(procedure.description_target_audience, allow_a: true)
+
+    - if procedure.persisted? && procedure.estimated_duration_visible?
+      %section.fr-accordion
+        %h2.fr-accordion__title
+          %button.fr-accordion__btn{ "aria-controls" => "accordion-116", "aria-expanded" => "false" }
+            = t('shared.procedure_description.estimated_fill_duration_title')
+        #accordion-116.fr-collapse.js_description_target_audience
+          = t('shared.procedure_description.estimated_fill_duration_detail', estimated_minutes: estimated_fill_duration_minutes(procedure))
+
+- if procedure.notice.attached?
+  .fr-my-3w
+    = render Dsfr::DownloadComponent.new(attachment: procedure.notice , url: notice_url(procedure), name: t("views.shared.dossiers.edit.notice"), ephemeral_link: administrateur_signed_in?)

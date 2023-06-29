@@ -225,10 +225,12 @@ describe DossierProjectionService do
         let(:procedure) { create(:procedure, types_de_champ_public: [{ type: :pays }]) }
         let(:dossier) { create(:dossier, procedure: procedure) }
         let(:column) { dossier.procedure.active_revision.types_de_champ_public.first.stable_id.to_s }
-        let!(:previous_locale) { I18n.locale }
 
-        before { I18n.locale = :fr }
-        after { I18n.locale = previous_locale }
+        around do |example|
+          I18n.with_locale(:fr) do
+            example.run
+          end
+        end
 
         context 'when external id is set' do
           before do
@@ -244,6 +246,29 @@ describe DossierProjectionService do
           end
 
           it { is_expected.to eq("") }
+        end
+      end
+
+      context 'for dossier corrections table' do
+        let(:table) { 'dossier_corrections' }
+        let(:column) { 'resolved_at' }
+        let(:dossier) { create(:dossier, :en_construction) }
+        subject { described_class.project(dossiers_ids, fields)[0] }
+
+        context "when dossier has pending correction" do
+          before { create(:dossier_correction, dossier:) }
+
+          it { expect(subject.pending_correction?).to be(true) }
+        end
+
+        context "when dossier has a resolved correction" do
+          before { create(:dossier_correction, :resolved, dossier:) }
+
+          it { expect(subject.pending_correction?).to eq(false) }
+        end
+
+        context "when dossier has no correction at all" do
+          it { expect(subject.pending_correction?).to eq(false) }
         end
       end
     end
