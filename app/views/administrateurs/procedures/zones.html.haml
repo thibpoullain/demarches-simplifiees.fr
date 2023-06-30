@@ -25,6 +25,6 @@
 
     .procedure-form__actions.sticky--bottom
       .actions-right
-        = link_to 'Annuler', admin_procedure_path(id: @procedure), class: 'button', data: { confirm: 'Êtes-vous sûr de vouloir annuler les modifications effectuées ?'}
-        = f.button 'Enregistrer', class: 'button primary send'
+        = link_to 'Annuler', admin_procedure_path(id: @procedure), class: 'fr-btn fr-btn--secondary', data: { confirm: 'Êtes-vous sûr de vouloir annuler les modifications effectuées?'}
+        = f.button 'Enregistrer', class: 'fr-btn fr-mr-2w'
 
