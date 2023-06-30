@@ -1,2 +1,2 @@
-class EditableChamp::FinessComponent < EditableChamp::EditableChampBaseComponent
+class EditableChamp::FinessComponent < EditableChamp::ComboSearchComponent
 end

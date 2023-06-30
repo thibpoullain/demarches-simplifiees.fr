@@ -1,2 +1,2 @@
-class EditableChamp::RppsanteComponent < EditableChamp::EditableChampBaseComponent
+class EditableChamp::RppsanteComponent < EditableChamp::ComboSearchComponent
 end
