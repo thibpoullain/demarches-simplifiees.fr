@@ -77,7 +77,7 @@
     "telecopie_coord_structure": {
       "type": "string"
     },
-    "identification_nationale_pp": {
+    "identifiant_pp": {
       "type": "string"
     },
     "libelle_mode_exercice": {
@@ -106,7 +106,7 @@
     }
   },
   "required": [
-    "identification_nationale_pp",
+    "identifiant_pp",
     "nom_d_exercice",
     "prenom_d_exercice",
     "libelle_civilite",
