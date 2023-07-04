@@ -80,7 +80,6 @@ gem 'pundit'
 gem 'rack-attack'
 gem 'rails-i18n' # Locales par défaut
 gem 'rake-progressbar', require: false
-gem 'react-rails'
 gem 'redcarpet'
 gem 'rexml' # add missing gem due to ruby3 (https://github.com/Shopify/bootsnap/issues/325)
 gem 'rqrcode'
