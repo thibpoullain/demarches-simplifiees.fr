@@ -58,7 +58,7 @@ gem 'image_processing'
 gem 'invisible_captcha'
 gem 'json_schemer'
 gem 'jwt'
-gem 'kaminari', '1.2.1' # Pagination
+gem 'kaminari', '~> 1.2.1' # Pagination
 gem 'listen' # Required by ActiveSupport::EventedFileUpdateChecker
 gem 'lograge'
 gem 'logstash-event'
@@ -117,7 +117,7 @@ group :test do
   gem 'shoulda-matchers', require: false
   gem 'timecop'
   gem 'vcr'
-  gem 'webdrivers', '~> 4.0'
+  gem 'webdrivers', '~> 5.2.0'
   gem 'webmock'
 end
 
