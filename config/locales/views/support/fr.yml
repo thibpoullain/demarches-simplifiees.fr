@@ -3,8 +3,7 @@ fr:
     index:
       contact: Contact
       intro_html:
-        '<p>Contactez-nous via ce formulaire et nous vous répondrons dans les plus brefs délais.</p>
-        <p>Pensez bien à nous donner le plus d’informations possible pour que nous puissions vous aider au mieux.</p>'
+        '<p>Selectionner la question qui représente le mieux votre situation.</p>'
       your_question: Votre question
       our_answer: 👉 Notre réponse
       notice_pj_product: Une capture d’écran peut nous aider à identifier plus facilement l’endroit à améliorer.
@@ -20,17 +19,10 @@ fr:
         answer_html:
           '<p>Si vous avez des questions sur l’instruction de votre dossier (par exemple sur les délais), nous vous invitons à <a href="%{link_instruction_info}">contacter directement les services qui instruisent votre dossier par votre messagerie (FAQ)</a>.</p>
           <p>Si vous souhaitez poser une question pour un problème technique sur le site, utilisez le formulaire ci-dessous. Nous ne pourrons pas vous renseigner sur l’instruction de votre dossier.</p>'
-      product:
-        question: J’ai une idée d’amélioration pour votre site
-        answer_html:
-          '<p>Une idée ? Pensez à <a href="%{link_product}" rel="noopener noreferrer" target="_blank" title="Ouvrir le tableau des évolutions - Nouvel onglet">consulter notre tableau de bord des améliorations</a> :</p>
-          <ul><li>Votez pour vos améliorations prioritaires,</li>
-          <li>Proposez votre propre idée.</li></ul>'
       lost_user:
         question: Je ne trouve pas la démarche que je veux faire
         answer_html:
-          '<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : <code>%{base_url}/commencer/NOM_DE_LA_DEMARCHE</code>.</p>
-          <p>Vous pouvez aussi <a href="%{link_lost_user}">consulter ici la liste de nos démarches les plus fréquentes (permis, detr etc)</a>.</p>'
+          '<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : <code>%{base_url}/commencer/NOM_DE_LA_DEMARCHE</code>.</p>'
       other:
         question: Autre sujet ou l'explication ne me convient pas
         answer_html: "<p>Vous pouvez nous contacter par mail à <a href=%{link_other}>l'adresse suivante</a> et nous vous répondrons dans les plus brefs délais.<br>Pensez bien à nous donner le plus d’informations possible (numéro de dossier, captures d'écran...) pour que nous puissions vous aider au mieux.</p>"
