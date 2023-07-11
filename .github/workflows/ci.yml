@@ -4,6 +4,7 @@ on:
     branches:
       - 'main'
       - 'test-github-actions'
+      - 'integration'
       # - 'ds-merge-2023-06-07-01'
   pull_request:
     branches:
