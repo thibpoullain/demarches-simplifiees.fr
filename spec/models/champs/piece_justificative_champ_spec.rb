@@ -54,7 +54,7 @@ describe Champs::PieceJustificativeChamp do
   describe '#for_api' do
     let(:champ_pj) { create(:champ_piece_justificative) }
 
-    before { champ_pj.piece_justificative_file.first.blob.metadata.update(virus_scan_result:) }
+    before { champ_pj.piece_justificative_file.first.blob.update(virus_scan_result:) }
 
     subject { champ_pj.for_api }
 

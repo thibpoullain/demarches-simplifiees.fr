@@ -48,12 +48,11 @@ RSpec.describe Attachment::PendingPollComponent, type: :component do
 
     context "when antivirus is in progress" do
       before do
-        attachment.blob[:virus_scan_result] = ActiveStorage::VirusScanner::PENDING
+        attachment.blob.virus_scan_result = ActiveStorage::VirusScanner::PENDING
       end
 
       it "renders" do
-        # expect(component).to be_render
-        expect(component.class).to eq Attachment::PendingPollComponent
+        expect(component).to be_render
       end
     end
   end
