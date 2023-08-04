@@ -18,7 +18,7 @@ services:
       dockerfile: Dockerfile
       args:
         port: 3000
-    image: demat-social-v2.1.0
+    image: demat-social-v2.1.2
     container_name: demat-social-app
     environment:
       RAILS_ENV: development
@@ -43,7 +43,7 @@ services:
       dockerfile: Dockerfile
       args:
         port: 3036
-    image: demat-social-v2.1.0
+    image: demat-social-v2.1.2
     container_name: demat-social-front
     environment:
       RAILS_ENV: development

@@ -13,6 +13,7 @@
 /tmp
 failing_specs.txt
 tmp.zip
+config/newrelic.yml
 
 public/uploads
 public/downloads
