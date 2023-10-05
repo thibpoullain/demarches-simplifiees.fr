@@ -21,8 +21,10 @@ FileUtils.chdir APP_ROOT do
   system! 'node --version'
   system! 'bin/yarn install'
 
-  puts "\n== Updating webdrivers =="
-  system! 'RAILS_ENV=test bin/rails webdrivers:chromedriver:update'
+  # puts "\n== Updating webdrivers =="
+  # This Chrome web driver is no longer available/supported and can't be updated.
+  # Will cause some unit tests in spec/system to fail. But otherwise, not needed.
+  # system! 'RAILS_ENV=test bin/rails webdrivers:chromedriver:update'
 
   puts "\n== Copying sample files =="
   unless File.exist?('.env')

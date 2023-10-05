@@ -5,7 +5,7 @@ on:
       - 'main'
       - 'test-github-action'
       - 'integration'
-      # - 'ds-merge-2023-06-07-01'
+      # - 'ds-merge-2023-06-07-01-local'
   pull_request:
     branches:
       - 'main'

@@ -42,7 +42,7 @@ postgres_database := tps_development
 # 2. make restore
 # 3. make shell
 # 4. in container shell
-#    $ bin/migrate-data
+#    $ bin/migrate-data.sh
 #    $ bin/rails db:seed
 
 # To dump the local database to log/backup.sql
@@ -54,7 +54,7 @@ postgres_database := tps_development
 # To start the workers
 # make workers
 
-# To open a database shell to inspect the database container or use psql
+# To open a database shell and inspect the database container or use psql
 # make dbshell
 
 
