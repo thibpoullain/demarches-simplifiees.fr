@@ -21,9 +21,19 @@ class GroupeInstructeur < ApplicationRecord
   has_and_belongs_to_many :exports, dependent: :destroy
   has_and_belongs_to_many :bulk_messages, dependent: :destroy
 
+  has_one :defaut_procedure, -> { with_discarded }, class_name: 'Procedure', foreign_key: :defaut_groupe_instructeur_id, dependent: :nullify, inverse_of: :defaut_groupe_instructeur
+
   validates :label, presence: true, allow_nil: false
   validates :label, uniqueness: { scope: :procedure }
-  validates :closed, acceptance: { accept: [false] }, if: -> { closed_changed? && self.procedure.groupe_instructeurs.active.one? }
+  validates :closed, acceptance: { accept: [false] }, if: -> do
+    if closed
+      other_groupes = procedure.groupe_instructeurs - [self]
+
+      (other_groupes.map(&:closed) + [closed]).all?
+    else
+      false
+    end
+  end
 
   before_validation -> { label&.strip! }
   after_save :toggle_routing
@@ -76,10 +86,22 @@ class GroupeInstructeur < ApplicationRecord
     dossiers.empty? && (procedure.groupe_instructeurs.active.many? || (procedure.groupe_instructeurs.active.one? && closed))
   end
 
+  def routing_to_configure?
+    rule = routing_rule
+    return true if !(rule.is_a?(Logic::Eq) && rule.left.is_a?(Logic::ChampValue) && rule.right.is_a?(Logic::Constant))
+    !routing_rule_matches_tdc?
+  end
+
   private
+
+  def routing_rule_matches_tdc?
+    routing_tdc = procedure.active_revision.types_de_champ.find_by(stable_id: routing_rule.left.stable_id)
+    routing_rule.right.value.in?(routing_tdc.options['drop_down_options'])
+  end
 
   def toggle_routing
     procedure.update!(routing_enabled: procedure.groupe_instructeurs.active.many?)
+    procedure.update!(instructeurs_self_management_enabled: true) if procedure.routing_enabled?
   end
 
   serialize :routing_rule, LogicSerializer

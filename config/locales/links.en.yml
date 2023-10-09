@@ -1,10 +1,7 @@
 en:
   links:
     provider:
-      # provided_by: "la DINUM"
-      title: "Direction Interministérielle au Numérique"
-      url: "https://numerique.gouv.fr"
-      name: 'to-be-defined'
+      provided_by: "The DINUM"
     common:
       faq:
         label: "FAQ"
@@ -75,6 +72,22 @@ en:
       contact_technique:
         label: "Technical contact"
         title: "Technical contact"
+      api_doc:
+        label: "API Documentation"
+        title: "API Documentation"
+        url: "https://doc.demarches-simplifiees.fr/pour-aller-plus-loin/graphql"
+      dinum:
+        title: "The DINUM website - Government"
+        url: "https://www.numerique.gouv.fr/dinum/"
+        alt: "Interministerial Directorate for Digital Affairs"
+      code:
+        label: "Source code"
+        title: "Our Source code is open source"
+        url: "https://github.com/demarches-simplifiees/demarches-simplifiees.fr"
+      cgu:
+        label: "ToS"
+        title: "Terms of Service"
+        url: "https://doc.demarches-simplifiees.fr/cgu"
       doc:
         label: "Documentation"
         title: "Our Documentation"

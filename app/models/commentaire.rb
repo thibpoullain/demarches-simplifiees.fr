@@ -15,11 +15,11 @@
 class Commentaire < ApplicationRecord
   include Discard::Model
 
-  self.ignored_columns = [:user_id]
   belongs_to :dossier, inverse_of: :commentaires, touch: true, optional: false
 
   belongs_to :instructeur, inverse_of: :commentaires, optional: true
   belongs_to :expert, inverse_of: :commentaires, optional: true
+  has_one :dossier_correction, inverse_of: :commentaire, dependent: :nullify
 
   validate :messagerie_available?, on: :create, unless: -> { dossier.brouillon? }
 
@@ -95,6 +95,10 @@ class Commentaire < ApplicationRecord
     update! body: ''
   end
 
+  def flagged_pending_correction?
+    DossierCorrection.exists?(commentaire: self)
+  end
+
   private
 
   def notify
@@ -109,7 +113,11 @@ class Commentaire < ApplicationRecord
   end
 
   def notify_user(job_options = {})
-    DossierMailer.with(commentaire: self).notify_new_answer.deliver_later(job_options)
+    if flagged_pending_correction?
+      DossierMailer.notify_pending_correction(dossier).deliver_later(job_options)
+    else
+      DossierMailer.with(commentaire: self).notify_new_answer.deliver_later(job_options)
+    end
   end
 
   def messagerie_available?

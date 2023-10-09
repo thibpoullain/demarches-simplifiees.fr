@@ -162,7 +162,7 @@ describe Instructeurs::DossiersController, type: :controller do
       it 'warns about the error' do
         expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction))
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Le dossier est déjà en instruction.')
+        expect(response.body).to include('Le dossier est déjà en instruction.')
       end
     end
 
@@ -175,7 +175,7 @@ describe Instructeurs::DossiersController, type: :controller do
 
       it 'warns about the error' do
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Le dossier est en ce moment accepté : il n’est pas possible de le passer en instruction.')
+        expect(response.body).to include('Le dossier est en ce moment accepté : il n’est pas possible de le passer en instruction.')
       end
     end
 
@@ -208,7 +208,7 @@ describe Instructeurs::DossiersController, type: :controller do
       it 'warns about the error' do
         expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_construction))
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Le dossier est déjà en construction.')
+        expect(response.body).to include('Le dossier est déjà en construction.')
       end
     end
 
@@ -245,7 +245,7 @@ describe Instructeurs::DossiersController, type: :controller do
       it 'warns about the error' do
         expect(dossier.reload.state).to eq(Dossier.states.fetch(:en_instruction))
         expect(response).to have_http_status(:ok)
-        expect(response.body).to include('Le dossier est déjà en instruction.')
+        expect(response.body).to include('Le dossier est déjà en instruction.')
       end
     end
 
@@ -492,6 +492,112 @@ describe Instructeurs::DossiersController, type: :controller do
 
         expect(response).to have_http_status(:ok)
         expect(response.body).to include('Le dossier est déjà accepté.')
+      end
+    end
+  end
+
+  describe '#pending_correction' do
+    let(:message) { 'do that' }
+    let(:justificatif) { nil }
+
+    subject do
+      post :pending_correction, params: {
+        procedure_id: procedure.id, dossier_id: dossier.id,
+        dossier: { motivation: message, justificatif_motivation: justificatif }
+      }, format: :turbo_stream
+    end
+
+    before do
+      sign_in(instructeur.user)
+
+      allow(DossierMailer).to receive(:notify_pending_correction)
+        .and_return(double(deliver_later: nil))
+
+      expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :messagerie)
+    end
+
+    context "dossier en instruction" do
+      let(:dossier) { create(:dossier, :en_instruction, :with_individual, procedure: procedure) }
+
+      before { subject }
+
+      it 'sends an email to user' do
+        expect(DossierMailer).to have_received(:notify_pending_correction).once
+        expect(DossierMailer).to have_received(:notify_pending_correction).with(dossier)
+      end
+
+      it 'pass en_construction and create a pending correction' do
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('en attente de correction')
+
+        expect(dossier.reload).to be_en_construction
+        expect(dossier).to be_pending_correction
+      end
+
+      it 'create a comment with text body' do
+        expect(dossier.commentaires.last.body).to eq("do that")
+        expect(dossier.commentaires.last).to be_flagged_pending_correction
+      end
+
+      context 'with an attachment' do
+        let(:justificatif) { fake_justificatif }
+
+        it 'attach file to comment' do
+          expect(dossier.commentaires.last.piece_jointe).to be_attached
+        end
+      end
+
+      context 'with an invalid comment / attachment' do
+        let(:justificatif) { Rack::Test::UploadedFile.new(Rails.root.join('Gemfile.lock'), 'text/lock') }
+
+        it 'does not save anything' do
+          expect(dossier.reload).not_to be_pending_correction
+          expect(dossier.commentaires.count).to eq(0)
+          expect(response.body).to include('pas d’un type accepté')
+        end
+      end
+
+      context 'with an empty message' do
+        let(:message) { '' }
+
+        it 'requires a message' do
+          expect(dossier.reload).not_to be_pending_correction
+          expect(dossier.commentaires.count).to eq(0)
+          expect(response.body).to include('Vous devez préciser')
+        end
+      end
+
+      context 'dossier already having pending corrections' do
+        before do
+          create(:dossier_correction, dossier:)
+        end
+
+        it 'does not create an new pending correction' do
+          expect { subject }.not_to change { DossierCorrection.count }
+        end
+
+        it 'shows a flash alert' do
+          subject
+
+          expect(response.body).to include('')
+        end
+      end
+    end
+
+    context 'dossier en_construction' do
+      it 'can create a pending correction' do
+        subject
+        expect(dossier.reload).to be_pending_correction
+        expect(dossier.commentaires.last).to be_flagged_pending_correction
+      end
+    end
+
+    context 'dossier is termine' do
+      let(:dossier) { create(:dossier, :accepte, :with_individual, procedure: procedure) }
+
+      it 'does not create a pending correction' do
+        expect { subject }.not_to change { DossierCorrection.count }
+        expect(response.body).to include('Impossible')
       end
     end
   end
@@ -762,28 +868,19 @@ describe Instructeurs::DossiersController, type: :controller do
         { type: :multiple_drop_down_list },
         { type: :linked_drop_down_list },
         { type: :datetime },
-        { type: :repetition, children: [{}] }
+        { type: :repetition, children: [{}] },
+        { type: :drop_down_list, options: [:a, :b, :other] }
       ], instructeurs: instructeurs)
     end
     let(:dossier) { create(:dossier, :en_construction, :with_populated_annotations, procedure: procedure) }
     let(:another_instructeur) { create(:instructeur) }
     let(:now) { Time.zone.parse('01/01/2100') }
 
-    let(:champ_multiple_drop_down_list) do
-      dossier.champs_private.first
-    end
-
-    let(:champ_linked_drop_down_list) do
-      dossier.champs_private.second
-    end
-
-    let(:champ_datetime) do
-      dossier.champs_private.third
-    end
-
-    let(:champ_repetition) do
-      dossier.champs_private.fourth
-    end
+    let(:champ_multiple_drop_down_list) { dossier.champs_private.first }
+    let(:champ_linked_drop_down_list) { dossier.champs_private.second }
+    let(:champ_datetime) { dossier.champs_private.third }
+    let(:champ_repetition) { dossier.champs_private.fourth }
+    let(:champ_drop_down_list) { dossier.champs_private.fifth }
 
     before do
       expect(controller.current_instructeur).to receive(:mark_tab_as_seen).with(dossier, :annotations_privees)
@@ -795,6 +892,7 @@ describe Instructeurs::DossiersController, type: :controller do
       champ_linked_drop_down_list.reload
       champ_datetime.reload
       champ_repetition.reload
+      champ_drop_down_list.reload
     end
 
     after do
@@ -824,6 +922,11 @@ describe Instructeurs::DossiersController, type: :controller do
               '3': {
                 id: champ_repetition.champs.first.id,
                 value: 'text'
+              },
+              '4': {
+                id: champ_drop_down_list.id,
+                value: '__other__',
+                value_other: 'other value'
               }
             }
           }
@@ -836,6 +939,7 @@ describe Instructeurs::DossiersController, type: :controller do
         expect(champ_linked_drop_down_list.secondary_value).to eq('secondary')
         expect(champ_datetime.value).to eq('2019-12-21T13:17:00+01:00')
         expect(champ_repetition.champs.first.value).to eq('text')
+        expect(champ_drop_down_list.value).to eq('other value')
         expect(dossier.reload.last_champ_private_updated_at).to eq(now)
         expect(response).to have_http_status(200)
       }

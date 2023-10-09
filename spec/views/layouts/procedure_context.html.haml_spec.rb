@@ -1,4 +1,4 @@
-describe 'layouts/procedure_context.html.haml', type: :view do
+describe 'layouts/procedure_context', type: :view do
   let(:procedure) { create(:simple_procedure, :with_service) }
   let(:dossier) { create(:dossier, procedure: procedure) }
 
@@ -9,7 +9,7 @@ describe 'layouts/procedure_context.html.haml', type: :view do
   end
 
   subject do
-    render html: 'Column content', layout: 'layouts/procedure_context.html.haml'
+    render html: 'Column content', layout: 'layouts/procedure_context'
   end
 
   context 'when a procedure is assigned' do
@@ -49,20 +49,6 @@ describe 'layouts/procedure_context.html.haml', type: :view do
     it 'renders the procedure footer' do
       expect(subject).to have_text(dossier.procedure.service.nom)
       expect(subject).to have_text(dossier.procedure.service.email)
-    end
-  end
-
-  context 'when neither procedure or dossier are assigned' do
-    it 'renders a placeholder for the procedure' do
-      expect(subject).to have_selector('.no-procedure')
-    end
-
-    it 'renders the inner content' do
-      expect(subject).to have_text('Column content')
-    end
-
-    it 'renders a generic footer' do
-      expect(subject).to have_text('Mentions légales')
     end
   end
 end

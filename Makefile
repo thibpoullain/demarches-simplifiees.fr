@@ -1,4 +1,4 @@
-.PHONY: build install run setup clean shell dbshell console dbconsole status dump load workers dbcreate dbinit
+.PHONY: build install run clean shell dbshell console dbconsole status dump load workers dbcreate dbinit
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
 postgres_dump := production.dump
@@ -9,8 +9,7 @@ postgres_database := tps_development
 
 # To install and run the application with an empty database, do:
 # 1. make install
-# 2. make setup
-# 3. make run
+# 2. make run
 
 # The database will contain the seed user:
 # user: test@exemple.fr
@@ -18,11 +17,11 @@ postgres_database := tps_development
 # Connect your browser to http://localhost:3000
 
 # To inspect the docker containers status
-# 4. make status
+# 3. make status
 
 # To stop the application
-# 5. CONTROL C
-# 6. make clean
+# 4. CONTROL C
+# 5. make clean
 
 
 # After the initial installation:
@@ -42,7 +41,7 @@ postgres_database := tps_development
 # 2. make restore
 # 3. make shell
 # 4. in container shell
-#    $ bin/migrate-data
+#    $ bin/migrate-data.sh
 #    $ bin/rails db:seed
 
 # To dump the local database to log/backup.sql
@@ -54,7 +53,7 @@ postgres_database := tps_development
 # To start the workers
 # make workers
 
-# To open a database shell to inspect the database container or use psql
+# To open a database shell and inspect the database container or use psql
 # make dbshell
 
 
@@ -66,12 +65,6 @@ build:
 install:
 	echo "UID=$(shell id -u)" >> .env
 	docker-compose build
-
-# Install dependencies and setup the database
-# Loads database schema and run seeds
-setup:
-	docker-compose run webapp-main bin/setup
-	$(MAKE) clean
 
 # Run the demat-social app
 run:
@@ -101,9 +94,10 @@ console:
 dbconsole:
 	docker-compose run --name data-console -p 5432:5432 -e RAILS_ENV=development -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development --rm  db
 
-# Start the background jobs (workers)
+# Start the background jobs (workers and periodic jobs)
 workers:
-	docker exec -it demat-social-app bin/rails jobs:work
+	docker exec -d demat-social-app bin/rails jobs:work
+	docker exec -d demat-social-app bin/rails jobs:schedule
 
 # List Docker containers
 status:

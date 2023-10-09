@@ -4,8 +4,9 @@
 if [ $IS_REVIEW_APP ]; then
     export DISABLE_DATABASE_ENVIRONMENT_CHECK=1
     bin/rails db:schema:load
-    bin/rails db:migrate
+    bin/rake after_party:populate_zones
     bin/rails db:seed
 fi
 
-bundle exec rake jobs:schedule jobs:work
+bundle exec rake jobs:work
+bundle exec rake jobs:schedule

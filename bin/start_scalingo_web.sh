@@ -7,7 +7,9 @@ echo "Démarrage de l'instance $APP_HOST"
 if [ $IS_REVIEW_APP ]; then
     export DISABLE_DATABASE_ENVIRONMENT_CHECK=1
     bin/rails db:schema:load
-    bin/rails db:migrate
+    bin/rake after_party:populate_zones
+    # bin/rails db:migrations:setup
+    # bin/migrate-data.sh
     bin/rails db:seed
 fi
 

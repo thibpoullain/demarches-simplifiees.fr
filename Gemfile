@@ -1,6 +1,8 @@
 source 'https://rubygems.org'
 
-ruby "3.1.3"
+ruby "3.2.2"
+
+gem 'rails', '~> 7.0.4' # allows update to security fixes at any time
 
 gem 'aasm'
 gem 'acsv'
@@ -56,7 +58,7 @@ gem 'image_processing'
 gem 'invisible_captcha'
 gem 'json_schemer'
 gem 'jwt'
-gem 'kaminari', '1.2.1' # Pagination
+gem 'kaminari', '~> 1.2.1' # Pagination
 gem 'listen' # Required by ActiveSupport::EventedFileUpdateChecker
 gem 'lograge'
 gem 'logstash-event'
@@ -76,15 +78,12 @@ gem 'premailer-rails'
 gem 'puma' # Use Puma as the app server
 gem 'pundit'
 gem 'rack-attack'
-gem 'rails'
 gem 'rails-i18n' # Locales par défaut
 gem 'rake-progressbar', require: false
-gem 'react-rails'
 gem 'redcarpet'
 gem 'rexml' # add missing gem due to ruby3 (https://github.com/Shopify/bootsnap/issues/325)
-gem 'rgeo-geojson'
 gem 'rqrcode'
-gem 'ruby-saml-idp'
+gem 'saml_idp'
 gem 'sanitize-url'
 gem 'sassc-rails' # Use SCSS for stylesheets
 gem 'sentry-delayed_job'
@@ -118,7 +117,7 @@ group :test do
   gem 'shoulda-matchers', require: false
   gem 'timecop'
   gem 'vcr'
-  gem 'webdrivers', '~> 4.0'
+  gem 'webdrivers', '~> 5.2.0'
   gem 'webmock'
 end
 

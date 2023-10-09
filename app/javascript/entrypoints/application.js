@@ -1,3 +1,4 @@
+import 'core-js/proposals/relative-indexing-method';
 import Rails from '@rails/ujs';
 import * as ActiveStorage from '@rails/activestorage';
 import * as Turbo from '@hotwired/turbo';
@@ -11,8 +12,6 @@ import '../shared/toggle-target';
 import { registerControllers } from '../shared/stimulus-loader';
 
 import '../new_design/form-validation';
-import '../new_design/procedure-context';
-import '../new_design/procedure-form';
 
 import { toggleCondidentielExplanation } from '../new_design/avis';
 import {

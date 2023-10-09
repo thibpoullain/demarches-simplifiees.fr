@@ -70,10 +70,7 @@
           %h2.cta-panel-title Une question, un problème ?
           %p.cta-panel-explanation La réponse est dans l’aide en ligne
         %div
-          / = link_to "Accéder à l’aide en ligne", FAQ_URL,
-          /   class: "cta-panel-button-white",
-          /   target: "_blank",
-          /   rel: "noopener noreferrer"
+          = link_to t("root.landing.online_help"), t("links.common.faq.url"), class: "fr-btn fr-btn--lg", title: new_tab_suffix(t("root.landing.online_help")), **external_link_attributes
         -#   We temporarily disable the link to the contact page on the homepage
         -#   %p.cta-panel-explanation Notre équipe est disponible pour vous renseigner et vous aider
         -# %div
@@ -82,3 +79,12 @@
         -#     class: "cta-panel-button-white",
         -#     target: "_blank",
         -#     rel: "noopener noreferrer"
+
+  .landing-panel
+    .container
+      .cta-panel-wrapper
+        %div
+          %h2.cta-panel-title Votre administration est prête pour dématérialiser
+          %p.cta-panel-explanation.grey Créez un premier formulaire de test en quelques minutes
+        %div
+          = link_to "Créer votre compte administrateur", DEMANDE_INSCRIPTION_ADMIN_PAGE_URL, class: "role-panel-button-secondary"

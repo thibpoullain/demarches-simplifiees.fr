@@ -60,7 +60,8 @@ class ProcedurePresentation < ApplicationRecord
     fields.push(
       field_hash('user', 'email', type: :text),
       field_hash('followers_instructeurs', 'email', type: :text),
-      field_hash('groupe_instructeur', 'id', type: :enum)
+      field_hash('groupe_instructeur', 'id', type: :enum),
+      field_hash('avis', 'answer', type: :text)
     )
 
     if procedure.for_individual
@@ -90,6 +91,7 @@ class ProcedurePresentation < ApplicationRecord
 
     fields.concat procedure.types_de_champ_for_procedure_presentation
       .pluck(:type_champ, :libelle, :private, :stable_id)
+      .reject { |(type_champ)| type_champ == TypeDeChamp.type_champs.fetch(:repetition) }
       .map { |(type_champ, libelle, is_private, stable_id)| field_hash(is_private ? TYPE_DE_CHAMP_PRIVATE : TYPE_DE_CHAMP, stable_id.to_s, label: libelle, type: (TypeDeChamp.options_for_select?(type_champ) ? :enum : :text)) }
 
     fields
@@ -161,6 +163,11 @@ class ProcedurePresentation < ApplicationRecord
         .order("instructeurs_users.email #{order}")
         .pluck(:id)
         .uniq
+    when 'avis'
+      dossiers.includes(table)
+        .order("#{self.class.sanitized_column(table, column)} #{order}")
+        .pluck(:id)
+        .uniq
     when 'self', 'user', 'individual', 'etablissement', 'groupe_instructeur'
       (table == 'self' ? dossiers : dossiers.includes(table))
         .order("#{self.class.sanitized_column(table, column)} #{order}")
@@ -181,6 +188,8 @@ class ProcedurePresentation < ApplicationRecord
             .filter_map { |v| Time.zone.parse(v).beginning_of_day rescue nil }
 
           dossiers.filter_by_datetimes(column, dates)
+        elsif field['column'] == "state" && values.include?("pending_correction")
+          dossiers.joins(:corrections).where(corrections: DossierCorrection.pending)
         else
           dossiers.where("dossiers.#{column} IN (?)", values)
         end
@@ -209,7 +218,7 @@ class ProcedurePresentation < ApplicationRecord
           .includes(:followers_instructeurs)
           .joins('INNER JOIN users instructeurs_users ON instructeurs_users.id = instructeurs.user_id')
           .filter_ilike('instructeurs_users', :email, values)
-      when 'user', 'individual'
+      when 'user', 'individual', 'avis'
         dossiers
           .includes(table)
           .filter_ilike(table, column, values)
@@ -229,7 +238,7 @@ class ProcedurePresentation < ApplicationRecord
   end
 
   def filtered_sorted_ids(dossiers, statut, count: nil)
-    dossiers_by_statut = dossiers.by_statut(instructeur, statut)
+    dossiers_by_statut = dossiers.by_statut(statut, instructeur)
     dossiers_sorted_ids = self.sorted_ids(dossiers_by_statut, count || dossiers_by_statut.size)
 
     if filters[statut].present?
@@ -243,10 +252,14 @@ class ProcedurePresentation < ApplicationRecord
     if [TYPE_DE_CHAMP, TYPE_DE_CHAMP_PRIVATE].include?(filter[TABLE])
       find_type_de_champ(filter[COLUMN]).dynamic_type.filter_to_human(filter['value'])
     elsif filter['column'] == 'state'
-      Dossier.human_attribute_name("state.#{filter['value']}")
+      if filter['value'] == 'pending_correction'
+        Dossier.human_attribute_name("pending_correction.for_instructeur")
+      else
+        Dossier.human_attribute_name("state.#{filter['value']}")
+      end
     elsif filter['table'] == 'groupe_instructeur' && filter['column'] == 'id'
       instructeur.groupe_instructeurs
-        .find { _1.id == filter['value'].to_i }&.label || "Groupe Instucteur #{filter['value']}"
+        .find { _1.id == filter['value'].to_i }&.label || filter['value']
     else
       filter['value']
     end

@@ -1,6 +1,10 @@
-= @form.text_field :value
+- render_parent
+
+= @form.hidden_field :value
 = @form.hidden_field :external_id
+
 = react_component("ComboRppsanteSearch",
   required: @champ.mandatory?,
   id: @champ.input_id,
-  describedby: @champ.describedby_id)
+  describedby: @champ.describedby_id,
+  **react_combo_props)

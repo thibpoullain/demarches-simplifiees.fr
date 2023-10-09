@@ -136,10 +136,7 @@ RSpec.describe Attachment::EditComponent, type: :component do
       it 'displays the filename, but doesn’t allow to download the file' do
         expect(subject).to have_text(filename)
         expect(subject).to have_no_link(text: filename)
-        # expect(subject).to have_text('Analyse antivirus en cours')
-        expect(subject).to have_text('erreur')
-        # tbd: replace with
-        # expect(subject).to have_text(I18n.t('errors.uploading'))
+        expect(subject).to have_text('Analyse antivirus en cours')
       end
 
       it 'setup polling' do
@@ -173,10 +170,7 @@ RSpec.describe Attachment::EditComponent, type: :component do
       it 'displays the filename, but doesn’t allow to download the file' do
         expect(subject).to have_text(champ.piece_justificative_file[0].filename.to_s)
         expect(subject).to have_no_link(text: filename)
-        # expect(subject).to have_text('Virus détecté')
-        expect(subject).to have_text('erreur')
-        # tbd: replace with
-        # expect(subject).to have_text(I18n.t('errors.virus_infected'))
+        expect(subject).to have_text('Virus détecté')
       end
     end
 
@@ -186,10 +180,7 @@ RSpec.describe Attachment::EditComponent, type: :component do
       it 'displays the filename, but doesn’t allow to download the file' do
         expect(subject).to have_text(filename)
         expect(subject).to have_no_link(text: filename)
-        # expect(subject).to have_text('corrompu')
-        expect(subject).to have_text('erreur')
-        # tbd: replace with
-        # expect(subject).to have_text(I18n.t('errors.corrupted_file'))
+        expect(subject).to have_text('corrompu')
       end
     end
   end

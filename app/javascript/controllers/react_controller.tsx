@@ -1,6 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 import React, { lazy, Suspense, FunctionComponent } from 'react';
-import { render, unmountComponentAtNode } from 'react-dom';
+import { unmountComponentAtNode } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import invariant from 'tiny-invariant';
 
 type Props = Record<string, unknown>;
@@ -51,7 +52,8 @@ export class ReactController extends Controller {
       Component,
       `Cannot find a React component with class "${componentName}"`
     );
-    render(<Component {...props} />, node);
+    const root = createRoot(node);
+    root.render(<Component {...props} />);
   }
 
   private getComponent(componentName: string): FunctionComponent<Props> | null {

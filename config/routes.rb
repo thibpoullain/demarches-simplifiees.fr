@@ -33,6 +33,8 @@ Rails.application.routes.draw do
       post 'repasser_en_instruction', on: :member
     end
 
+    resources :groupe_instructeurs, only: [:index, :show]
+
     resources :administrateurs, only: [:index, :show, :new, :create] do
       post 'reinvite', on: :member
       delete 'delete', on: :member
@@ -326,10 +328,11 @@ Rails.application.routes.draw do
         post 'siret', to: 'dossiers#update_siret'
         get 'etablissement'
         get 'brouillon'
-        patch 'brouillon', to: 'dossiers#update_brouillon'
+        patch 'brouillon', to: 'dossiers#update'
         post 'brouillon', to: 'dossiers#submit_brouillon'
         get 'modifier', to: 'dossiers#modifier'
-        patch 'modifier', to: 'dossiers#update'
+        post 'modifier', to: 'dossiers#submit_en_construction'
+        patch 'modifier', to: 'dossiers#modifier_legacy'
         get 'merci'
         get 'demande'
         get 'messagerie'
@@ -453,6 +456,7 @@ Rails.application.routes.draw do
             post 'repasser-en-construction' => 'dossiers#repasser_en_construction'
             post 'repasser-en-instruction' => 'dossiers#repasser_en_instruction'
             post 'terminer'
+            post 'pending_correction'
             post 'send-to-instructeurs' => 'dossiers#send_to_instructeurs'
             post 'avis' => 'dossiers#create_avis'
             get 'print' => 'dossiers#print'
@@ -517,6 +521,7 @@ Rails.application.routes.draw do
       end
 
       patch :update, controller: 'routing', as: :routing_rules
+      patch :update_defaut_groupe_instructeur, controller: 'routing', as: :update_defaut_groupe_instructeur
 
       put 'clone'
       put 'archive'
@@ -529,6 +534,8 @@ Rails.application.routes.draw do
       resources :mail_templates, only: [:edit, :update, :show]
 
       resources :groupe_instructeurs, only: [:index, :show, :create, :update, :destroy] do
+        patch 'update_state' => 'groupe_instructeurs#update_state'
+
         member do
           post 'add_instructeur'
           delete 'remove_instructeur'
@@ -537,6 +544,13 @@ Rails.application.routes.draw do
         end
 
         collection do
+          get 'options'
+          get 'ajout'
+          post 'ajout' => 'groupe_instructeurs#create'
+          patch 'wizard'
+          get 'simple_routing'
+          post 'create_simple_routing'
+          delete 'destroy_all_groups_but_defaut'
           patch 'update_routing_criteria_name'
           patch 'update_instructeurs_self_management_enabled'
           post 'import'
