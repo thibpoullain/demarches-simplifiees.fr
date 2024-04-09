@@ -1,4 +1,4 @@
-.PHONY: build install run clean shell dbshell console dbconsole status dump load workers dbcreate dbinit
+.PHONY: build install run clean shell dbshell console dbconsole status dump load workers dbcreate dbinit rspec
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
 postgres_dump := production.dump
@@ -135,3 +135,8 @@ dbcreate:
 # Reloads the database schema, runs the migrations, and seeds the database
 dbinit:
 	docker-compose run --name webapp-console -e RAILS_ENV=development --rm  webapp-main /bin/bash -c "bin/rails db:schema:load && bin/rails db:migrate && bin/rails db:seed"
+
+# Run the rspec tests
+# Usage: make rspec test_path=spec/models/user_spec.rb
+rspec:
+	docker-compose run webapp-main bundle exec rspec $(test_path)
