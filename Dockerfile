@@ -1,4 +1,4 @@
-FROM ruby:3.2.2
+FROM --platform=linux/amd64 ruby:3.2.2
 
 # ARG port
 
