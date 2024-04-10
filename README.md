@@ -65,7 +65,7 @@ localhost       demat-dev.social.gouv.fr
 
 # Lancer l'application demat-social.
 # terminal 1:
-> make run
+> make up
 
 # Ouvrir un shell dans le container docker de l'application.
 # terminal 2:
@@ -113,10 +113,10 @@ cfd69a3a4c01   demat-social-front   Up 14 minutes   0.0.0.0:3036->3036/tcp, :::3
 > make status
 
 # Supprimer les containeurs arrêtés.
-> make clean
+> make down
 
 # Redémarrer l'application demat-social.
-> make run
+> make up
 ```
 
 ##### Ecrans de l'application demat-social au démarrage

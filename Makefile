@@ -1,4 +1,4 @@
-.PHONY: build install run clean shell dbshell console dbconsole status dump load workers dbcreate dbinit rspec
+.PHONY: build install up down shell dbshell console dbconsole status dump load workers dbcreate dbinit rspec
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
 postgres_dump := production.dump
@@ -62,16 +62,16 @@ build:
 	docker-compose build
 
 # Create the Docker images for demat-social and install
-install:
+build-env:
 	echo "UID=$(shell id -u)" >> .env
 	docker-compose build
 
 # Run the demat-social app
-run:
+up:
 	docker-compose up
 
 # Cleanup the stopped Docker containers
-clean:
+down:
 	docker-compose down
 
 # Open a bash shell inside the app container when app is running
@@ -137,6 +137,10 @@ dbinit:
 	docker-compose run --name webapp-console -e RAILS_ENV=development --rm  webapp-main /bin/bash -c "bin/rails db:schema:load && bin/rails db:migrate && bin/rails db:seed"
 
 # Run the rspec tests
-# Usage: make rspec test_path=spec/models/user_spec.rb
+# Usage: make rspec file=spec/models/user_spec.rb
+# the test database must be created in the db container
+# Tip : use the rails run spec VSCode extention with the setting : custom command : "make rspec file=",
+# https://github.com/thadeu/vscode-run-rspec-file
+# and use the shortcut to run the tests strait from your editor
 rspec:
-	docker-compose run webapp-main bundle exec rspec $(test_path)
+	docker-compose run --name webapp-test -e RAILS_ENV=test --rm webapp-main bundle exec rspec --color $(file)
