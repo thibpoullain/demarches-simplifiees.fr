@@ -30,7 +30,6 @@ require "rack_session_access/capybara"
 # require only the support files necessary.
 #
 Dir[Rails.root.join('spec/support/**/*.rb')].each { |f| require f }
-Dir[Rails.root.join('spec/factories/**/*.rb')].each { |f| require f }
 
 ActiveSupport::Deprecation.silenced = true
 

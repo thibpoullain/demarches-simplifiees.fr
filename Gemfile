@@ -124,7 +124,7 @@ group :development, :test do
   gem 'capybara' # Integration testing
   gem 'capybara-email' # Access emails during integration tests
   gem 'capybara-screenshot' # Save a dump of the page when an integration test fails
-  gem 'factory_bot'
+  gem 'factory_bot_rails'
   gem 'graphql-schema_comparator'
   gem 'launchy'
   gem 'mina', require: false # Deploy
