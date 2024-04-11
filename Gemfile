@@ -102,6 +102,24 @@ gem 'warden'
 gem 'zipline'
 gem 'zxcvbn-ruby', require: 'zxcvbn'
 
+group :test do
+  gem 'axe-core-rspec' # accessibility rspec matchers
+  gem 'capybara' # Integration testing
+  gem 'capybara-email' # Access emails during integration tests
+  gem 'capybara-screenshot' # Save a dump of the page when an integration test fails
+  gem 'launchy'
+  gem 'rack_session_access'
+  gem 'rails-controller-testing'
+  gem 'rspec_junit_formatter'
+  gem 'selenium-devtools'
+  gem 'selenium-webdriver'
+  gem 'shoulda-matchers', require: false
+  gem 'timecop'
+  gem 'vcr'
+  gem 'webdrivers', '~> 5.2.0'
+  gem 'webmock'
+end
+
 group :development do
   gem 'annotate'
   gem 'brakeman', require: false
@@ -120,28 +138,13 @@ group :development do
 end
 
 group :development, :test do
-  gem 'axe-core-rspec' # accessibility rspec matchers
-  gem 'capybara' # Integration testing
-  gem 'capybara-email' # Access emails during integration tests
-  gem 'capybara-screenshot' # Save a dump of the page when an integration test fails
   gem 'factory_bot_rails'
   gem 'graphql-schema_comparator'
-  gem 'launchy'
   gem 'mina', require: false # Deploy
   gem 'pry-byebug' # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'pry-rails'
-  gem 'rack_session_access'
-  gem 'rails-controller-testing'
-  gem 'rspec_junit_formatter'
   gem 'rspec-rails'
-  gem 'selenium-devtools'
-  gem 'selenium-webdriver'
-  gem 'shoulda-matchers', require: false
   gem 'simple_xlsx_reader'
   gem 'spring' # Spring speeds up development by keeping your application running in the background
   gem 'spring-commands-rspec'
-  gem 'timecop'
-  gem 'vcr'
-  gem 'webdrivers', '~> 5.2.0'
-  gem 'webmock'
 end
