@@ -43,11 +43,13 @@ export default function ComboRppsanteSearch(
             code_postal_coord_structure,
             libelle_commune_coord_structure
           }
-        }) => [identifiant_pp,
+        }) => [
+          identifiant_pp,
           `${
             libelle_civilite_d_exercice !== undefined
               ? libelle_civilite_d_exercice
-              : libelle_civilite} ${nom_d_exercice} ${prenom_d_exercice}, ${libelle_profession}, ${code_postal_coord_structure} ${libelle_commune_coord_structure} (${identifiant_pp}) `
+              : libelle_civilite
+          } ${nom_d_exercice} ${prenom_d_exercice}, ${libelle_profession}, ${code_postal_coord_structure} ${libelle_commune_coord_structure} (${identifiant_pp}) `
         ]}
       />
     </QueryClientProvider>
