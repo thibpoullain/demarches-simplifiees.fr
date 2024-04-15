@@ -38,7 +38,6 @@ class Champ < ApplicationRecord
 
   delegate :libelle,
     :type_champ,
-    :procedure,
     :order_place,
     :mandatory?,
     :description,
