@@ -69,11 +69,6 @@ describe API::V2::GraphqlController do
             __typename
           }
         }
-        service {
-          nom
-          typeOrganisme
-          organisme
-        }
         champDescriptors {
           __typename
           id
@@ -95,6 +90,11 @@ describe API::V2::GraphqlController do
           ... on LinkedDropDownListChampDescriptor {
             options
           }
+        }
+        service {
+          nom
+          typeOrganisme
+          organisme
         }
         dossiers {
           nodes {
@@ -208,6 +208,8 @@ describe API::V2::GraphqlController do
         end
 
         it "returns the demarche" do
+          # TODO Version 2.1.3 | Remove this line when implementing those tree types in the graphql api
+          procedure.revisions.first.types_de_champ.where(libelle: ["nir", "finess", "rppsante"]).destroy_all
           expect(gql_errors).to eq(nil)
           expect(gql_data).to include(demarche: {
             id: procedure.to_typed_id,
@@ -228,14 +230,16 @@ describe API::V2::GraphqlController do
             draftRevision: { id: procedure.draft_revision.to_typed_id },
             publishedRevision: {
               id: procedure.published_revision.to_typed_id,
-              champDescriptors: procedure.published_revision.types_de_champ_public.map { { __typename: format_type_champ(_1.type_champ) } }
+              # TODO Version 2.1.3 | Remove this where.not clause when implementing those tree types in the graphql api
+              champDescriptors: procedure.published_revision.types_de_champ_public.where.not(libelle: ["nir", "finess", "rppsante"]).map { { __typename: format_type_champ(_1.type_champ) } }
             },
             service: {
               nom: procedure.service.nom,
               typeOrganisme: procedure.service.type_organisme,
               organisme: procedure.service.organisme
             },
-            champDescriptors: procedure.active_revision.types_de_champ_public.map do |tdc|
+            # TODO Version 2.1.3 | Remove this where.not clause when implementing those tree types in the graphql api
+            champDescriptors: procedure.active_revision.types_de_champ_public.where.not(libelle: ["nir", "finess", "rppsante"]).map do |tdc|
               {
                 id: tdc.to_typed_id,
                 label: tdc.libelle,
@@ -483,6 +487,8 @@ describe API::V2::GraphqlController do
         end
 
         it "should be returned" do
+          # TODO Version 2.1.3 | Remove this line when implementing those tree types in the graphql api
+          procedure.revisions.first.types_de_champ.where(libelle: ["nir", "finess", "rppsante"]).destroy_all
           expect(gql_errors).to eq(nil)
           expect(gql_data).to eq(dossier: {
             id: dossier.to_typed_id,
@@ -517,7 +523,8 @@ describe API::V2::GraphqlController do
             },
             revision: {
               id: dossier.revision.to_typed_id,
-              champDescriptors: dossier.types_de_champ.map do |tdc|
+              # TODO Version 2.1.3 | Remove this where.not clause when implementing those tree types in the graphql api
+              champDescriptors: dossier.types_de_champ.where.not(libelle: ["nir", "finess", "rppsante"]).map do |tdc|
                 {
                   type: tdc.type_champ
                 }
