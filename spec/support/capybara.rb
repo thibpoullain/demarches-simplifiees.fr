@@ -1,77 +1,58 @@
+require 'capybara/rails'
 require 'capybara/rspec'
 require 'capybara-screenshot/rspec'
 require 'capybara/email/rspec'
 require 'selenium/webdriver'
 
-def setup_driver(app, download_path, options)
-  Capybara::Selenium::Driver.new(app, browser: :chrome, options:).tap do |driver|
-    # Set download dir for Chrome < 77
-    driver.browser.download_path = download_path
+# Selenium::WebDriver.logger.level = :debug
 
-    if ENV['MAKE_IT_SLOW'].present?
-      driver.browser.network_conditions = {
-        offline: false,
-        latency: 800,
-        download_throughput: 1024000,
-        upload_throughput: 1024000
-      }
-    end
+def setup_driver(driver)
+  if ENV['MAKE_IT_SLOW'].present?
+    driver.browser.network_conditions = {
+      offline: false,
+      latency: 800,
+      download_throughput: 1024000,
+      upload_throughput: 1024000
+    }
+  end
 
-    if ENV['JS_LOG'].present?
-      driver.browser.on_log_event(:console) do |event|
-        puts event.args if event.type == ENV['JS_LOG'].downcase.to_sym
-      end
+  if ENV['JS_LOG'].present?
+    driver.browser.on_log_event(:console) do |event|
+      puts event.args if event.type == ENV['JS_LOG'].downcase.to_sym
     end
   end
+
+  driver
 end
 
-Capybara.register_driver :chrome do |app|
-  options = Selenium::WebDriver::Chrome::Options.new
-  options.add_argument('--no-sandbox') unless ENV['SANDBOX']
-  options.add_argument('--mute-audio')
-  options.add_argument('--window-size=1440,900')
-
-  download_path = Capybara.save_path
-  # Chromedriver 77 requires setting this for headless mode on linux
-  # Different versions of Chrome/selenium-webdriver require setting differently - just set them all
-  options.add_preference('download.default_directory', download_path)
-  options.add_preference(:download, default_directory: download_path)
-
-  setup_driver(app, download_path, options)
+Capybara.register_driver :selenium_chrome do |app|
+  args = ['disable-gpu', 'disable-dev-shm-usage', 'window-size=1400,900', 'mute-audio', 'no-sandbox']
+  options = Selenium::WebDriver::Chrome::Options.new(args: args)
+  setup_driver(Capybara::Selenium::Driver.new(app, browser: :chrome, options: options))
 end
 
-Capybara.register_driver :headless_chrome do |app|
-  options = Selenium::WebDriver::Chrome::Options.new
-  options.add_argument('--no-sandbox') unless ENV['SANDBOX']
-  options.add_argument('--headless')
-  options.add_argument('--window-size=1440,900')
-  options.add_argument('--disable-dev-shm-usage')
-  options.add_argument('--disable-software-rasterizer')
-  options.add_argument('--mute-audio')
-
-  download_path = Capybara.save_path
-  # Chromedriver 77 requires setting this for headless mode on linux
-  # Different versions of Chrome/selenium-webdriver require setting differently - just set them all
-  options.add_preference('download.default_directory', download_path)
-  options.add_preference(:download, default_directory: download_path)
-
-  setup_driver(app, download_path, options)
+Capybara.register_driver :selenium_chrome_headless do |app|
+  args = [
+    'headless', 'disable-gpu', 'disable-software-rasterizer', 'disable-dev-shm-usage',
+    'window-size=1400,900', 'mute-audio', 'no-sandbox'
+  ]
+  options = Selenium::WebDriver::Chrome::Options.new(args: args)
+  setup_driver(Capybara::Selenium::Driver.new(app, browser: :chrome, options: options))
 end
 
-Capybara.default_max_wait_time = 4
-
+Capybara.default_driver         = :selenium_chrome
+Capybara.javascript_driver      = :selenium_chrome_headless
+Capybara.default_max_wait_time  = 4
 Capybara.ignore_hidden_elements = false
-
-Capybara.enable_aria_label = true
-
-Capybara.disable_animation = true
+Capybara.enable_aria_label      = true
+Capybara.disable_animation      = true
 
 # Save a snapshot of the HTML page when an integration test fails
 Capybara::Screenshot.autosave_on_failure = true
 # Keep only the screenshots generated from the last failing test suite
 Capybara::Screenshot.prune_strategy = :keep_last_run
 # Tell Capybara::Screenshot how to take screenshots when using the headless_chrome driver
-Capybara::Screenshot.register_driver :headless_chrome do |driver, path|
+Capybara::Screenshot.register_driver :selenium_chrome_headless do |driver, path|
   driver.browser.save_screenshot(path)
 end
 
@@ -81,7 +62,7 @@ RSpec.configure do |config|
   end
 
   config.before(:each, type: :system, js: true) do
-    driven_by ENV['NO_HEADLESS'] ? :chrome : :headless_chrome
+    driven_by ENV['NO_HEADLESS'] ? :selenium_chrome : :selenium_chrome_headless
   end
 
   # Set the user preferred language before Javascript system specs.

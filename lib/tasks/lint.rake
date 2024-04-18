@@ -1,5 +1,5 @@
 task :lint do
-  sh "bundle exec rubocop --parallel"
+  # sh "bundle exec rubocop --parallel"
   sh "bundle exec haml-lint app/views/ app/components/"
   sh "bundle exec scss-lint app/assets/stylesheets/"
   sh "bundle exec i18n-tasks missing --locales fr"

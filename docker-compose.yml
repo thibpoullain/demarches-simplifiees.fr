@@ -1,4 +1,3 @@
-version: '3.7'
 services:
   db:
     image: postgres
@@ -34,9 +33,9 @@ services:
     depends_on:
       - db
     volumes:
-      - '.:/opt/ds'
-      - demat-dev-gems:/opt/ds/tmp/
-      - demat-dev-node-modules:/opt/ds/node_modules
+      - '.:/home/demat-social/app'
+      - demat-dev-gems:/home/demat-social/app/tmp/
+      - demat-dev-node-modules:/home/demat-social/app/node_modules
   front:
     build:
       context: .
@@ -54,9 +53,9 @@ services:
     ports:
       - '3036:3036'
     volumes:
-      - '.:/opt/ds'
-      - demat-dev-gems:/opt/ds/tmp/
-      - demat-dev-node-modules:/opt/ds/node_modules
+      - '.:/home/demat-social/app'
+      - demat-dev-gems:/home/demat-social/app/tmp/
+      - demat-dev-node-modules:/home/demat-social/app/node_modules
   sftp:
     image: atmoz/sftp
     container_name: demat-social-sftp
