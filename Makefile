@@ -89,12 +89,12 @@ dbshell:
 # it uses the already opened database container
 # use like this : make shell-test-standalone env=test user=demat-social
 shell-standalone:
-	docker-compose run -u $(user) --name webapp-console -e RAILS_ENV=$(env) --rm  webapp-main /bin/bash
+	docker-compose run -u $(user) -e RAILS_ENV=$(env) --rm  webapp-main /bin/bash
 
 # Open a bash terminal inside the app container when app is not running
 # Used for restoring a database from a dump or running psql
 dbshell-standalone:
-	docker-compose run --name data-console -p 5432:5432 -e RAILS_ENV=development -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development --rm  db
+	docker-compose run -p 5432:5432 -e RAILS_ENV=development -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development --rm  db
 
 # Start the background jobs (workers and periodic jobs)
 workers:
@@ -147,10 +147,6 @@ dbinit:
 # ⚠️ Need the database to be up and running, make up is your friend
 rspec:
 	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main bundle exec rspec --color $(file)
-
-# Launch once to setup the test databases based on the number of CPUs you have
-local-ci-setup:
-	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main bundle exec rake parallel:setup
 
 local-ci:
 	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main time ./bin/local_ci.sh
