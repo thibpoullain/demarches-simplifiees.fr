@@ -34,131 +34,144 @@ jobs:
         shell: bash
         run: RAILS_ENV=test bundle exec rake zeitwerk:check
 
-  # js_tests:
-  #   name: JavaScript tests
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: true
+  js_tests:
+    name: JavaScript tests
+    runs-on: ubuntu-latest
+    continue-on-error: true
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         cache: 'yarn'
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          cache: "yarn"
 
-  #     - name: Install Node modules
-  #       run: |
-  #         node --version
-  #         yarn install --frozen-lockfile
-  #       shell: bash
+      - name: Install Node modules
+        run: |
+          node --version
+          yarn install --frozen-lockfile
+        shell: bash
 
-  #     - name: Run tests
-  #       run: |
-  #         yarn test
+      - name: Run tests
+        run: |
+          yarn test
 
-  # unit_tests:
-  #   name: Unit tests
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: true
-  #   services:
-  #     postgres:
-  #       image: postgres:14
-  #       env:
-  #         POSTGRES_USER: tps_test
-  #         POSTGRES_DB: tps_test
-  #         POSTGRES_PASSWORD: tps_test
-  #       ports: ['5432:5432']
+  unit_tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: tps_test
+          POSTGRES_DB: tps_test
+          POSTGRES_PASSWORD: tps_test
+        ports: ["5432:5432"]
 
-  #   strategy:
-  #     matrix:
-  #       instances: [0, 1, 2, 3, 4, 5]
+    strategy:
+      matrix:
+        instances: [0, 1, 2, 3, 4, 5]
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v3
 
-  #     - name: Setup the app runtime and dependencies
-  #       uses: ./.github/actions/ci-setup-rails
+      - name: Setup the app runtime and dependencies
+        uses: ./.github/actions/ci-setup-rails
 
-  #     - name: Pre-compile assets
-  #       uses: ./.github/actions/ci-setup-assets
+      - name: Pre-compile assets
+        uses: ./.github/actions/ci-setup-assets
 
-  #     - name: Setup split tests
-  #       uses: ./.github/actions/ci-setup-split-tests
-  #       with:
-  #         results_path: tmp/*.junit.xml
+      - name: Setup split tests
+        uses: ./.github/actions/ci-setup-split-tests
+        with:
+          results_path: tmp/*.junit.xml
 
-  #     - name: Run tests
-  #       run: |
-  #         SPEC_FILES=$(./split_tests -glob='spec/**/*_spec.rb' -exclude-glob='spec/system/**' -split-index=${{ strategy.job-index }} -split-total=${{ strategy.job-total }} -junit -junit-path=tmp/*.junit.xml)
-  #         echo "Running tests for bin/rspec $SPEC_FILES"
-  #         bin/rspec $SPEC_FILES --format progress --format RspecJunitFormatter --out tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
+      - name: Run tests
+        run: |
+          SPEC_FILES=$(./split_tests -glob='spec/**/*_spec.rb' -exclude-glob='spec/system/**' -split-index=${{ strategy.job-index }} -split-total=${{ strategy.job-total }} -junit -junit-path=tmp/*.junit.xml)
+          echo "Running tests for bin/rspec $SPEC_FILES"
+          bin/rspec $SPEC_FILES --format progress --format RspecJunitFormatter --out tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
 
-  #     - name: Upload test results for this instance
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: test-reports
-  #         path: tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
+      - name: Upload test results for this instance
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
 
-  # system_tests:
-  #   name: System tests
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: true
-  #   services:
-  #     postgres:
-  #       image: postgres:14
-  #       env:
-  #         POSTGRES_USER: tps_test
-  #         POSTGRES_DB: tps_test
-  #         POSTGRES_PASSWORD: tps_test
-  #       ports: ['5432:5432']
+  system_tests:
+    name: System tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: tps_test
+          POSTGRES_DB: tps_test
+          POSTGRES_PASSWORD: tps_test
+        ports: ["5432:5432"]
 
-  #   strategy:
-  #     matrix:
-  #       instances: [0, 1]
+    strategy:
+      matrix:
+        instances: [0, 1]
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+    steps:
+      - uses: actions/checkout@v4
 
-  #     - name: Setup the app runtime and dependencies
-  #       uses: ./.github/actions/ci-setup-rails
+      - uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 124.0.6367.60
 
-  #     - name: Pre-compile assets
-  #       uses: ./.github/actions/ci-setup-assets
+      - uses: nanasess/setup-chromedriver@v2
+        with:
+          chromedriver-version: "124.0.6367.60"
 
-  #     - name: Setup split tests
-  #       uses: ./.github/actions/ci-setup-split-tests
-  #       with:
-  #         results_path: tmp/*.junit.xml
+      - name: Setup the app runtime and dependencies
+        uses: ./.github/actions/ci-setup-rails
 
-  #     - name: Run tests
-  #       run: |
-  #         SPEC_FILES=$(./split_tests -glob='spec/system/**/*_spec.rb' -split-index=${{ strategy.job-index }} -split-total=${{ strategy.job-total }} -junit -junit-path=tmp/*.junit.xml)
-  #         echo "Running tests for bin/rspec $SPEC_FILES"
-  #         RAILS_ENV=test bin/rspec $SPEC_FILES --format progress --format RspecJunitFormatter --out tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
+      - name: Check Chrome and Chromedriver versions
+        shell: bash
+        run: |
+          echo $(google-chrome-stable --version)
+          echo $(chromedriver -v)
 
-  #     - name: Upload test results for this instance
-  #       uses: actions/upload-artifact@v3
-  #       with:
-  #         name: test-reports
-  #         path: tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
+      - name: Pre-compile assets
+        uses: ./.github/actions/ci-setup-assets
 
-  # save_test_reports:
-  #   name: Save test reports
-  #   needs: [unit_tests, system_tests]
-  #   runs-on: ubuntu-latest
-  #   continue-on-error: true
+      - name: Setup split tests
+        uses: ./.github/actions/ci-setup-split-tests
+        with:
+          results_path: tmp/*.junit.xml
 
-  #   steps:
-  #     - uses: actions/checkout@v3
+      - name: Run tests
+        run: |
+          SPEC_FILES=$(./split_tests -glob='spec/system/**/*_spec.rb' -split-index=${{ strategy.job-index }} -split-total=${{ strategy.job-total }} -junit -junit-path=tmp/*.junit.xml)
+          echo "Running tests for bin/rspec $SPEC_FILES"
+          RAILS_ENV=test bin/rspec $SPEC_FILES --format progress --format RspecJunitFormatter --out tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
 
-  #     - name: Collect test results from all instances
-  #       uses: actions/download-artifact@v3
-  #       with:
-  #         name: test-reports
-  #         path: tmp
+      - name: Upload test results for this instance
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
 
-  #     - name: Save test results and timing data, to better split future tests
-  #       uses: ./.github/actions/ci-save-split-tests
-  #       with:
-  #         results_path: tmp/*.junit.xml
+  save_test_reports:
+    name: Save test reports
+    needs: [unit_tests, system_tests]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Collect test results from all instances
+        uses: actions/download-artifact@v3
+        with:
+          name: test-reports
+          path: tmp
+
+      - name: Save test results and timing data, to better split future tests
+        uses: ./.github/actions/ci-save-split-tests
+        with:
+          results_path: tmp/*.junit.xml

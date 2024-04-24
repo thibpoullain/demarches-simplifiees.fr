@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -ms /bin/bash demat-social
 
 # update with the version of Chrome that you are using
-RUN curl -fsSL https://storage.googleapis.com/chrome-for-testing-public/123.0.6312.122/linux64/chromedriver-linux64.zip -o chromedriver.zip \
+RUN curl -fsSL https://storage.googleapis.com/chrome-for-testing-public/$(google-chrome-stable --version | cut -d ' ' -f 3)/linux64/chromedriver-linux64.zip -o chromedriver.zip \
     && unzip chromedriver.zip \
     && mv chromedriver-linux64/chromedriver /usr/bin/chromedriver \
     && rm chromedriver.zip \

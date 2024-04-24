@@ -4,7 +4,7 @@ require 'capybara-screenshot/rspec'
 require 'capybara/email/rspec'
 require 'selenium/webdriver'
 
-# Selenium::WebDriver.logger.level = :debug
+Selenium::WebDriver.logger.level = :info
 
 def setup_driver(driver)
   if ENV['MAKE_IT_SLOW'].present?

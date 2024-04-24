@@ -5,7 +5,7 @@ describe API::V2::GraphqlController do
   let(:token) { generated_token.second }
   let(:legacy_token) { APIToken.send(:unpack, token)[:plain_token] }
   let(:procedure) { create(:procedure, :published, :for_individual, :with_service, administrateurs: [admin]) }
-  let(:dossier)  { create(:dossier, :en_construction, :with_individual, procedure: procedure) }
+  let(:dossier) { create(:dossier, :en_construction, :with_individual, procedure: procedure) }
   let(:dossier1) { create(:dossier, :en_construction, :with_individual, procedure: procedure, en_construction_at: 1.day.ago) }
   let(:dossier2) { create(:dossier, :en_construction, :with_individual, :archived, procedure: procedure, en_construction_at: 3.days.ago) }
   let(:dossiers) { [dossier] }
@@ -107,7 +107,10 @@ describe API::V2::GraphqlController do
   let(:variables) { {} }
   let(:operation_name) { nil }
   let(:query_id) { nil }
-  let(:body) { JSON.parse(subject.body, symbolize_names: true) }
+  let(:body) do
+    Timecop.freeze(Time.zone.local(2024, 4, 24, 15, 47, 46))
+    JSON.parse(subject.body, symbolize_names: true)
+  end
   let(:gql_data) { body[:data] }
   let(:gql_errors) { body[:errors] }
 
@@ -394,6 +397,7 @@ describe API::V2::GraphqlController do
 
     describe "dossier" do
       let(:dossier) do
+        Timecop.freeze(Time.zone.local(2024, 4, 24, 15, 47, 46))
         dossier = create(:dossier,
                          :en_construction,
                          :with_populated_champs,
