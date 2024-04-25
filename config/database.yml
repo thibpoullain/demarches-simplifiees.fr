@@ -22,8 +22,8 @@ test:
   <<: *default
   database: tps_test_<%= ENV['TEST_ENV_NUMBER'] %>
   host: <%= ENV["DB_HOST"] %>
-  username: tps_test
-  password: tps_test
+  username: <%= ENV["DB_USERNAME"] || tps_test %>
+  password: <%= ENV["DB_PASSWORD"] || tps_test %>
   # Workaround for https://github.com/ged/ruby-pg/issues/311
   gssencmode: disable
 

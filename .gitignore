@@ -60,3 +60,5 @@ app/graphql/schema.json
 public/graphql/schema
 
 .DS_Store
+
+config/parallel*

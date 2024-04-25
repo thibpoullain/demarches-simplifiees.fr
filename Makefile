@@ -67,8 +67,6 @@ load:
 	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
 	docker exec -i demat-social-data /bin/bash -c "psql -U $(postgres_role) $(postgres_database)" < log/backup.sql
 	docker-compose restart webapp-main
-	docker exec -i demat-social-app /bin/bash -c "bin/migrate-data.sh"
-	docker exec -i demat-social-app /bin/bash -c "bin/rails db:seed"
 
 # Restore the anonymized database from production - dump format
 # First start database container
