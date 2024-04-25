@@ -17,7 +17,7 @@ gem 'anchored'
 gem 'aws-sdk-s3', '~> 1.113', require: false # Stockage S3 dont cegedim
 gem 'bcrypt'
 gem 'bcrypt_pbkdf' # idem
-gem 'bootsnap', '>= 1.4.4', require: false # Reduces boot times through caching; required in config/boot.rb
+gem 'bootsnap', '>= 1.18.3', require: false # Reduces boot times through caching; required in config/boot.rb
 gem 'browser'
 gem 'charlock_holmes'
 gem 'chartkick'
