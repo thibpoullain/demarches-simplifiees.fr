@@ -1,106 +1,92 @@
-.PHONY: build install up down shell shell-root restore_prod dbshell shell-standalone shell-standalone-root shell-test-standalone shell-test-standalone-root dbshell-standalone status dump load workers dbcreate dbinit rspec local-ci local-ci-setup
+.PHONY: up connect restore_prod dump_dev load_dev rspec_unit rspec_system rspec_parallel_file rspec_system_visual
 
 current_date := $(shell date '+%Y-%m-%d-%H:%M:%S')
 postgres_dump := production.dump
-postgres_role := tps_development
+postgres_role := thibaut
 postgres_database := tps_development
 
-# Build the Docker image of the application
-build:
-	docker-compose build
-
-# Create the Docker images for demat-social and install
-build-env:
-	echo "UID=$(shell id -u)" >> .env
-	docker-compose build
-
-# Run the demat-social app
 up:
-	docker-compose up
+	overmind start --any-can-die -f Procfile.dev
 
-# Cleanup the stopped Docker containers
-down:
-	docker-compose down
+connect:
+	overmind connect -n demat-social-app
 
-# Open a bash shell inside the app container when app is running
-# Can be used to inspect the container content or run the interactive Rails console
-shell:
-	docker exec -it -u demat-social demat-social-app /bin/bash
-
-shell-root:
-	docker exec -it -u root -social demat-social-app /bin/bash
-
-# Open a bash shell inside the database container when app is running
-dbshell:
-	docker exec -it demat-social-data /bin/bash
-
-# open a standalone web container with the app
-# it uses the already opened database container
-# use like this : make shell-test-standalone env=test user=demat-social
-shell-standalone:
-	docker-compose run -u $(user) -e RAILS_ENV=$(env) --rm  webapp-main /bin/bash
-
-# Open a bash terminal inside the app container when app is not running
-# Used for restoring a database from a dump or running psql
-dbshell-standalone:
-	docker-compose run -p 5432:5432 -e RAILS_ENV=development -e POSTGRES_USER=tps_development -e POSTGRES_PASSWORD=tps_development --rm  db
-
-# Start the background jobs (workers and periodic jobs)
-workers:
-	docker exec -d demat-social-app bin/rails jobs:work
-	docker exec -d demat-social-app bin/rails jobs:schedule
-
-# List Docker containers
-status:
-	./docker/dlist
-
-# Dump postgresql database - sql format
-dump:
-	docker exec -i demat-social-data /bin/bash -c "pg_dump -U $(postgres_role) $(postgres_database)" > log/backup.sql
-	cp log/backup.sql log/backup-$(current_date).sql
-
-# Load the application database from backup - sql format
-# Warning: it will drop the current database
-load:
-	docker-compose stop webapp-main
-	docker exec -i demat-social-data /bin/bash -c "dropdb -U $(postgres_role) $(postgres_database)"
-	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
-	docker exec -i demat-social-data /bin/bash -c "psql -U $(postgres_role) $(postgres_database)" < log/backup.sql
-	docker-compose restart webapp-main
-
-# Restore the anonymized database from production - dump format
-# First start database container
-# Warning: it will drop the current database
 restore_prod:
-	docker-compose stop webapp-main
-	docker cp ../dumps/$(postgres_dump) demat-social-data:./
-	docker exec -i demat-social-data /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
-	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
-	docker exec -i demat-social-data /bin/bash -c "pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)"
-	docker exec -i demat-social-data /bin/bash -c "rm ./$(postgres_dump)"
-	docker-compose restart webapp-main
-	docker exec -i demat-social-app /bin/bash -c "bin/migrate-data.sh"
-	docker exec -i demat-social-app /bin/bash -c "bin/rails db:seed"
+	[ -e ./.overmind.sock ] && overmind stop
+	cp ../dumps/$(postgres_dump) ./
+	psql -U $(postgres_role) -d postgres -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '$(postgres_database)' AND pid <> pg_backend_pid();"
+	dropdb --if-exists -U $(postgres_role) $(postgres_database)
+	createdb -U $(postgres_role) $(postgres_database)
+	pg_restore -U $(postgres_role) -d $(postgres_database) -x -O $(postgres_dump)
+	rm ./$(postgres_dump)
+	[ -e ./.overmind.sock ] && overmind restart
+	bin/migrate-data.sh
+	bin/rails db:seed
 
-# Drops the current development database and create a new empty one
-# First start database container in a terminal with 'make dbconsole'
-dbcreate:
-	docker exec -i demat-social-data /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
-	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+dump_dev:
+	[ -e ./.overmind.sock ] && overmind stop
+	pg_dump -U $(postgres_role) $(postgres_database) > log/backup.sql
+	cp log/backup.sql log/backup-$(current_date).sql
+	[ -e ./.overmind.sock ] && overmind restart
 
-# Reloads the database schema, runs the migrations, and seeds the database
-dbinit:
-	docker-compose run -u demat-social --name webapp-console -e RAILS_ENV=development --rm  webapp-main /bin/bash -c "bin/rails db:schema:load && bin/rails db:migrate && bin/rails db:seed"
+load_dev:
+	[ -e ./.overmind.sock ] && overmind stop
+	dropdb -U $(postgres_role) $(postgres_database)
+	createdb -U $(postgres_role) $(postgres_database)
+	psql -U $(postgres_role) $(postgres_database) < log/backup.sql
+	[ -e ./.overmind.sock ] && overmind restart
 
-# Run the rspec tests for a specific file
-# Usage: make rspec file=spec/models/user_spec.rb
-# the test database must be created in the db container
-# Tip : use the rails run spec VSCode extention with the setting : custom command : "make rspec file=",
-# https://github.com/thadeu/vscode-run-rspec-file
-# and use the shortcut to run the tests strait from your editor
-# ⚠️ Need the database to be up and running, make up is your friend
-rspec:
-	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main bundle exec rspec --color $(file)
+# ex : make rspec_unit nb_workers=2
+# use a log file to split the tests by runtime in each worker
+rspec_unit:
+	@rm -rf tmp/capybara/* && echo '🧹 clean capybara tmp files'
+	@if [ ! -e ./config/parallel_runtime_rspec_unit_test.log ]; then \
+		echo '✨ first launch'; \
+		bundle exec parallel_rspec -n $(nb_workers) -t rspec --exclude-pattern 'spec/system/**/*_spec.rb' --test-options "--format ParallelTests::RSpec::RuntimeLogger --out ./config/parallel_runtime_rspec_unit_test.log"; \
+	else \
+		echo '🚀 optimised launch'; \
+		bundle exec parallel_rspec -n $(nb_workers) -t rspec --group-by runtime --exclude-pattern 'spec/system/**/*_spec.rb' --runtime-log ./config/parallel_runtime_rspec_unit_test.log; \
+	fi
 
-local-ci:
-	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main time ./bin/local_ci.sh
+# ex : make rspec_system nb_workers=2
+# use a log file to split the tests by runtime in each worker
+rspec_system:
+	@rm -rf tmp/capybara/* && echo '🧹 clean capybara tmp files'
+	@if [ ! -e ./config/parallel_runtime_rspec_system_test.log ]; then \
+		echo '✨ first launch'; \
+		bundle exec parallel_rspec -n $(nb_workers) -t rspec spec/system/**/*_spec.rb --test-options "--format ParallelTests::RSpec::RuntimeLogger --out ./config/parallel_runtime_rspec_system_test.log"; \
+	else \
+		echo '🚀 optimised launch'; \
+		bundle exec parallel_rspec -n $(nb_workers) -t rspec --group-by runtime spec/system/**/*_spec.rb --runtime-log ./config/parallel_runtime_rspec_system_test.log; \
+	fi
+
+rspec_system_visual:
+	MAKE_IT_SLOW=true NO_HEADLESS=1 bundle exec rspec $(file)
+
+rspec_parallel_file:
+	bundle exec parallel_rspec -n $(nb_workers) -t rspec $(file) --test-options "--format progress"
+
+
+# # Drops the current development database and create a new empty one
+# # First start database container in a terminal with 'make dbconsole'
+# dbcreate:
+# 	docker exec -i demat-social-data /bin/bash -c "dropdb --if-exists -U $(postgres_role) $(postgres_database)"
+# 	docker exec -i demat-social-data /bin/bash -c "createdb -U $(postgres_role) $(postgres_database)"
+
+# # Reloads the database schema, runs the migrations, and seeds the database
+# dbinit:
+# 	docker-compose run -u demat-social --name webapp-console -e RAILS_ENV=development --rm  webapp-main /bin/bash -c "bin/rails db:schema:load && bin/rails db:migrate && bin/rails db:seed"
+
+# # Run the rspec tests for a specific file
+# # Usage: make rspec file=spec/models/user_spec.rb
+# # the test database must be created in the db container
+# # Tip : use the rails run spec VSCode extention with the setting : custom command : "make rspec file=",
+# # https://github.com/thadeu/vscode-run-rspec-file
+# # and use the shortcut to run the tests strait from your editor
+# # ⚠️ Need the database to be up and running, make up is your friend
+# rspec:
+# 	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main bundle exec rspec --color $(file)
+
+# # ex : make local-ci nb_workers=2
+# local-ci:
+# 	docker-compose run -u demat-social --name webapp-test -e RAILS_ENV=test --rm webapp-main time ./bin/local_ci.sh $(nb_workers)

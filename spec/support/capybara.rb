@@ -47,11 +47,16 @@ Capybara.disable_animation      = true
 
 # Save a snapshot of the HTML page when an integration test fails
 Capybara::Screenshot.autosave_on_failure = true
-# Keep only the screenshots generated from the last failing test suite
-Capybara::Screenshot.prune_strategy = :keep_last_run
+# Keep the screenshots in the tmp/capybara directory, and don't delete them
+# we need it to be able to use parallel_tests
+Capybara::Screenshot.prune_strategy = :keep_all
 # Tell Capybara::Screenshot how to take screenshots when using the headless_chrome driver
 Capybara::Screenshot.register_driver :selenium_chrome_headless do |driver, path|
   driver.browser.save_screenshot(path)
+end
+
+Capybara::Screenshot.register_filename_prefix_formatter(:rspec) do |example|
+  "screenshot_#{example.description.tr(' ', '-').gsub(/^.*\/spec\//, '')}"
 end
 
 RSpec.configure do |config|
