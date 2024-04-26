@@ -285,6 +285,7 @@ describe 'fetch API Particulier Data', js: true do
         expect(page).to have_content(/Le champ « Champs public code postal » doit posséder 5 caractères/)
 
         VCR.use_cassette('api_particulier/success/composition_familiale') do
+          fill_in 'Le code postal', with: ''
           fill_in 'Le code postal', with: code_postal
           wait_for_autosave
           click_on 'Déposer le dossier'
@@ -292,8 +293,10 @@ describe 'fetch API Particulier Data', js: true do
         end
         expect(page).to have_current_path(merci_dossier_path(Dossier.last))
 
-        perform_enqueued_jobs
-        wait_until { cnaf_champ.reload.data.present? }
+        VCR.use_cassette('api_particulier/success/composition_familiale') do
+          perform_enqueued_jobs
+          wait_until { cnaf_champ.reload.data.present? }
+        end
 
         visit demande_dossier_path(dossier)
         expect(page).to have_content(/Des données.*ont été reçues depuis la CAF/)
@@ -311,9 +314,9 @@ describe 'fetch API Particulier Data', js: true do
         expect(page).to have_content('pays FRANCE')
         expect(page).to have_content('complément d’identité géographique au nord de paris')
         expect(page).to have_content('lieu-dit glagla')
-        expect(page).to have_content('ERIC SNOW masculin 07/01/1991')
-        expect(page).to have_content('SANSA SNOW féminin 15/01/1992')
-        expect(page).to have_content('PAUL SNOW masculin 04/01/2018')
+        expect(page).to have_content('ERIC SNOW masculin 1991-01-07')
+        expect(page).to have_content('SANSA SNOW féminin 1992-01-15')
+        expect(page).to have_content('PAUL SNOW masculin 2018-01-04')
         expect(page).to have_content('1856 6 2021')
       end
     end
@@ -481,6 +484,7 @@ describe 'fetch API Particulier Data', js: true do
         click_on 'Déposer le dossier'
         expect(page).to have_content(/Le champ « Champs public reference avis » doit posséder 13 ou 14 caractères/)
 
+        fill_in "La référence d’avis d’imposition", with: ""
         fill_in "La référence d’avis d’imposition", with: reference_avis
         wait_for_autosave
         click_on 'Déposer le dossier'

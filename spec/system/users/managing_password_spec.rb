@@ -55,7 +55,7 @@ describe 'Managing password:', js: true do
 
       fill_in 'user_password', with: weak_password
       fill_in 'user_password_confirmation', with: weak_password
-      expect(page).to have_text('Mot de passe très vulnérable')
+      expect(page).to have_text('Le mot de passe doit faire au moins 12 caractères')
       expect(page).to have_button('Changer le mot de passe', disabled: true)
 
       fill_in 'user_password', with: strong_password
@@ -90,7 +90,7 @@ describe 'Managing password:', js: true do
 
       fill_in 'super_admin_password', with: weak_password
       fill_in 'super_admin_password_confirmation', with: weak_password
-      expect(page).to have_text('Mot de passe très vulnérable')
+      expect(page).to have_text('Le mot de passe doit faire au moins 12 caractères')
       expect(page).to have_button('Changer le mot de passe', disabled: true)
 
       fill_in 'super_admin_password', with: strong_password

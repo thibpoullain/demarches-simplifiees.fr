@@ -1,8 +1,10 @@
 RSpec.shared_examples 'a job retrying transient errors' do |job_class = described_class|
   context 'when a transient network error is raised' do
-    ExconErrorJob = Class.new(job_class) do
-      def perform
-        raise Excon::Error::InternalServerError, 'msg'
+    unless Object.const_defined?('ExconErrorJob')
+      ExconErrorJob = Class.new(job_class) do
+        def perform
+          raise Excon::Error::InternalServerError, 'msg'
+        end
       end
     end
 
@@ -14,9 +16,11 @@ RSpec.shared_examples 'a job retrying transient errors' do |job_class = describe
   end
 
   context 'when another type of error is raised' do
-    StandardErrorJob = Class.new(job_class) do
-      def perform
-        raise StandardError
+    unless Object.const_defined?('StandardErrorJob')
+      StandardErrorJob = Class.new(job_class) do
+        def perform
+          raise StandardError
+        end
       end
     end
 
