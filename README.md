@@ -51,6 +51,9 @@ localhost       demat-dev.social.gouv.fr
 > git clone --branch main git@github.com:DNUM-SocialGouv/demat-social.git
 > cd demat-social
 
+# pour s'assurer que les script d'initialisation docker seront bien executés
+> chmod -R +x docker/init-db-dev.sh
+
 # Créer l'image Docker du projet.
 # A ne lancer qu'à la première installation.
 > make install
@@ -65,7 +68,7 @@ localhost       demat-dev.social.gouv.fr
 
 # Lancer l'application demat-social.
 # terminal 1:
-> make run
+> make up
 
 # Ouvrir un shell dans le container docker de l'application.
 # terminal 2:
@@ -113,10 +116,10 @@ cfd69a3a4c01   demat-social-front   Up 14 minutes   0.0.0.0:3036->3036/tcp, :::3
 > make status
 
 # Supprimer les containeurs arrêtés.
-> make clean
+> make down
 
 # Redémarrer l'application demat-social.
-> make run
+> make up
 ```
 
 ##### Ecrans de l'application demat-social au démarrage
@@ -175,7 +178,31 @@ Loading development environment (Rails 7.0.4.3)
 > make build
 ```
 
+##### Capybara & les drivers chrome
+
+Il faut absolument faire matcher les version de chromedriver et google-chrome.
+
+Trouver la dernière version stable de chromedriver et google chrome :
+
+https://googlechromelabs.github.io/chrome-for-testing/
+
+Pour connaitre les version utilisées par la suite de tests, mettre ceci dans le fichier spec/support/capybara.rb
+
+```ruby
+Selenium::WebDriver.logger.level = :debug
+```
+exemple de log
+```bash
+Found chromedriver 123.0.6312.122 in PATH: /usr/bin/chromedriver
+chrome detected at /usr/bin/google-chrome
+Running command: /usr/bin/google-chrome --version
+Output: "Google Chrome 124.0.6367.60 "
+Detected browser: chrome 124.0.6367.60
+```
+
+
 ##### Documentation externe
+
 
 Documents OneNote qui décrivent notamment le processus de migration Dinum (demarches-simplifiées) vers Dnum (demat-social) ainsi que le benchmarking des exports:
 

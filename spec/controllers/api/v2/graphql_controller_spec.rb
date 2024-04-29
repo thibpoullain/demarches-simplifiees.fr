@@ -5,7 +5,7 @@ describe API::V2::GraphqlController do
   let(:token) { generated_token.second }
   let(:legacy_token) { APIToken.send(:unpack, token)[:plain_token] }
   let(:procedure) { create(:procedure, :published, :for_individual, :with_service, administrateurs: [admin]) }
-  let(:dossier)  { create(:dossier, :en_construction, :with_individual, procedure: procedure) }
+  let(:dossier) { create(:dossier, :en_construction, :with_individual, procedure: procedure) }
   let(:dossier1) { create(:dossier, :en_construction, :with_individual, procedure: procedure, en_construction_at: 1.day.ago) }
   let(:dossier2) { create(:dossier, :en_construction, :with_individual, :archived, procedure: procedure, en_construction_at: 3.days.ago) }
   let(:dossiers) { [dossier] }
@@ -69,11 +69,6 @@ describe API::V2::GraphqlController do
             __typename
           }
         }
-        service {
-          nom
-          typeOrganisme
-          organisme
-        }
         champDescriptors {
           __typename
           id
@@ -96,6 +91,11 @@ describe API::V2::GraphqlController do
             options
           }
         }
+        service {
+          nom
+          typeOrganisme
+          organisme
+        }
         dossiers {
           nodes {
             id
@@ -107,7 +107,10 @@ describe API::V2::GraphqlController do
   let(:variables) { {} }
   let(:operation_name) { nil }
   let(:query_id) { nil }
-  let(:body) { JSON.parse(subject.body, symbolize_names: true) }
+  let(:body) do
+    Timecop.freeze(Time.zone.local(2024, 4, 24, 15, 47, 46))
+    JSON.parse(subject.body, symbolize_names: true)
+  end
   let(:gql_data) { body[:data] }
   let(:gql_errors) { body[:errors] }
 
@@ -208,6 +211,8 @@ describe API::V2::GraphqlController do
         end
 
         it "returns the demarche" do
+          # TODO Version 2.1.3 | Remove this line when implementing those tree types in the graphql api
+          procedure.revisions.first.types_de_champ.where(libelle: ["nir", "finess", "rppsante"]).destroy_all
           expect(gql_errors).to eq(nil)
           expect(gql_data).to include(demarche: {
             id: procedure.to_typed_id,
@@ -228,14 +233,16 @@ describe API::V2::GraphqlController do
             draftRevision: { id: procedure.draft_revision.to_typed_id },
             publishedRevision: {
               id: procedure.published_revision.to_typed_id,
-              champDescriptors: procedure.published_revision.types_de_champ_public.map { { __typename: format_type_champ(_1.type_champ) } }
+              # TODO Version 2.1.3 | Remove this where.not clause when implementing those tree types in the graphql api
+              champDescriptors: procedure.published_revision.types_de_champ_public.where.not(libelle: ["nir", "finess", "rppsante"]).map { { __typename: format_type_champ(_1.type_champ) } }
             },
             service: {
               nom: procedure.service.nom,
               typeOrganisme: procedure.service.type_organisme,
               organisme: procedure.service.organisme
             },
-            champDescriptors: procedure.active_revision.types_de_champ_public.map do |tdc|
+            # TODO Version 2.1.3 | Remove this where.not clause when implementing those tree types in the graphql api
+            champDescriptors: procedure.active_revision.types_de_champ_public.where.not(libelle: ["nir", "finess", "rppsante"]).map do |tdc|
               {
                 id: tdc.to_typed_id,
                 label: tdc.libelle,
@@ -390,6 +397,7 @@ describe API::V2::GraphqlController do
 
     describe "dossier" do
       let(:dossier) do
+        Timecop.freeze(Time.zone.local(2024, 4, 24, 15, 47, 46))
         dossier = create(:dossier,
                          :en_construction,
                          :with_populated_champs,
@@ -483,6 +491,8 @@ describe API::V2::GraphqlController do
         end
 
         it "should be returned" do
+          # TODO Version 2.1.3 | Remove this line when implementing those tree types in the graphql api
+          procedure.revisions.first.types_de_champ.where(libelle: ["nir", "finess", "rppsante"]).destroy_all
           expect(gql_errors).to eq(nil)
           expect(gql_data).to eq(dossier: {
             id: dossier.to_typed_id,
@@ -517,7 +527,8 @@ describe API::V2::GraphqlController do
             },
             revision: {
               id: dossier.revision.to_typed_id,
-              champDescriptors: dossier.types_de_champ.map do |tdc|
+              # TODO Version 2.1.3 | Remove this where.not clause when implementing those tree types in the graphql api
+              champDescriptors: dossier.types_de_champ.where.not(libelle: ["nir", "finess", "rppsante"]).map do |tdc|
                 {
                   type: tdc.type_champ
                 }

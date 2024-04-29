@@ -17,7 +17,7 @@ gem 'anchored'
 gem 'aws-sdk-s3', '~> 1.113', require: false # Stockage S3 dont cegedim
 gem 'bcrypt'
 gem 'bcrypt_pbkdf' # idem
-gem 'bootsnap', '>= 1.4.4', require: false # Reduces boot times through caching; required in config/boot.rb
+gem 'bootsnap', '>= 1.18.3', require: false # Reduces boot times through caching; required in config/boot.rb
 gem 'browser'
 gem 'charlock_holmes'
 gem 'chartkick'
@@ -104,20 +104,18 @@ gem 'zxcvbn-ruby', require: 'zxcvbn'
 
 group :test do
   gem 'axe-core-rspec' # accessibility rspec matchers
-  gem 'capybara' # Integration testing
+  gem 'capybara', '~> 3.4' # Integration testing
   gem 'capybara-email' # Access emails during integration tests
   gem 'capybara-screenshot' # Save a dump of the page when an integration test fails
-  gem 'factory_bot'
   gem 'launchy'
   gem 'rack_session_access'
   gem 'rails-controller-testing'
   gem 'rspec_junit_formatter'
   gem 'selenium-devtools'
-  gem 'selenium-webdriver'
+  gem 'selenium-webdriver', '~> 4.19'
   gem 'shoulda-matchers', require: false
   gem 'timecop'
   gem 'vcr'
-  gem 'webdrivers', '~> 5.2.0'
   gem 'webmock'
 end
 
@@ -139,8 +137,11 @@ group :development do
 end
 
 group :development, :test do
+  # gem 'database_cleaner-active_record'
+  gem 'factory_bot_rails'
   gem 'graphql-schema_comparator'
   gem 'mina', require: false # Deploy
+  gem 'parallel_tests'
   gem 'pry-byebug' # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'pry-rails'
   gem 'rspec-rails'

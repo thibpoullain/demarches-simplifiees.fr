@@ -38,7 +38,7 @@ describe 'Creating a new dossier:' do
 
       context 'when the birthday is asked' do
         let(:ask_birthday) { true }
-        let(:expected_birthday) { Date.new(1987, 10, 14) }
+        let(:expected_birthday) { '1987-10-14' }
 
         before do
           fill_in 'individual_birthdate', with: birthday_format

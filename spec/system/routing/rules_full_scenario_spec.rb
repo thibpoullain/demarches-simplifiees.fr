@@ -66,18 +66,22 @@ describe 'The routing with rules', js: true do
     expect(page).to have_text('Le nom est à présent « littéraire ». ')
 
     # add victor to littéraire groupe
-    fill_in 'Emails', with: 'victor@inst.com'
+    # we need to bypass the javascript to fill the emails field, capybara is not able to do deal with this JS.
+    script = "document.getElementById('emails').value = '[\"victor@inst.fr\"]';"
+    page.execute_script(script)
     perform_enqueued_jobs { click_on 'Affecter' }
-    expect(page).to have_text("L’instructeur victor@inst.com a été affecté")
+    expect(page).to have_text("L’instructeur victor@inst.fr a été affecté")
 
-    victor = User.find_by(email: 'victor@inst.com').instructeur
+    victor = User.find_by(email: 'victor@inst.fr').instructeur
 
     # add superwoman to littéraire groupe
-    fill_in 'Emails', with: 'superwoman@inst.com'
+    # we need to bypass the javascript to fill the emails field, capybara is not able to do deal with this JS.
+    script = "document.getElementById('emails').value = '[\"woman@inst.fr\"]';"
+    page.execute_script(script)
     perform_enqueued_jobs { click_on 'Affecter' }
-    expect(page).to have_text("L’instructeur superwoman@inst.com a été affecté")
+    expect(page).to have_text("L’instructeur woman@inst.fr a été affecté")
 
-    superwoman = User.find_by(email: 'superwoman@inst.com').instructeur
+    superwoman = User.find_by(email: 'woman@inst.fr').instructeur
 
     # add inactive groupe
     click_on 'Ajout de groupes'
@@ -94,16 +98,20 @@ describe 'The routing with rules', js: true do
     expect(page).to have_text('Le nom est à présent « scientifique ». ')
 
     # add marie to scientifique groupe
-    fill_in 'Emails', with: 'marie@inst.com'
+    # we need to bypass the javascript to fill the emails field, capybara is not able to do deal with this JS.
+    script = "document.getElementById('emails').value = '[\"marie@inst.fr\"]';"
+    page.execute_script(script)
     perform_enqueued_jobs { click_on 'Affecter' }
-    expect(page).to have_text("L’instructeur marie@inst.com a été affecté")
+    expect(page).to have_text("L’instructeur marie@inst.fr a été affecté")
 
-    marie = User.find_by(email: 'marie@inst.com').instructeur
+    marie = User.find_by(email: 'marie@inst.fr').instructeur
 
     # add superwoman to scientifique groupe
-    fill_in 'Emails', with: 'superwoman@inst.com'
+    # we need to bypass the javascript to fill the emails field, capybara is not able to do deal with this JS.
+    script = "document.getElementById('emails').value = '[\"woman@inst.fr\"]';"
+    page.execute_script(script)
     perform_enqueued_jobs { click_on 'Affecter' }
-    expect(page).to have_text("L’instructeur superwoman@inst.com a été affecté")
+    expect(page).to have_text("L’instructeur woman@inst.fr a été affecté")
 
     # add routing rules
     within('.target') { select('Spécialité') }

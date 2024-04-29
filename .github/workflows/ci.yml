@@ -2,37 +2,37 @@ name: Continuous Integration
 on:
   push:
     branches:
-      - 'main'
-      - 'test-github-actions'
-      - 'integration'
-      # - 'ds-merge-2023-04-17-01-local'
+      - "main"
+      - "test-github-actions"
   pull_request:
     branches:
-      - 'main'
+      - "main"
 jobs:
   linters:
     name: Linters
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       postgres:
         image: postgres:14
         env:
           POSTGRES_USER: tps_test
-          POSTGRES_DB: tps_test
+          POSTGRES_DB: tps_test_
           POSTGRES_PASSWORD: tps_test
-        ports: ['5432:5432']
+        ports: ["5432:5432"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup the app code and dependancies
         uses: ./.github/actions/ci-setup-rails
 
       - name: Run linters
-        run: |
-          bundle exec rake lint
-          bundle exec rake zeitwerk:check
+        shell: bash
+        run: RAILS_ENV=test bundle exec rake lint
+
+      - name: Run zeitwerk check
+        shell: bash
+        run: RAILS_ENV=test bundle exec rake zeitwerk:check
 
   js_tests:
     name: JavaScript tests
@@ -45,7 +45,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          cache: 'yarn'
+          cache: "yarn"
 
       - name: Install Node modules
         run: |
@@ -68,7 +68,7 @@ jobs:
           POSTGRES_USER: tps_test
           POSTGRES_DB: tps_test
           POSTGRES_PASSWORD: tps_test
-        ports: ['5432:5432']
+        ports: ["5432:5432"]
 
     strategy:
       matrix:
@@ -111,17 +111,31 @@ jobs:
           POSTGRES_USER: tps_test
           POSTGRES_DB: tps_test
           POSTGRES_PASSWORD: tps_test
-        ports: ['5432:5432']
+        ports: ["5432:5432"]
 
     strategy:
       matrix:
         instances: [0, 1]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: 124.0.6367.60
+
+      - uses: nanasess/setup-chromedriver@v2
+        with:
+          chromedriver-version: "124.0.6367.60"
 
       - name: Setup the app runtime and dependencies
         uses: ./.github/actions/ci-setup-rails
+
+      - name: Check Chrome and Chromedriver versions
+        shell: bash
+        run: |
+          echo $(google-chrome-stable --version)
+          echo $(chromedriver -v)
 
       - name: Pre-compile assets
         uses: ./.github/actions/ci-setup-assets

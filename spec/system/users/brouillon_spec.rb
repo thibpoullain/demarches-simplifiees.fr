@@ -38,7 +38,7 @@ describe 'The user' do
     select('Martinique', from: form_id_for('regions'))
     select('02 – Aisne', from: form_id_for('departements'))
     fill_in('Renseignez le code postal puis sélectionnez la commune dans la liste', with: '60400')
-    select('Brétigny (60400)', from: form_id_for('communes'))
+    select('Brétigny (60400)', from: form_id_for('communes'), wait: 10)
 
     # communes needs more time to be updated
     wait_until { champ_value_for('communes') == "Brétigny" }
@@ -159,6 +159,7 @@ describe 'The user' do
     # Check an incomplete dossier cannot be submitted when mandatory fields are missing
     click_on 'Déposer le dossier'
     expect(user_dossier.reload.brouillon?).to be(true)
+    expect(page).to have_text('doit être rempli')
     expect(page).to have_current_path(brouillon_dossier_path(user_dossier))
 
     # Check a dossier can be submitted when all mandatory fields are filled

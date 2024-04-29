@@ -2,3 +2,7 @@ node_modules
 .env
 #Assets générés
 public/packs
+
+tmp/*
+.git
+log/*

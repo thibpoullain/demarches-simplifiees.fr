@@ -30,9 +30,9 @@ DS/AddConcurrentIndex:
 DS/ApplicationName:
   Enabled: true
   Exclude:
-    - './config/initializers/01_application_name.rb'
-    - './lib/cops/application_name.rb'
-    - './lib/linters/application_name_linter.rb'
+    - "./config/initializers/01_application_name.rb"
+    - "./lib/cops/application_name.rb"
+    - "./lib/linters/application_name_linter.rb"
     - "./spec/**/*"
 
 DS/Unscoped:
@@ -649,7 +649,7 @@ Performance/RedundantMerge:
   Enabled: true
 
 Style/HashTransformValues:
-    Enabled: true
+  Enabled: true
 
 Style/RedundantSortBy:
   Enabled: true
@@ -1432,7 +1432,6 @@ Style/SymbolLiteral:
 
 Style/SymbolProc:
   Enabled: true
-  IgnoredMethods: [after]
 
 Style/TernaryParentheses:
   Enabled: false

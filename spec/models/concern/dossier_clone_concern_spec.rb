@@ -168,8 +168,8 @@ RSpec.describe DossierCloneConcern do
 
       it { expect(new_dossier.editing_fork_origin).to eq(dossier) }
       it { expect(new_dossier.champs_public[0].id).not_to eq(dossier.champs_public[0].id) }
-      it { expect(new_dossier.champs_public[0].created_at).to eq(dossier.champs_public[0].created_at) }
-      it { expect(new_dossier.champs_public[0].updated_at).to eq(dossier.champs_public[0].updated_at) }
+      it { expect(new_dossier.champs_public[0].created_at.to_s).to eq(dossier.champs_public[0].created_at.to_s) }
+      it { expect(new_dossier.champs_public[0].updated_at.to_s).to eq(dossier.champs_public[0].updated_at.to_s) }
 
       context "piece justificative champ" do
         let(:champ_pj) { create(:champ_piece_justificative, dossier_id: dossier.id) }
@@ -178,8 +178,8 @@ RSpec.describe DossierCloneConcern do
         it {
           champ_pj_fork = Champs::PieceJustificativeChamp.where(dossier: new_dossier).first
           expect(champ_pj_fork.piece_justificative_file.first.blob).to eq(champ_pj.piece_justificative_file.first.blob)
-          expect(champ_pj_fork.created_at).to eq(champ_pj.created_at)
-          expect(champ_pj_fork.updated_at).to eq(champ_pj.updated_at)
+          expect(champ_pj_fork.created_at.to_s).to eq(champ_pj.created_at.to_s)
+          expect(champ_pj_fork.updated_at.to_s).to eq(champ_pj.updated_at.to_s)
         }
       end
 

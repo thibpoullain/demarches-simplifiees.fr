@@ -1,5 +1,5 @@
-name: 'Setup Rails app'
-description: 'Setup the environment for running the Rails app'
+name: "Setup Rails app"
+description: "Setup the environment for running the Rails app"
 
 runs:
   using: composite
@@ -13,7 +13,7 @@ runs:
       uses: actions/setup-node@v3
       with:
         node-version: 16
-        cache: 'yarn'
+        cache: "yarn"
 
     - name: Install Node modules
       run: |
@@ -28,6 +28,6 @@ runs:
     - name: Setup test database
       env:
         RAILS_ENV: test
-        DATABASE_URL: "postgres://tps_test@localhost:5432/tps_test"
+        DATABASE_URL: "postgres://tps_test@localhost:5432/tps_test_"
       run: bin/rails db:create db:schema:load db:migrate
       shell: bash

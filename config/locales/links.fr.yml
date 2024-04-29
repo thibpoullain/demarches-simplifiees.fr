@@ -32,11 +32,11 @@ fr:
       license: 'licence etalab 2.0'
       accessibilite:
         label: 'Accessibilité : partiellement conforme'
-        title: 'Consulter notre déclaration d’accessibilité'
+        title: 'Consulter notre déclaration d’accessibilité - Nouvel onglet'
         url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_accessibilite.pdf'
       aide:
         label: 'Aide'
-        title: 'Foire aux Questions'
+        title: 'Foire aux Questions - Nouvel onglet'
         url: 'https://faq.demarches-simplifiees.fr'
       aide_admin:
         label: 'to-be-defined'
@@ -66,15 +66,15 @@ fr:
         url: 'https://doc.demarches-simplifiees.fr/cgu'
         usager:
           label: 'CGU Usager'
-          title: "Conditions Générales d'Utilisation - Usager"
+          title: "Conditions Générales d'Utilisation - Usager - Nouvel onglet"
           url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Usagers.pdf'
         agent:
           label: 'CGU Agent'
-          title: "Conditions Générales d'Utilisation - Agent"
+          title: "Conditions Générales d'Utilisation - Agent - Nouvel onglet"
           url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_CGU_Agents.pdf'
       confidentialite:
         label: 'Déclaration de confidentialité'
-        title: 'Déclaration de confidentialité'
+        title: 'Déclaration de confidentialité - Nouvel onglet'
         url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_Politique_de_confidentialite.pdf'
       code:
         label: 'Code source'
@@ -85,11 +85,11 @@ fr:
         title: 'Contacter notre équipe technique'
       doc:
         label: 'Documentation'
-        title: 'Documentation utilisateur'
+        title: 'Documentation utilisateur - Nouvel onglet'
         url: 'https://doc.demarches-simplifiees.fr'
       mentions_legales:
         label: 'Mentions légales'
-        title: 'Consulter nos Mentions légales'
+        title: 'Consulter nos Mentions légales - Nouvel onglet'
         url: 'https://demat.social.gouv.fr/Demat-demarches-sociales_Mentions-legales.pdf'
       newsletter:
         label: 'Newsletter'
