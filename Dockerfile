@@ -31,10 +31,10 @@ RUN curl -fsSL https://storage.googleapis.com/chrome-for-testing-public/$(google
     && chown demat-social:demat-social /usr/bin/chromedriver
 
 USER demat-social
-RUN mkdir /home/demat-social/app
-WORKDIR /home/demat-social/app
+RUN mkdir /opt/ds
+WORKDIR /opt/ds
 
-COPY --chown=demat-social:demat-social --chmod=770 . /home/demat-social/app
+COPY --chown=demat-social:demat-social --chmod=770 . /opt/ds
 
 RUN bundle install --jobs 20 --retry 5
 RUN yarn install
