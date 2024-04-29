@@ -118,7 +118,7 @@ describe ProcedureExportService do
         let(:birthdate_headers) { nominal_headers.insert(nominal_headers.index('Archivé'), 'Date de naissance') }
 
         it { expect(dossiers_sheet.headers).to match_array(birthdate_headers) }
-        it { expect(Date.parse(dossiers_sheet.data[0][dossiers_sheet.headers.index('Date de naissance')])).to be_a(Date) }
+        it { expect(dossiers_sheet.data[0][dossiers_sheet.headers.index('Date de naissance')]).to be_a(Date) }
       end
 
       context 'with a procedure routee' do
