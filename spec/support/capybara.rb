@@ -26,6 +26,12 @@ end
 Capybara.register_driver :selenium_chrome do |app|
   args = ['disable-gpu', 'disable-dev-shm-usage', 'window-size=1400,900', 'mute-audio', 'no-sandbox']
   options = Selenium::WebDriver::Chrome::Options.new(args: args)
+
+  # Définit le chemin de téléchargement pour Chrome
+  download_dir = Capybara.save_path.to_s
+  options.add_preference(:download, prompt_for_download: false, default_directory: download_dir)
+  options.add_preference(:browser, set_download_behavior: { behavior: 'allow' })
+
   setup_driver(Capybara::Selenium::Driver.new(app, browser: :chrome, options: options))
 end
 
@@ -35,6 +41,12 @@ Capybara.register_driver :selenium_chrome_headless do |app|
     'window-size=1400,900', 'mute-audio', 'no-sandbox'
   ]
   options = Selenium::WebDriver::Chrome::Options.new(args: args)
+
+  # Définit le chemin de téléchargement pour Chrome
+  download_dir = Capybara.save_path.to_s
+  options.add_preference(:download, prompt_for_download: false, default_directory: download_dir)
+  options.add_preference(:browser, set_download_behavior: { behavior: 'allow' })
+
   setup_driver(Capybara::Selenium::Driver.new(app, browser: :chrome, options: options))
 end
 

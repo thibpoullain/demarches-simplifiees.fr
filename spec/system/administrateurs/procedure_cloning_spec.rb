@@ -69,7 +69,8 @@ describe 'As an administrateur I wanna clone a procedure', js: true do
     scenario do
       visit all_admin_procedures_path
       expect(page).to have_content(Procedure.last.libelle)
-      find('.button_to>button').click
+      # binding.pry
+      # find('.button_to>button').click
       click_on 'Cloner'
       visit admin_procedures_path(statut: "brouillons")
       expect(page.find_by_id('procedures')['data-item-count']).to eq('1')

@@ -24,7 +24,7 @@ describe 'As an administrateur', js: true do
     visit "admin/activate?#{token_params}"
     fill_in :administrateur_password, with: weak_password
 
-    expect(page).to have_text('Mot de passe très vulnérable')
+    expect(page).to have_text('Le mot de passe doit faire au moins')
     expect(page).to have_button('Continuer', disabled: true)
 
     fill_in :administrateur_password, with: strong_password
