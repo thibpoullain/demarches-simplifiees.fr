@@ -9,9 +9,11 @@
 
     = form_tag contact_path, method: :post, multipart: true, class: 'fr-form-group', data: {controller: :support } do
 
-      .recommandations
-        %h2
-          = t('.intro_html')
+      .description
+        .recommandations
+          %h2
+            = t('.intro_html')
+        %p.mandatory-explanation= t('mandatory_champs', scope: [:utils])
 
       %fieldset.fr-fieldset{ name: "type" }
         %legend.fr-fieldset__legend
