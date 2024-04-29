@@ -4,7 +4,7 @@
 #
 #  id                       :integer          not null, primary key
 #  bypass_email_login_token :boolean          default(FALSE), not null
-#  encrypted_login_token    :string
+#  encrypted_login_token    :text
 #  login_token_created_at   :datetime
 #  created_at               :datetime
 #  updated_at               :datetime

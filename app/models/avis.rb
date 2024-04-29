@@ -3,11 +3,11 @@
 # Table name: avis
 #
 #  id                   :integer          not null, primary key
-#  answer               :string
+#  answer               :text
 #  claimant_type        :string
 #  confidentiel         :boolean          default(FALSE), not null
 #  email                :string
-#  introduction         :string
+#  introduction         :text
 #  question_answer      :boolean
 #  question_label       :string
 #  reminded_at          :datetime

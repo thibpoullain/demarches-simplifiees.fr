@@ -22,7 +22,7 @@
 #  sign_in_count                :integer          default(0), not null
 #  siret                        :string
 #  team_account                 :boolean          default(FALSE)
-#  unconfirmed_email            :string
+#  unconfirmed_email            :text
 #  unlock_token                 :string
 #  created_at                   :datetime
 #  updated_at                   :datetime
