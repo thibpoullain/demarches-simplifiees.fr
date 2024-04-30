@@ -20,7 +20,8 @@ public/downloads
 doc/*.svg
 uploads/*
 .byebug_history
-.env
+.env.development
+.env.test
 storage/
 /node_modules
 /yarn-error.log
