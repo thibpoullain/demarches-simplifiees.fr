@@ -1,6 +1,4 @@
-describe Dossier do
-  include ActiveJob::TestHelper
-
+describe Dossier, type: :model do
   let(:user) { create(:user) }
 
   describe 'scopes' do
@@ -1760,8 +1758,6 @@ describe Dossier do
   end
 
   describe '#processed_in_month' do
-    include ActiveSupport::Testing::TimeHelpers
-
     let(:dossier_accepte_at) { DateTime.new(2022, 3, 31, 12, 0) }
     before do
       travel_to(dossier_accepte_at) do

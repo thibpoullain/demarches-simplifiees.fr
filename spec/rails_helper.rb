@@ -124,6 +124,7 @@ RSpec.configure do |config|
     Flipper.instance = Flipper.new(Flipper::Adapters::Memory.new)
   end
 
+  config.include ActiveSupport::Testing::TimeHelpers
   config.include Shoulda::Matchers::ActiveRecord, type: :model
   config.include Shoulda::Matchers::ActiveModel, type: :model
   config.include Devise::Test::ControllerHelpers, type: :controller
