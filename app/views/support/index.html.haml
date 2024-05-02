@@ -26,14 +26,45 @@
               = label_tag "type_#{question_type}", { 'aria-controls': link ? "card-#{question_type}" : nil, class: 'fr-label' } do
                 = question
 
-      %dl
-        - @options.each do |(question, question_type, link)|
-          %dt
-          - if link.present?
-            %dd
-              .support.card.featured.mb-4.ml-4.hidden{ id: "card-#{question_type}", "aria-hidden": true , data: { "support-target": "content" } }
-                %p.card-title
-                  = t('.our_answer')
-                .card-content
-                  -# i18n-tasks-use t("support.index.#{question_type}.answer_html")
-                  = t('answer_html', scope: [:support, :index, question_type], base_url: APPLICATION_BASE_URL, "link_#{question_type}": link)
+              - if link.present?
+                .fr-ml-3w.hidden{ id: "card-#{question_type}", "aria-hidden": true , data: { "support-target": "content" } }
+                  = render Dsfr::CalloutComponent.new(title: t('.our_answer')) do |c|
+                    - c.with_body do
+                      %p
+                        -# i18n-tasks-use t("support.index.#{question_type}.answer_html")
+                        = t('answer_html', scope: [:support, :index, question_type], base_url: APPLICATION_BASE_URL, "link_#{question_type}": link)
+
+      .fr-input-group
+        = label_tag :dossier_id, t('file_number', scope: [:utils]), class: 'fr-label'
+        = text_field_tag :dossier_id, @dossier_id, class: 'fr-input'
+
+      .fr-input-group
+        = label_tag :subject, class: 'fr-label' do
+          = t('subject', scope: [:utils])
+          %span.mandatory *
+        = text_field_tag :subject, params[:subject], required: true, class: 'fr-input'
+
+      .fr-input-group
+        = label_tag :text, class: 'fr-label' do
+          = t('message', scope: [:utils])
+          %span.mandatory *
+        = text_area_tag :text, params[:text], rows: 6, required: true, class: 'fr-input'
+
+      .fr-upload-group
+        = label_tag :piece_jointe, class: 'fr-label' do
+          = t('pj', scope: [:utils])
+          %span.fr-hint-text
+            = t('.notice_upload_group')
+
+        %p.notice.hidden{ data: { 'contact-type-only': Helpscout::FormAdapter::TYPE_AMELIORATION } }
+          = t('.notice_pj_product')
+        %p.notice.hidden{ data: { 'contact-type-only': Helpscout::FormAdapter::TYPE_AUTRE } }
+          = t('.notice_pj_other')
+        = file_field_tag :piece_jointe, class: 'fr-upload', max: 200.megabytes
+
+      = hidden_field_tag :tags, @tags&.join(',')
+
+      = invisible_captcha
+
+      .send-wrapper.fr-my-3w
+        = button_tag t('send_mail', scope: [:utils]), type: :submit, class: 'fr-btn send'
