@@ -23,6 +23,7 @@ Pour installer le projet il faut disposer des *pré-requis* suivants sur sa mach
   - docker et docker-compose
   - make
   - une connexion réseau internet rapide.
+  - la librairie imagemagick d'installée (et non graphicsmagick)
 
 Il est aussi souhaitable de disposer de données représentatives de l'application en production. Pour cela on utilise un *dump anonymisé* de la base de données de production, qui peut-être simplement chargé dans l'environnement de développement. Demander ce dump anonymisé à l'un des membres de l'équipe.
 
@@ -85,6 +86,10 @@ $ ./bin/rails db:seed
 # Les identifiants de l'utilisateur de test sont les suivants:
 email:    test@exemple.fr
 password: this is a very complicated password !
+
+
+# Désactiver les messages de skylight qui nous averti que nous sommes en dev
+skylight disable_dev_warning
 
 # Le shell peut-être fermé:
 $ exit
