@@ -262,7 +262,7 @@ describe Instructeur, type: :model do
     let(:seen_at_instructeur2) { now - 1.hour }
 
     before do
-      gi_p1.instructeurs << instructeur
+      gi_p1.instructeurs << instructeur if gi_p1.instructeurs.exclude?(instructeur)
       instructeur_2.followed_dossiers << dossier
       Timecop.freeze(now)
     end
