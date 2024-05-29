@@ -1,0 +1,17 @@
+# ./.tmuxinator.yml
+
+name: demat-social
+root: /Users/thibaut/Documents/atelier/demat-social
+
+startup_pane: 1
+
+windows:
+  - main:
+      layout: main-horizontal
+      panes:
+        - RAILS_QUEUE_ADAPTER=delayed_job bin/rails server -p 3000
+        - tmux resize-pane -t demat-social:main.1 -y 20 && clear
+  - vite: bin/vite dev
+  - jobs: bin/rake jobs:work
+  - tests:
+  - ngrok: ngrok start --config=ngrok.yml demarches_sociales
