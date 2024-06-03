@@ -7,6 +7,8 @@
 # Ignore bundler config.
 /.bundle
 
+/vendor/bundle
+
 # Ignore all logfiles and tempfiles.
 /log/*
 !/log/.keep
@@ -21,7 +23,6 @@ doc/*.svg
 uploads/*
 .byebug_history
 .env.development
-.env.test
 storage/
 /node_modules
 /yarn-error.log
@@ -64,3 +65,7 @@ public/graphql/schema
 .DS_Store
 
 config/parallel*
+
+ngrok.yml
+
+docker/chrome*
