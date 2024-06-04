@@ -130,9 +130,9 @@ group :development do
   gem 'rubocop-rails', require: false
   gem 'rubocop-rspec', require: false
   gem 'scss_lint', require: false
-  gem 'stackprof'
   gem 'solargraph'
   gem 'solargraph-rails'
+  gem 'stackprof'
   gem 'web-console'
 end
 

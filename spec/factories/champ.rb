@@ -73,7 +73,7 @@ FactoryBot.define do
 
     factory :champ_nir, class: 'Champs::NirChamp' do
       type_de_champ { association :type_de_champ_nir, procedure: dossier.procedure }
-      value { '153124500723148' }
+      value { '1870367188276' }
     end
 
     factory :champ_phone, class: 'Champs::PhoneChamp' do

@@ -189,6 +189,12 @@ FactoryBot.define do
       end
     end
 
+    trait :with_nir do
+      after(:build) do |procedure, _evaluator|
+        build(:type_de_champ_nir, procedure: procedure)
+      end
+    end
+
     trait :with_yes_no do
       after(:build) do |procedure, _evaluator|
         build(:type_de_champ_yes_no, procedure: procedure)

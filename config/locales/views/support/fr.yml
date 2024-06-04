@@ -2,8 +2,7 @@ fr:
   support:
     index:
       contact: Contact
-      intro_html:
-        '<p>Selectionner la question qui représente le mieux votre situation.</p>'
+      intro_html: "<p>Selectionner la question qui représente le mieux votre situation.</p>"
       your_question: Votre question
       our_answer: Notre réponse
       notice_pj_product: Une capture d’écran peut nous aider à identifier plus facilement l’endroit à améliorer.
@@ -21,8 +20,9 @@ fr:
           <p>Si vous souhaitez poser une question pour un problème technique sur le site, utilisez le formulaire ci-dessous. Nous ne pourrons pas vous renseigner sur l’instruction de votre dossier.</p>'
       lost_user:
         question: Je ne trouve pas la démarche que je veux faire
-        answer_html: "<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : <code>%{base_url}/commencer/NOM_DE_LA_DEMARCHE</code>.</p>
-          <p>Vous pouvez aussi <a href=\"%{link_lost_user}\">consulter ici la liste de nos démarches les plus fréquentes (permis, detr, etc.)</a>.</p>"
+        answer_html:
+          '<p>Nous vous invitons à contacter l’administration en charge de votre démarche pour qu’elle vous indique le lien à suivre. Celui-ci devrait ressembler à cela : <code>%{base_url}/commencer/NOM_DE_LA_DEMARCHE</code>.</p>
+          <p>Vous pouvez aussi <a href="%{link_lost_user}">consulter ici la liste de nos démarches les plus fréquentes (permis, detr, etc.)</a>.</p>'
       other:
         question: Autre sujet ou l'explication ne me convient pas
         answer_html: "<p>Vous pouvez nous contacter par mail à <a href=%{link_other}>l'adresse suivante</a> et nous vous répondrons dans les plus brefs délais.<br>Pensez bien à nous donner le plus d’informations possible (numéro de dossier, captures d'écran...) pour que nous puissions vous aider au mieux.</p>"

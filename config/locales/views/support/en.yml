@@ -20,7 +20,9 @@ en:
           <p>If you are facing technical issues on the website, use the form below. We will not be able to inform you about the instruction of your application.</p>'
       lost_user:
         question: I am having trouble finding the procedure I am looking for
-        answer_html: "<p>We invite you to contact the administration in charge of the procedure so they can provide you the link. It should look like this: <code>%{base_url}/commencer/NOM_DE_LA_DEMARCHE</code>.</p>"
+        answer_html:
+          "<p>We invite you to contact the administration in charge of the procedure so they can provide you the link. It should look like this: <code>%{base_url}/commencer/NOM_DE_LA_DEMARCHE</code>.</p>
+          <p>You can also <a href='%{link_lost_user}'>consult here the list of our most frequent procedures (driving license, tax return, etc.)</a>.</p>"
       other:
         question: Other topic
         answer_html: "<p>Contact us via this <a href=%{link_other}>mail</a> and we will answer you as quickly as possible.<br>Make sure you provide all the required information so we can help you in the best way.</p>"

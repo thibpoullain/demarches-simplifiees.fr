@@ -3,5 +3,12 @@
   aria: { describedby: @champ.describedby_id },
   placeholder: @champ.libelle,
   required: @champ.mandatory?,
+  maxlength: 15,
+  class: "width-33-desktop",
+  data: { controller: 'turbo-input', turbo_input_load_on_connect_value: @champ.prefilled? && @champ.value.present? && @champ.etablissement.blank?, turbo_input_url_value: champs_nir_path(@champ.id) },
   pattern: "[1-478][0-9]{2}(0[1-9]|1[0-2]|62|63)(2[ABab]|[0-9]{2})(00[1-9]|0[1-9][0-9]|[1-8][0-9]{2}|9[0-8][0-9]|990)(00[1-9]|0[1-9][0-9]|[1-9][0-9]{2})(0[1-9]|[1-8][0-9]|9[0-7])",
   title: "Le NIR doit être saisi sur 15 caractères."
+
+.nir-info{ id: dom_id(@champ, :nir_info) }
+  - if @errors.present?
+    = render 'shared/champs/nir/error', errors: @errors
