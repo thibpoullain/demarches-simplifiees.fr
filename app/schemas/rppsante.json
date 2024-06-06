@@ -34,9 +34,6 @@
     "numero_siret_site": {
       "type": "integer"
     },
-    "identifiant_pp": {
-      "type": "string"
-    },
     "libelle_commune_coord_structure": {
       "type": "string"
     },
@@ -87,7 +84,7 @@
       "type": "string"
     },
     "ancien_identifiant_de_la_structure": {
-      "type": "integer"
+      "type": "string"
     },
     "bureau_cedex_coord_structure": {
       "type": "string"

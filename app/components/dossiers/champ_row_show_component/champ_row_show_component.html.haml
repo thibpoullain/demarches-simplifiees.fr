@@ -57,6 +57,10 @@
             = render partial: "shared/champs/rna/show", locals: { champ: champ, profile: @profile }
           - when TypeDeChamp.type_champs.fetch(:epci)
             = render partial: "shared/champs/epci/show", locals: { champ: champ }
+          - when TypeDeChamp.type_champs.fetch(:finess)
+            = render partial: "shared/champs/finess/show", locals: { champ: champ }
+          - when TypeDeChamp.type_champs.fetch(:rppsante)
+            = render partial: "shared/champs/rppsante/show", locals: { champ: champ }
           - when TypeDeChamp.type_champs.fetch(:date)
             %p= champ.to_s
           - when TypeDeChamp.type_champs.fetch(:datetime)
