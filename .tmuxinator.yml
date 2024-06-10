@@ -14,4 +14,5 @@ windows:
   - vite: bin/vite dev
   - jobs: bin/rake jobs:work
   - tests:
+  - demat-social-env: cd /Users/thibaut/Documents/atelier/demat-social-env
   - ngrok: ngrok start --config=ngrok.yml demarches_sociales
