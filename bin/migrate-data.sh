@@ -1,18 +1,33 @@
 #!/bin/bash
 
-# Lister les migrations de db (db:migrate) et de données (after_party) qui n'ont pas encore été effectuée sur l'instance
-# Tri par date croissante
-# Obtention d'une liste type :
-# 20220405163206,00_db_migrate 20220407081538,00_db_migrate 20220408100411,01_after_party ...
-migrations=$(( bin/rake db:migrate:status | grep down | grep -oP '([0-9]){14}' | sed 's/$/,00_db_migrate/' ; bin/rake after_party:status | grep down | grep -oP '([0-9]){14}' | sed 's/$/,01_after_party/') | cat | sort)
+# Récupérer les migrations de db (db:migrate) et de données (after_party) non effectuées
+skiped_migrations_file="db/skipped_migrations/migration.txt"
+skiped_after_party_file="db/skipped_migrations/after_party.txt"
 
-echo "Migrations (schéma et données) à appliquer : "
-echo $migrations
+skiped_migrations=$(<"$skiped_migrations_file")
+skiped_after_party=$(<"$skiped_after_party_file")
 
-# Itération pour application des migrations, dans l'ordre donné
-# Une erreur de migration de schéma est BLOQUANTE
-# Une erreur de migration de données ne l'est pas (la migration se poursuit ; une analyse humaine est alors à prévoir)
-# En cas d'erreur des commandes rails, les logs apparaissent dans la sortie standard + reversées sur Sentry (si configuré)
+db_migrations=$(bin/rake db:migrate:status | awk '/^  down/{print $2",00_db_migrate"}' | while read -r line; do
+  migration_id=${line%,*}
+  if ! grep -q "$migration_id" <<< "$skiped_migrations"; then
+    echo "$line"
+  fi
+done)
+
+data_migrations=$(bin/rake after_party:status | awk '/^  down/{print $1",01_after_party"}' | while read -r line; do
+  migration_id=${line%,*}
+  if ! grep -q "$migration_id" <<< "$skiped_after_party"; then
+    echo "$line"
+  fi
+done)
+
+# Fusionner et trier les migrations par date
+migrations=$(echo "$db_migrations $data_migrations" | tr ' ' '\n' | sort)
+
+echo " ✨ Migrations à appliquer :"
+echo "$migrations" | awk -F',' '{print $1}'
+
+# Appliquer les migrations dans l'ordre
 for migration in $migrations ; do
   # Itération sur les espaces (couple id / type) puis "split" sur la virgule
   id_migration=${migration%,*};
