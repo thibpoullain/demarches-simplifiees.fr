@@ -26,6 +26,8 @@ RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
   config.filter_run :focus => true
 
+  SECURE_PASSWORD = 'my-s3cure-p4ssword'
+
   config.order = 'random'
   # Fix the seed not changing between runs when using Spring
   # See https://github.com/rails/spring/issues/113
