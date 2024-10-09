@@ -1,49 +1,27 @@
-# # To use : rails runner bin/calcultate_stats.rb
-
-# TYPES = %w[Champs::FinessChamp Champs::NirChamp Champs::RppsanteChamp].freeze
-
-# def analyze_champs
-#   Champ.where(type: TYPES).includes(dossier: :procedure).group_by(&:type).transform_values do |champs|
-#     {
-#       champs_count: champs.size,
-#       dossiers: champs.map(&:dossier).uniq.map { |d| { id: d.id, name: d.procedure&.libelle } }
-#     }
-#   end
-# end
-
-# def display_results(results)
-#   results.each do |type, data|
-#     puts "Champ #{type} : #{data[:champs_count]} champs sont utilisés dans #{data[:dossiers].count} dossier#{'s' if data[:dossiers].count > 1}, voici les ids et noms des dossiers :"
-#     # data[:dossiers].each { |dossier| puts "- id: #{dossier[:id]}, nom: #{dossier[:name]}" }
-#     puts "\n"
-#   end
-# end
-
-# results = analyze_champs
-# display_results(results)
-
-
 TYPES = %w[Champs::FinessChamp Champs::NirChamp Champs::RppsanteChamp].freeze
 
 def analyze_champs
   results = {}
+
   TYPES.each do |type|
+    dossier_counts = Dossier
+      .joins(:champs, :procedure)
+      .where(champs: { type: type })
+      .group('procedures.libelle')
+      .count
 
-    unique_dossiers = Dossier.joins(:champs)
-                            .where(champs: { type: type })
-                            .select('dossiers.id')
-                            .distinct
-
-    dossier_count = unique_dossiers.uniq.count
-
-    results[type] = dossier_count
+    results[type] = dossier_counts.transform_keys(&:to_s)
   end
+
   results
 end
 
 def display_results(results)
-  results.each do |type, data|
-    puts "Champ #{type} : #{data} dossiers utilisent ce champ"
+  results.each do |type, procedure_counts|
+    puts "Type de champ: #{type}"
+    procedure_counts.each do |procedure_name, count|
+      puts "  #{count} dossier dans la procédure ---> #{procedure_name}"
+    end
     puts "\n"
   end
 end
