@@ -10,7 +10,7 @@ default: &default
     statement_timeout: <%= ENV['PG_STATEMENT_TIMEOUT'] || 60000 %>
 
 development:
-  database: tps_development
+  database: <%= ENV["DB_DATABASE"] %>
   <<: *default
   # Workaround for https://github.com/ged/ruby-pg/issues/311
   gssencmode: disable
