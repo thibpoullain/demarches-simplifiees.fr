@@ -8,7 +8,7 @@ class ApplicationController < ActionController::Base
   MAINTENANCE_MESSAGE = 'Le site est actuellement en maintenance. Il sera à nouveau disponible dans un court instant.'
 
   before_action :set_sentry_user
-  before_action :redirect_if_untrusted
+  before_action :redirect_if_untrusted, if: -> { !Rails.env.development? }
   before_action :reject, if: -> { ENV.fetch("MAINTENANCE_MODE", 'false') == 'true' }
   before_action :configure_permitted_parameters, if: :devise_controller?
 
@@ -235,6 +235,8 @@ class ApplicationController < ActionController::Base
   end
 
   def redirect_if_untrusted
+    # return if Rails.env.development?
+
     if instructeur_signed_in? &&
         sensitive_path &&
         !current_instructeur.bypass_email_login_token &&
