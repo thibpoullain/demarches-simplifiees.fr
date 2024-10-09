@@ -39,3 +39,13 @@ s3:
   http_proxy: "<%= ENV['S3_HTTP_PROXY'] %>"
   # Clé utiles en debug : trace de chaque connexion et requête au service S3
   #http_wire_trace: true
+
+# for S3 like local testing
+minio:
+  service: S3
+  access_key_id: minioadmin
+  secret_access_key: minioadmin
+  region: us-east-1
+  bucket: dematsocial
+  endpoint: "http://localhost:9000"
+  force_path_style: true
