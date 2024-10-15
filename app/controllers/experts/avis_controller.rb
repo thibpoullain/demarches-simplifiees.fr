@@ -114,7 +114,7 @@ module Experts
       password = params[:user][:password]
 
       avis = Avis.joins(:procedure, expert: :user)
-      .find_by(id: avis_id, procedure: { id: procedure_id }, user: { email: })
+        .find_by(id: avis_id, procedure: { id: procedure_id }, user: { email: })
 
       if avis.nil?
         return redirect_to root_path, alert: "Vous n’avez pas accès à cet avis."

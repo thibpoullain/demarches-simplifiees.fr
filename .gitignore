@@ -64,8 +64,6 @@ public/graphql/schema
 
 .DS_Store
 
-config/parallel*
-
 ngrok.yml
 
 docker/chrome*

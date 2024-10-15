@@ -8,7 +8,6 @@ on:
     branches:
       - "main"
       - "test-github-actions"
-      - 'hotfix'
   pull_request:
     branches:
       - "main"
@@ -19,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:14
+        image: postgis/postgis:14-3.3
         env:
           POSTGRES_USER: tps_test
           POSTGRES_DB: tps_test_
@@ -45,30 +44,31 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v3
-        with:
-          cache: "yarn"
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
 
       - name: Install Node modules
         run: |
-          node --version
-          yarn install --frozen-lockfile
+          bun --version
+          bun install
         shell: bash
 
       - name: Run tests
         run: |
-          yarn test
+          bun run test
 
   unit_tests:
     name: Unit tests
     continue-on-error: true
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RUBY_YJIT_ENABLE: "1"
     services:
       postgres:
-        image: postgres:14
+        image: postgis/postgis:14-3.3
         env:
           POSTGRES_USER: tps_test
           POSTGRES_DB: tps_test_
@@ -77,10 +77,16 @@ jobs:
 
     strategy:
       matrix:
-        instances: [0, 1, 2, 3, 4, 5]
+        instances: [0, 1, 2, 3, 4, 5, 6, 7, 8]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Install build dependancies
+        # - fonts pickable by ImageMagick
+        # - rust for YJIT support
+        # - poppler-utils for pdf previews
+        run: sudo apt-get update && sudo apt-get install -y gsfonts rustc redis-server poppler-utils
 
       - name: Setup the app runtime and dependencies
         uses: ./.github/actions/ci-setup-rails
@@ -88,30 +94,59 @@ jobs:
       - name: Pre-compile assets
         uses: ./.github/actions/ci-setup-assets
 
-      - name: Setup split tests
-        uses: ./.github/actions/ci-setup-split-tests
-        with:
-          results_path: tmp/*.junit.xml
-
       - name: Run tests
         run: |
-          SPEC_FILES=$(./split_tests -glob='spec/**/*_spec.rb' -exclude-glob='spec/system/**' -split-index=${{ strategy.job-index }} -split-total=${{ strategy.job-total }} -junit -junit-path=tmp/*.junit.xml)
-          echo "Running tests for bin/rspec $SPEC_FILES"
-          bin/rspec $SPEC_FILES --format progress --format RspecJunitFormatter --out tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
-
-      - name: Upload test results for this instance
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-reports
-          path: tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
+          case "${{ matrix.instances }}" in
+            0)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/(components|graphql|helpers|middlewares|mailers|policies|serializers)/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/services/dossier_projection_service_spec.rb|spec/services/pieces_justificatives_service_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            1)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/(lib)/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/controllers/administrateurs/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            2)
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/jobs/batch_operation_process_one_job_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/jobs/active_storage/base_job_spec.rb|spec/jobs/cron/discarded_dossiers_deletion_job_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/(jobs)/.*_spec.rb' --exclude-pattern 'spec/jobs/batch_operation_process_one_job_spec.rb|spec/jobs/active_storage/base_job_spec.rb|spec/jobs/cron/discarded_dossiers_deletion_job_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/services/dossier_search_service_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            3)
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/controllers/managers/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/controllers/champs/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/controllers/.*_spec.rb' --exclude-pattern 'spec/controllers/(users|administrateurs|managers|champs|instructeurs|api)/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/services/procedure_export_service_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            4)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/(models)/.*_spec.rb' --exclude-pattern 'spec/models/instructeur_spec.rb|spec/models/dossier_spec.rb|spec/models/procedure_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            5)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/(views)/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/controllers/instructeurs/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            6)
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/(services)/.*_spec.rb' --exclude-pattern 'spec/services/dossier_projection_service_spec.rb|spec/services/pieces_justificatives_service_spec.rb|spec/services/procedure_export_service_spec.rb|spec/services/dossier_search_service_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            7)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/controllers/api/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/controllers/users/.*_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/models/instructeur_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            8)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/models/dossier_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/models/procedure_spec.rb' --test-options "--format progress" --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+          esac
 
   system_tests:
     name: System tests
     runs-on: ubuntu-latest
-    continue-on-error: true
+    timeout-minutes: 20
+    env:
+      RUBY_YJIT_ENABLE: "1"
     services:
       postgres:
-        image: postgres:14
+        image: postgis/postgis:14-3.3
         env:
           POSTGRES_USER: tps_test
           POSTGRES_DB: tps_test_
@@ -120,18 +155,15 @@ jobs:
 
     strategy:
       matrix:
-        instances: [0, 1]
+        instances: [0, 1, 2, 3, 4]
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: browser-actions/setup-chrome@v1
         with:
-          chrome-version: 124.0.6367.60
-
-      - uses: nanasess/setup-chromedriver@v2
-        with:
-          chromedriver-version: "124.0.6367.60"
+          chrome-version: 128
+          install-chromedriver: true
 
       - name: Setup the app runtime and dependencies
         uses: ./.github/actions/ci-setup-rails
@@ -145,39 +177,22 @@ jobs:
       - name: Pre-compile assets
         uses: ./.github/actions/ci-setup-assets
 
-      - name: Setup split tests
-        uses: ./.github/actions/ci-setup-split-tests
-        with:
-          results_path: tmp/*.junit.xml
-
       - name: Run tests
         run: |
-          SPEC_FILES=$(./split_tests -glob='spec/system/**/*_spec.rb' -split-index=${{ strategy.job-index }} -split-total=${{ strategy.job-total }} -junit -junit-path=tmp/*.junit.xml)
-          echo "Running tests for bin/rspec $SPEC_FILES"
-          RAILS_ENV=test bin/rspec $SPEC_FILES --format progress --format RspecJunitFormatter --out tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
-
-      - name: Upload test results for this instance
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-reports
-          path: tmp/rspec_${{ github.job }}_${{ strategy.job-index }}.junit.xml
-
-  save_test_reports:
-    name: Save test reports
-    needs: [unit_tests, system_tests]
-    runs-on: ubuntu-latest
-    continue-on-error: true
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Collect test results from all instances
-        uses: actions/download-artifact@v3
-        with:
-          name: test-reports
-          path: tmp
-
-      - name: Save test results and timing data, to better split future tests
-        uses: ./.github/actions/ci-save-split-tests
-        with:
-          results_path: tmp/*.junit.xml
+          case "${{ matrix.instances }}" in
+            0)
+              bundle exec parallel_rspec -n 2 -t rspec --group-by runtime --pattern 'spec/system/(accessibilite|integrateurs)/.*_spec.rb' --runtime-log ./config/parallel_runtime_rspec_test.log
+            ;;
+            1)
+            	bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/system/(instructeurs|experts|france_connect|routing|routing|misc|api_particulier)/.*_spec.rb' --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            2)
+            	bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/system/(administrateurs)/.*_spec.rb' --exclude-pattern 'spec/system/administrateurs/condition_spec.rb' --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            3)
+            	bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/system/(users)/.*_spec.rb' --exclude-pattern 'spec/system/users/brouillon_spec.rb' --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+            4)
+            	bundle exec parallel_rspec -n 1 -t rspec --group-by runtime --pattern 'spec/system/users/brouillon_spec.rb' --runtime-log ./config/parallel_runtime_rspec_test.log
+              ;;
+          esac

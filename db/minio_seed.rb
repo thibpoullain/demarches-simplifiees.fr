@@ -49,7 +49,6 @@ if existing_blobs.any?
   end
 end
 
-
 # Créer des blobs pour chaque clé
 keys.each_with_index do |key, index|
   # Créer un contenu aléatoire

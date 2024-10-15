@@ -1,4 +1,4 @@
-TYPES = %w[Champs::FinessChamp Champs::NirChamp Champs::RppsanteChamp].freeze
+TYPES = ['Champs::FinessChamp', 'Champs::NirChamp', 'Champs::RppsanteChamp'].freeze
 
 def analyze_champs
   results = {}
