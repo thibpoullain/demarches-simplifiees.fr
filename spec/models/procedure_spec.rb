@@ -9,6 +9,8 @@ describe Procedure do
     it { expect(subject.without_continuation_mail_template).to be_a(Mails::WithoutContinuationMail) }
   end
 
+
+
   describe 'compute_dossiers_count' do
     let(:procedure) { create(:procedure_with_dossiers, dossiers_count: 2, dossiers_count_computed_at: Time.zone.now - Procedure::DOSSIERS_COUNT_EXPIRING) }
 
@@ -189,6 +191,20 @@ describe Procedure do
 
     context 'administrateurs' do
       it { is_expected.not_to allow_value([]).for(:administrateurs) }
+    end
+
+    context 'before_remove callback for minimal administrator presence' do
+      let(:procedure) { create(:procedure) }
+
+      it 'raises an error when trying to remove the last administrateur' do
+        expect(procedure.administrateurs.count).to eq(1)
+        expect {
+          procedure.administrateurs.destroy(procedure.administrateurs.first)
+        }.to raise_error(
+          ActiveRecord::RecordNotDestroyed,
+          "Cannot remove the last administrateur of procedure #{procedure.libelle} (#{procedure.id})"
+        )
+      end
     end
 
     context 'juridique' do
